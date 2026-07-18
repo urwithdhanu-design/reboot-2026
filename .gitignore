@@ -1,0 +1,22 @@
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+dist/
+build/
+.pytest_cache/
+.coverage
+htmlcov/
+.venv/
+venv/
+keys/
+*.pem
+.env
+.idea/
+.vscode/
+
+# Local service databases / runtime
+**/data/
+*.mv.db
+*.trace.db
+kyc-tmp.zip
