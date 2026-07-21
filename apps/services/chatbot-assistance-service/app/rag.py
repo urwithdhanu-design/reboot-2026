@@ -94,4 +94,11 @@ class RagPipeline:
             return data["choices"][0]["message"]["content"].strip()
 
 
-pipeline = RagPipeline()
+pipeline: RagPipeline | None = None
+
+
+def get_pipeline() -> RagPipeline:
+    global pipeline
+    if pipeline is None:
+        pipeline = RagPipeline()
+    return pipeline

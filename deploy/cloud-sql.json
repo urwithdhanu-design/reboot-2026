@@ -1,0 +1,21 @@
+{
+  "instanceName": "gcul-pg",
+  "region": "us-central1",
+  "databaseVersion": "POSTGRES_15",
+  "tier": "db-g1-small",
+  "storageGb": 10,
+  "storageType": "HDD",
+  "availabilityType": "ZONAL",
+  "dbUser": "gcul_app",
+  "secretName": "gcul-db-password",
+  "serviceDatabases": {
+    "gcul-kyc": "gcul_kyc",
+    "gcul-policy": "gcul_policy",
+    "gcul-payment": "gcul_payment",
+    "gcul-notification": "gcul_notification",
+    "gcul-claims": "gcul_claims",
+    "gcul-parametric": "gcul_parametric",
+    "gcul-premium-deposit": "gcul_premium_deposit",
+    "gcul-blockchain-orchestrator": "gcul_blockchain"
+  }
+}

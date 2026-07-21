@@ -1,0 +1,9 @@
+{
+  "region": "us-central1",
+  "artifactRepo": "gcul",
+  "cloudRun": {
+    "minInstances": 0,
+    "maxInstances": 5,
+    "concurrency": 80
+  },
+  "services": [

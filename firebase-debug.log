@@ -1,0 +1,16 @@
+[debug] [2026-07-21T01:17:52.015Z] ----------------------------------------------------------------------
+[debug] [2026-07-21T01:17:52.017Z] Command:       C:\Program Files\nodejs\node.exe C:\Users\DELL\AppData\Roaming\npm\node_modules\firebase-tools\lib\bin\firebase.js deploy --only hosting --project community-hub-6fb1b
+[debug] [2026-07-21T01:17:52.017Z] CLI Version:   15.18.0
+[debug] [2026-07-21T01:17:52.017Z] Platform:      win32
+[debug] [2026-07-21T01:17:52.017Z] Node Version:  v24.15.0
+[debug] [2026-07-21T01:17:52.017Z] Time:          Tue Jul 21 2026 06:47:52 GMT+0530 (India Standard Time)
+[debug] [2026-07-21T01:17:52.017Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2026-07-21T01:17:53.494Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2026-07-21T01:17:53.494Z] > authorizing via signed-in user (agenticsalesdesk@gmail.com)
+[debug] [2026-07-21T01:17:53.494Z] [iam] checking project community-hub-6fb1b for permissions ["firebase.projects.get","firebasehosting.sites.update"]
+[debug] [2026-07-21T01:17:53.496Z] Checked if tokens are valid: true, expires at: 1784600082443
+[debug] [2026-07-21T01:17:53.496Z] Checked if tokens are valid: true, expires at: 1784600082443
+[debug] [2026-07-21T01:17:53.496Z] >>> [apiv2][query] POST https://cloudresourcemanager.googleapis.com/v1/projects/community-hub-6fb1b:testIamPermissions [none]
+[debug] [2026-07-21T01:17:53.497Z] >>> [apiv2][(partial)header] POST https://cloudresourcemanager.googleapis.com/v1/projects/community-hub-6fb1b:testIamPermissions  x-goog-user-project=community-hub-6fb1b
+[debug] [2026-07-21T01:17:53.497Z] >>> [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/community-hub-6fb1b:testIamPermissions {"permissions":["firebase.projects.get","firebasehosting.sites.update"]}

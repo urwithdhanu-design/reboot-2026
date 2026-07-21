@@ -1,0 +1,17 @@
+steps:
+  - name: gcr.io/cloud-builders/docker
+    args:
+      - build
+      - -f
+      - ${_DOCKERFILE}
+      - --build-arg
+      - SERVICE_DIR=${_SERVICE_DIR}
+      - -t
+      - ${_IMAGE}
+      - .
+images:
+  - ${_IMAGE}
+substitutions:
+  _IMAGE: placeholder
+  _DOCKERFILE: deploy/docker/Dockerfile.java
+  _SERVICE_DIR: apps/services/kyc-service

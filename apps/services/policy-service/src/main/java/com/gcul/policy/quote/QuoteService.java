@@ -327,7 +327,7 @@ public class QuoteService {
 
 	public List<Map<String, Object>> listQuotes() {
 		return savedQuotes.values().stream()
-				.map(LinkedHashMap::new)
+				.map(q -> (Map<String, Object>) new LinkedHashMap<>(q))
 				.toList();
 	}
 

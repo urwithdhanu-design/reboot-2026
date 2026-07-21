@@ -51,6 +51,8 @@ class AppConfig:
         self.openai_api_key = raw.get("openai.api.key", "")
         self.openai_model = raw.get("openai.model", "gpt-4o-mini")
         self.auto_ingest = raw.get("chatbot.auto.ingest", "true").lower() == "true"
+        if "CHATBOT_AUTO_INGEST" in os.environ:
+            self.auto_ingest = os.environ["CHATBOT_AUTO_INGEST"].lower() == "true"
 
 
 config = AppConfig()

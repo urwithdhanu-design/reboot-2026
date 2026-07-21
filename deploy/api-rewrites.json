@@ -1,0 +1,19 @@
+[
+  { "source": "/api/auth/**", "serviceId": "gcul-kyc" },
+  { "source": "/api/kyc/**", "serviceId": "gcul-kyc" },
+  { "source": "/api/wallet/**", "serviceId": "gcul-kyc" },
+  { "source": "/api/assistant/**", "serviceId": "gcul-kyc" },
+  { "source": "/api/products/**", "serviceId": "gcul-policy" },
+  { "source": "/api/policies/**", "serviceId": "gcul-policy" },
+  { "source": "/api/quotes/**", "serviceId": "gcul-policy" },
+  { "source": "/api/payments/**", "serviceId": "gcul-policy" },
+  { "source": "/api/vendors/**", "serviceId": "gcul-policy" },
+  { "source": "/api/vendor-portal/**", "serviceId": "gcul-policy" },
+  { "source": "/api/payment-ledger/**", "serviceId": "gcul-payment" },
+  { "source": "/api/notifications/**", "serviceId": "gcul-notification" },
+  { "source": "/api/claims/**", "serviceId": "gcul-claims" },
+  { "source": "/api/parametric/**", "serviceId": "gcul-parametric" },
+  { "source": "/api/premium-deposits/**", "serviceId": "gcul-premium-deposit" },
+  { "source": "/api/blockchain/**", "serviceId": "gcul-blockchain-orchestrator" },
+  { "source": "/api/chatbot/**", "serviceId": "gcul-chatbot" }
+]
