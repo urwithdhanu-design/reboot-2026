@@ -5,7 +5,15 @@ async function request<T>(path: string, options: RequestInit = {}, token?: strin
   headers.set('Content-Type', 'application/json');
   if (token) headers.set('Authorization', `Bearer ${token}`);
   const res = await fetch(`${API_BASE}${path}`, { ...options, headers });
-  const data = await res.json().catch(() => ({}));
+  const text = await res.text();
+  let data: unknown = {};
+  if (text.trim()) {
+    try {
+      data = JSON.parse(text) as unknown;
+    } catch {
+      data = {};
+    }
+  }
   if (!res.ok) {
     const body = data as { detail?: string; message?: string; error?: string };
     throw new Error(body.detail ?? body.message ?? body.error ?? res.statusText);
@@ -31,9 +39,100 @@ export type Vendor = {
   temp_password?: string;
 };
 
+export type AdminCustomer = {
+  id: string;
+  full_name: string;
+  email: string;
+  mobile_number: string;
+  kyc_status: string;
+  created_at?: string;
+  kyc_document_type?: string;
+  kyc_submitted_at?: string;
+  wallet_status?: string;
+  account_status?: string;
+  wallet?: { address: string; status: string } | null;
+};
+
+export type KycQueueItem = {
+  id: string;
+  customer_name: string;
+  email: string;
+  mobile_number: string;
+  status: string;
+  document_type: string;
+  submitted_at: string;
+  progress: Record<string, string>;
+  documents: string[];
+};
+
+export type AdminPolicyRow = {
+  id: string;
+  quote_id: string;
+  policy_number: string;
+  product_id: string;
+  product_title: string;
+  category: string;
+  premium: number;
+  price_unit: string;
+  currency: string;
+  customer_name: string;
+  customer_email: string;
+  status: string;
+  created_at?: string;
+  payment_status?: string;
+  policy_ref?: string;
+};
+
+export type PaymentLedgerRow = {
+  id: string;
+  quote_id: string;
+  policy_ref: string;
+  customer_email: string;
+  amount: number;
+  currency: string;
+  status: string;
+  created_at?: string;
+};
+
 export const adminApi = {
   listProducts: () =>
     request<{ categories: string[]; products: unknown[] }>('/api/products'),
+
+  listCustomers: (q?: string, kycStatus?: string) => {
+    const params = new URLSearchParams();
+    if (q) params.set('q', q);
+    if (kycStatus && kycStatus !== 'all') params.set('kyc_status', kycStatus);
+    const qs = params.toString();
+    return request<{ customers: AdminCustomer[]; count: number }>(
+      `/api/admin/customers${qs ? `?${qs}` : ''}`,
+    );
+  },
+
+  listKycQueue: () =>
+    request<{ queue: KycQueueItem[]; count: number }>('/api/admin/kyc-queue'),
+
+  updateCustomerKyc: (userId: string, status: string) =>
+    request<AdminCustomer>(`/api/admin/customers/${encodeURIComponent(userId)}/kyc`, {
+      method: 'PATCH',
+      body: JSON.stringify({ status }),
+    }),
+
+  customerStats: () =>
+    request<{
+      total_customers: number;
+      kyc_verified: number;
+      kyc_in_progress: number;
+      kyc_not_started: number;
+    }>('/api/admin/customer-stats'),
+
+  listPolicies: () =>
+    request<{ policies: AdminPolicyRow[]; count: number }>('/api/admin/policies'),
+
+  policyStats: () =>
+    request<{ total_quotes: number; total_applications: number }>('/api/admin/policy-stats'),
+
+  listPayments: () =>
+    request<{ payments: PaymentLedgerRow[]; count: number }>('/api/payment-ledger'),
 
   listVendors: (status?: string) => {
     const qs = status ? `?status=${encodeURIComponent(status)}` : '';
@@ -83,3 +182,33 @@ export const adminApi = {
       stats: Record<string, unknown>;
     }>('/api/vendor-portal/dashboard', {}, token),
 };
+
+/** Merge payment ledger onto policy rows for admin tables. */
+export function enrichPoliciesWithPayments(
+  policies: AdminPolicyRow[],
+  payments: PaymentLedgerRow[],
+): AdminPolicyRow[] {
+  const byQuote = new Map<string, PaymentLedgerRow>();
+  for (const p of payments) {
+    if (!byQuote.has(p.quote_id)) byQuote.set(p.quote_id, p);
+  }
+  return policies.map((row) => {
+    const pay = byQuote.get(row.quote_id);
+    if (!pay) return row;
+    return {
+      ...row,
+      payment_status: pay.status,
+      policy_ref: pay.policy_ref,
+      status: pay.status === 'paid' ? 'active' : row.status,
+    };
+  });
+}
+
+/** Count policies per customer email (paid or quoted). */
+export function policyCountByEmail(
+  policies: AdminPolicyRow[],
+  email: string,
+): number {
+  const key = email.toLowerCase();
+  return policies.filter((p) => p.customer_email?.toLowerCase() === key).length;
+}

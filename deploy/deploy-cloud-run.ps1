@@ -29,6 +29,7 @@ $maxInst = if ($Manifest.cloudRun.maxInstances -ne $null) { $Manifest.cloudRun.m
 $concurrency = if ($Manifest.cloudRun.concurrency -ne $null) { $Manifest.cloudRun.concurrency } else { 80 }
 
 $useCloudSql = $env:GCUL_USE_CLOUD_SQL -eq "true"
+$usePubSub = $env:GCUL_USE_PUBSUB -eq "true"
 $cloudSqlConn = $null
 $sqlCfg = $null
 $dbSecret = $null
@@ -42,6 +43,13 @@ if ($useCloudSql) {
   $sqlCfg = Get-Content (Join-Path $PSScriptRoot "cloud-sql.json") -Raw | ConvertFrom-Json
   $dbSecret = $sqlCfg.secretName
   Write-Host "Cloud SQL enabled: $cloudSqlConn" -ForegroundColor Green
+}
+if ($usePubSub) {
+  $pubsubPath = Join-Path $PSScriptRoot "pubsub-topics.json"
+  if (-not (Test-Path $pubsubPath)) {
+    throw "Run .\deploy\setup-pubsub.ps1 first (missing pubsub-topics.json)"
+  }
+  Write-Host "Pub/Sub enabled for project $ProjectId" -ForegroundColor Green
 }
 
 gcloud config set project $ProjectId
@@ -78,6 +86,13 @@ foreach ($svc in $Manifest.services) {
       "GCUL_CLOUD_SQL_INSTANCE=$cloudSqlConn",
       "GCUL_DB_NAME=$dbName",
       "GCUL_DB_USER=$($sqlCfg.dbUser)"
+    )
+  }
+  if ($usePubSub) {
+    $envPairs += @(
+      "GCUL_PUBSUB_ENABLED=true",
+      "GCUL_PUBSUB_PROJECT=$ProjectId",
+      "GCUL_PUBSUB_TOPIC_PREFIX=gcul"
     )
   }
 

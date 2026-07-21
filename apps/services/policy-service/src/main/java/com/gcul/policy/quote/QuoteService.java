@@ -1,5 +1,6 @@
 package com.gcul.policy.quote;
 
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.Period;
 import java.util.ArrayList;
@@ -297,6 +298,7 @@ public class QuoteService {
 		quote.put("answers", answers);
 		quote.put("summary", answers);
 		quote.put("message", "Your Estimated Quote");
+		quote.put("created_at", Instant.now().toString());
 		savedQuotes.put(quoteId, quote);
 
 		String email = str(answers.get("email"));

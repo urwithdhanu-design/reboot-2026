@@ -75,6 +75,9 @@ No `VITE_API_BASE` is required in production: APIs are same-origin via Hosting r
 | `deploy/docker/Dockerfile.java` | Multi-stage build for Spring Boot services |
 | `deploy/deploy-cloud-run.ps1` | Build + deploy all backends |
 | `deploy/deploy-firebase.ps1` | Build SPAs + deploy Hosting |
+| `deploy/setup-cloud-sql.ps1` | Cloud SQL instance + databases |
+| `deploy/setup-pubsub.ps1` | Pub/Sub topics + IAM |
+| `deploy/pubsub.json` | Topic catalog (publishers/subscribers) |
 | `.firebaserc` | Firebase project + hosting targets |
 
 ## Architecture
@@ -95,6 +98,89 @@ flowchart TB
 ```
 
 Legacy monolith API under `apps/api` is not part of this path; use the Java microservices above.
+
+## Cloud SQL: one instance, one database per Java service
+
+This is **not** one Cloud SQL instance per microservice. Cost layout:
+
+| What | Name / pattern |
+|------|----------------|
+| **Instance** (single shared) | `gcul-pg` in `us-central1` |
+| **DB user** | `gcul_app` (password in Secret Manager `gcul-db-password`) |
+| **Per-service database** | See `deploy/cloud-sql.json` → `serviceDatabases` |
+
+| Cloud Run service | PostgreSQL database |
+|-------------------|---------------------|
+| `gcul-kyc` | `gcul_kyc` |
+| `gcul-policy` | `gcul_policy` |
+| `gcul-payment` | `gcul_payment` |
+| `gcul-notification` | `gcul_notification` |
+| `gcul-claims` | `gcul_claims` |
+| `gcul-parametric` | `gcul_parametric` |
+| `gcul-premium-deposit` | `gcul_premium_deposit` |
+| `gcul-blockchain-orchestrator` | `gcul_blockchain` |
+
+**No Cloud SQL DB** in this map: `gcul-sidecar`, `gcul-chatbot` (Python; no JPA schema in `cloud-sql.json`).
+
+**Production today:** only **`gcul-kyc`** is confirmed on Cloud SQL. Other Java services may still use **ephemeral H2** in `/tmp` unless you deploy with `GCUL_USE_CLOUD_SQL=true` (and fix DB password via `setup-cloud-sql.ps1`).
+
+```powershell
+$env:GCP_PROJECT = "community-hub-6fb1b"
+.\deploy\setup-cloud-sql.ps1
+$env:GCUL_USE_CLOUD_SQL = "true"
+.\deploy\deploy-cloud-run.ps1
+```
+
+---
+
+## Pub/Sub (event bus)
+
+Topics are defined in **`deploy/pubsub.json`** (e.g. `gcul.kyc.user-registered`, `gcul.policy.quote-created`). **Infra only** until each service publishes/subscribes in code.
+
+```powershell
+$env:GCP_PROJECT = "community-hub-6fb1b"
+.\deploy\setup-pubsub.ps1              # topics + IAM for Cloud Run SA
+.\deploy\setup-pubsub.ps1 -CreateSubscriptions   # optional pull subs per subscriber
+$env:GCUL_USE_PUBSUB = "true"
+.\deploy\deploy-cloud-run.ps1         # sets GCUL_PUBSUB_ENABLED, GCUL_PUBSUB_PROJECT, GCUL_PUBSUB_TOPIC_PREFIX
+```
+
+---
+
+## Deploy scripts (Cloud Run + Hosting)
+
+| Step | Script | What it does |
+|------|--------|----------------|
+| 1 | `deploy/setup-gcp-project.ps1` | APIs, Artifact Registry `gcul`, Firebase link, admin hosting site |
+| 2 | `deploy/setup-cloud-sql.ps1` | Instance `gcul-pg`, 8 databases, `gcul_app` user, `cloud-sql-connection.json` |
+| 3 | `deploy/setup-pubsub.ps1` | Pub/Sub topics from `pubsub.json`, publisher/subscriber IAM |
+| 4 | **`deploy/deploy-cloud-run.ps1`** | **Main backend deploy**: Cloud Build per service (`deploy/cloudbuild-service.yaml` + `deploy/docker/Dockerfile.*`), push to `us-central1-docker.pkg.dev/$PROJECT/gcul/<service>:latest`, `gcloud run deploy` from `deploy/services.json` |
+| 5 | `deploy/configure-kyc-email.ps1` | Gmail → Secret `gcul-email-pass` on `gcul-kyc` |
+| 6 | **`deploy/deploy-firebase.ps1`** | Build `apps/web` + `apps/admin`, generate `firebase.json` from `deploy/api-rewrites.json`, deploy Hosting |
+| 7 | `deploy/sync-cloud-api-targets.ps1` | Refresh `deploy/cloud-api.targets.json` for local `VITE_API_PROXY=cloud` |
+
+**`deploy-cloud-run.ps1` env flags:**
+
+- `GCP_PROJECT` (required) — e.g. `community-hub-6fb1b`
+- `GCP_REGION` (optional, default `us-central1`)
+- `GCUL_USE_CLOUD_SQL=true` — attach Cloud SQL + per-service DB env (see table above)
+- `GCUL_USE_PUBSUB=true` — after `setup-pubsub.ps1`
+- `-SkipBuild` — redeploy existing images only
+
+**Single service (manual):**
+
+```powershell
+cd C:\projects\gcul
+$image = "us-central1-docker.pkg.dev/community-hub-6fb1b/gcul/gcul-kyc:latest"
+gcloud builds submit . --project=community-hub-6fb1b `
+  --config=deploy/cloudbuild-service.yaml `
+  --substitutions="_IMAGE=$image,_DOCKERFILE=deploy/docker/Dockerfile.java,_SERVICE_DIR=apps/services/kyc-service"
+gcloud run deploy gcul-kyc --image $image --region us-central1 --project community-hub-6fb1b ...
+```
+
+Outputs: `deploy/cloud-run-urls.json`, Hosting URLs from `deploy-firebase.ps1`.
+
+---
 
 ## Cost + Cloud SQL (one DB per service)
 

@@ -22,17 +22,21 @@ export function MarketplacePage() {
 
   useEffect(() => {
     let alive = true;
-    api
-      .listProducts(category, query || undefined)
-      .then((res) => {
-        if (!alive) return;
-        setCategories(res.categories ?? ["All", "Health", "Vehicle", "Pet", "Property", "Life", "Travel"]);
-        setProducts(res.products ?? []);
-      })
-      .catch((err) => {
-        if (!alive) return;
-        setError(err instanceof Error ? err.message : "Failed to load products");
-      });
+    const load = () =>
+      api
+        .listProducts(category === "All" ? undefined : category, query || undefined)
+        .then((res) => {
+          if (!alive) return;
+          setCategories(res.categories ?? ["All", "Health", "Vehicle", "Pet", "Property", "Life", "Travel"]);
+          setProducts(res.products ?? []);
+          setError(null);
+        })
+        .catch((err) => {
+          if (!alive) return;
+          setError(err instanceof Error ? err.message : "Failed to load products");
+        });
+
+    load();
     return () => {
       alive = false;
     };

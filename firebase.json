@@ -68,6 +68,48 @@
                                          {
                                              "run":  {
                                                          "region":  "us-central1",
+                                                         "serviceId":  "gcul-kyc"
+                                                     },
+                                             "source":  "/api/admin/customers"
+                                         },
+                                         {
+                                             "run":  {
+                                                         "region":  "us-central1",
+                                                         "serviceId":  "gcul-kyc"
+                                                     },
+                                             "source":  "/api/admin/customers/**"
+                                         },
+                                         {
+                                             "run":  {
+                                                         "region":  "us-central1",
+                                                         "serviceId":  "gcul-kyc"
+                                                     },
+                                             "source":  "/api/admin/kyc-queue"
+                                         },
+                                         {
+                                             "run":  {
+                                                         "region":  "us-central1",
+                                                         "serviceId":  "gcul-kyc"
+                                                     },
+                                             "source":  "/api/admin/customer-stats"
+                                         },
+                                         {
+                                             "run":  {
+                                                         "region":  "us-central1",
+                                                         "serviceId":  "gcul-policy"
+                                                     },
+                                             "source":  "/api/admin/policies"
+                                         },
+                                         {
+                                             "run":  {
+                                                         "region":  "us-central1",
+                                                         "serviceId":  "gcul-policy"
+                                                     },
+                                             "source":  "/api/admin/policy-stats"
+                                         },
+                                         {
+                                             "run":  {
+                                                         "region":  "us-central1",
                                                          "serviceId":  "gcul-policy"
                                                      },
                                              "source":  "/api/products"
@@ -317,6 +359,48 @@
                                                          "serviceId":  "gcul-kyc"
                                                      },
                                              "source":  "/api/assistant/**"
+                                         },
+                                         {
+                                             "run":  {
+                                                         "region":  "us-central1",
+                                                         "serviceId":  "gcul-kyc"
+                                                     },
+                                             "source":  "/api/admin/customers"
+                                         },
+                                         {
+                                             "run":  {
+                                                         "region":  "us-central1",
+                                                         "serviceId":  "gcul-kyc"
+                                                     },
+                                             "source":  "/api/admin/customers/**"
+                                         },
+                                         {
+                                             "run":  {
+                                                         "region":  "us-central1",
+                                                         "serviceId":  "gcul-kyc"
+                                                     },
+                                             "source":  "/api/admin/kyc-queue"
+                                         },
+                                         {
+                                             "run":  {
+                                                         "region":  "us-central1",
+                                                         "serviceId":  "gcul-kyc"
+                                                     },
+                                             "source":  "/api/admin/customer-stats"
+                                         },
+                                         {
+                                             "run":  {
+                                                         "region":  "us-central1",
+                                                         "serviceId":  "gcul-policy"
+                                                     },
+                                             "source":  "/api/admin/policies"
+                                         },
+                                         {
+                                             "run":  {
+                                                         "region":  "us-central1",
+                                                         "serviceId":  "gcul-policy"
+                                                     },
+                                             "source":  "/api/admin/policy-stats"
                                          },
                                          {
                                              "run":  {

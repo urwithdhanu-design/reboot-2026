@@ -103,15 +103,42 @@ async function request<T>(
   if (token) headers.set("Authorization", `Bearer ${token}`);
 
   const res = await fetch(`${API_BASE}${path}`, { ...options, headers });
-  const contentType = res.headers.get("content-type") ?? "";
-  const data = contentType.includes("application/json")
-    ? await res.json().catch(() => null)
-    : null;
+  const text = await res.text();
+  const trimmed = text.trim();
+
+  let data: unknown = null;
+  if (trimmed.length > 0) {
+    const looksJson =
+      trimmed.startsWith("{") ||
+      trimmed.startsWith("[") ||
+      (res.headers.get("content-type") ?? "").toLowerCase().includes("json");
+    if (looksJson) {
+      try {
+        data = JSON.parse(trimmed) as unknown;
+      } catch {
+        data = null;
+      }
+    }
+  }
+
+  if (trimmed.startsWith("<!") || trimmed.startsWith("<html")) {
+    throw new Error(
+      res.ok
+        ? "Unexpected HTML from API (check hosting rewrites to Cloud Run)"
+        : `API error (${res.status}): received HTML instead of JSON`,
+    );
+  }
+
   if (!res.ok || data === null) {
-    const body = (data ?? {}) as { detail?: string; message?: string; error?: string };
+    const body = (data ?? {}) as { detail?: string; message?: string; error?: string; title?: string };
     const detail =
-      body.detail ?? body.message ?? body.error ??
-      (data === null ? "Invalid API response (expected JSON)" : res.statusText);
+      body.detail ??
+      body.message ??
+      body.error ??
+      body.title ??
+      (data === null
+        ? trimmed.slice(0, 120) || "Invalid API response (expected JSON)"
+        : res.statusText);
     throw new Error(typeof detail === "string" ? detail : "Request failed");
   }
   return data as T;

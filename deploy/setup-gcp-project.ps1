@@ -48,6 +48,7 @@ $apis = @(
   "cloudbuild.googleapis.com",
   "sqladmin.googleapis.com",
   "secretmanager.googleapis.com",
+  "pubsub.googleapis.com",
   "firebase.googleapis.com"
 )
 foreach ($api in $apis) {

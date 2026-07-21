@@ -84,7 +84,24 @@ if ($users -notcontains $appUser) {
     --project $ProjectId `
     --quiet | Out-Null
 } else {
-  Write-Host "User $appUser already exists (password unchanged)."
+  Write-Host "User $appUser already exists - syncing password from Secret Manager if present ..."
+  $secret = $Cfg.secretName
+  $secretExists = $false
+  gcloud secrets describe $secret --project $ProjectId 2>$null | Out-Null
+  if ($LASTEXITCODE -eq 0) { $secretExists = $true }
+  if ($secretExists) {
+    $appPass = (gcloud secrets versions access latest --secret=$secret --project $ProjectId 2>$null).Trim()
+    if ($appPass) {
+      gcloud sql users set-password $appUser --instance=$Instance --password=$appPass --project $ProjectId --quiet
+      if ($LASTEXITCODE -eq 0) {
+        Write-Host "Updated Cloud SQL user $appUser password to match secret $secret"
+      } else {
+        Write-Host "WARN: Could not update $appUser password (check permissions)" -ForegroundColor Yellow
+      }
+    }
+  } else {
+    Write-Host "Secret $secret not found - password unchanged."
+  }
 }
 
 $runSa = gcloud iam service-accounts list --project $ProjectId --filter="displayName:Compute Engine default" --format="value(email)" 2>$null

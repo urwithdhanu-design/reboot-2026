@@ -1,0 +1,65 @@
+{
+  "topicPrefix": "gcul",
+  "topics": [
+    {
+      "suffix": "kyc.user-registered",
+      "description": "New customer account created",
+      "publishers": ["gcul-kyc"],
+      "subscribers": ["gcul-notification", "gcul-blockchain-orchestrator"]
+    },
+    {
+      "suffix": "kyc.kyc-submitted",
+      "description": "Customer completed KYC flow",
+      "publishers": ["gcul-kyc"],
+      "subscribers": ["gcul-notification"]
+    },
+    {
+      "suffix": "kyc.kyc-status-changed",
+      "description": "Admin or system updated KYC status",
+      "publishers": ["gcul-kyc"],
+      "subscribers": ["gcul-notification"]
+    },
+    {
+      "suffix": "policy.quote-created",
+      "description": "Quote estimated and stored",
+      "publishers": ["gcul-policy"],
+      "subscribers": ["gcul-notification", "gcul-payment"]
+    },
+    {
+      "suffix": "policy.checkout-started",
+      "description": "Stripe checkout session created",
+      "publishers": ["gcul-policy"],
+      "subscribers": ["gcul-payment", "gcul-notification"]
+    },
+    {
+      "suffix": "payment.ledger-recorded",
+      "description": "Payment ledger row created or updated",
+      "publishers": ["gcul-payment"],
+      "subscribers": ["gcul-notification", "gcul-blockchain-orchestrator"]
+    },
+    {
+      "suffix": "claims.claim-filed",
+      "description": "New or updated insurance claim",
+      "publishers": ["gcul-claims"],
+      "subscribers": ["gcul-notification", "gcul-blockchain-orchestrator"]
+    },
+    {
+      "suffix": "parametric.trigger-evaluated",
+      "description": "Parametric rule evaluation result",
+      "publishers": ["gcul-parametric"],
+      "subscribers": ["gcul-claims", "gcul-notification"]
+    },
+    {
+      "suffix": "premium-deposit.movement",
+      "description": "Premium deposit credit/debit",
+      "publishers": ["gcul-premium-deposit"],
+      "subscribers": ["gcul-blockchain-orchestrator"]
+    },
+    {
+      "suffix": "blockchain.transaction-recorded",
+      "description": "On-chain or demo ledger write",
+      "publishers": ["gcul-blockchain-orchestrator"],
+      "subscribers": ["gcul-notification"]
+    }
+  ]
+}
