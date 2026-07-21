@@ -1,0 +1,17 @@
+﻿{
+    "serviceDatabases":  {
+                             "gcul-kyc":  "gcul_kyc",
+                             "gcul-policy":  "gcul_policy",
+                             "gcul-payment":  "gcul_payment",
+                             "gcul-notification":  "gcul_notification",
+                             "gcul-claims":  "gcul_claims",
+                             "gcul-parametric":  "gcul_parametric",
+                             "gcul-premium-deposit":  "gcul_premium_deposit",
+                             "gcul-blockchain-orchestrator":  "gcul_blockchain"
+                         },
+    "region":  "us-central1",
+    "instanceName":  "gcul-pg",
+    "secretName":  "gcul-db-password",
+    "dbUser":  "gcul_app",
+    "connectionName":  "community-hub-6fb1b:us-central1:gcul-pg"
+}

@@ -69,8 +69,25 @@ public class MailService {
 			log.warn("Password reset email skipped (not configured) → {}", to);
 			return false;
 		}
-		send(to, "Password reset",
-				EmailTemplates.passwordReset(fullName, properties.getFromName(), resetUrl, expiryMinutes));
-		return true;
+		if (to == null || to.isBlank()) {
+			return false;
+		}
+		String platform = properties.getFromName();
+		String subject = "Password reset · " + platform;
+		try {
+			MimeMessage message = mailSender.createMimeMessage();
+			MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
+			helper.setFrom(new InternetAddress(properties.getFromAddress().trim(), platform, "UTF-8"));
+			helper.setTo(to.trim());
+			helper.setSubject(subject);
+			helper.setText(EmailTemplates.passwordReset(fullName, platform, resetUrl, expiryMinutes), true);
+			mailSender.send(message);
+			log.info("Password reset email sent to {}", to);
+			return true;
+		}
+		catch (Exception ex) {
+			log.error("Failed to send password reset to {}: {}", to, ex.getMessage());
+			return false;
+		}
 	}
 }

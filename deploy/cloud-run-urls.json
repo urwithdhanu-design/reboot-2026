@@ -2,19 +2,11 @@
     "gcul-notification":  "https://gcul-notification-au44fcofwq-uc.a.run.app",
     "gcul-kyc":  "https://gcul-kyc-au44fcofwq-uc.a.run.app",
     "gcul-parametric":  "https://gcul-parametric-au44fcofwq-uc.a.run.app",
-    "gcul-claims":  {
-
-                    },
-    "gcul-sidecar":  {
-
-                     },
-    "gcul-chatbot":  {
-
-                     },
-    "gcul-blockchain-orchestrator":  {
-
-                                     },
+    "gcul-claims":  "https://gcul-claims-au44fcofwq-uc.a.run.app",
+    "gcul-sidecar":  "https://gcul-sidecar-au44fcofwq-uc.a.run.app",
+    "gcul-chatbot":  "https://gcul-chatbot-au44fcofwq-uc.a.run.app",
+    "gcul-blockchain-orchestrator":  "https://gcul-blockchain-orchestrator-au44fcofwq-uc.a.run.app",
     "gcul-payment":  "https://gcul-payment-au44fcofwq-uc.a.run.app",
     "gcul-premium-deposit":  "https://gcul-premium-deposit-au44fcofwq-uc.a.run.app",
-    "gcul-policy":  ""
+    "gcul-policy":  "https://gcul-policy-au44fcofwq-uc.a.run.app"
 }

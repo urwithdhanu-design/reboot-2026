@@ -7,3 +7,88 @@
     "concurrency": 80
   },
   "services": [
+    {
+      "id": "gcul-kyc",
+      "dir": "apps/services/kyc-service",
+      "dockerfile": "deploy/docker/Dockerfile.java",
+      "port": 8080,
+      "memory": "512Mi",
+      "env": {}
+    },
+    {
+      "id": "gcul-policy",
+      "dir": "apps/services/policy-service",
+      "dockerfile": "deploy/docker/Dockerfile.java",
+      "port": 8080,
+      "memory": "512Mi",
+      "env": {}
+    },
+    {
+      "id": "gcul-payment",
+      "dir": "apps/services/payment-service",
+      "dockerfile": "deploy/docker/Dockerfile.java",
+      "port": 8080,
+      "memory": "512Mi",
+      "env": {}
+    },
+    {
+      "id": "gcul-notification",
+      "dir": "apps/services/notification-service",
+      "dockerfile": "deploy/docker/Dockerfile.java",
+      "port": 8080,
+      "memory": "512Mi",
+      "env": {}
+    },
+    {
+      "id": "gcul-claims",
+      "dir": "apps/services/claims-service",
+      "dockerfile": "deploy/docker/Dockerfile.java",
+      "port": 8080,
+      "memory": "512Mi",
+      "env": {}
+    },
+    {
+      "id": "gcul-parametric",
+      "dir": "apps/services/parametric-claim-service",
+      "dockerfile": "deploy/docker/Dockerfile.java",
+      "port": 8080,
+      "memory": "512Mi",
+      "env": {}
+    },
+    {
+      "id": "gcul-premium-deposit",
+      "dir": "apps/services/premium-deposit-service",
+      "dockerfile": "deploy/docker/Dockerfile.java",
+      "port": 8080,
+      "memory": "512Mi",
+      "env": {}
+    },
+    {
+      "id": "gcul-blockchain-orchestrator",
+      "dir": "apps/services/blockchain-orchestrator-service",
+      "dockerfile": "deploy/docker/Dockerfile.java",
+      "port": 8080,
+      "memory": "512Mi",
+      "env": {},
+      "links": ["gcul-sidecar", "gcul-claims", "gcul-notification", "gcul-payment"]
+    },
+    {
+      "id": "gcul-sidecar",
+      "dir": "apps/services/gcul-sidecar",
+      "dockerfile": "deploy/docker/Dockerfile.gcul-sidecar",
+      "port": 8080,
+      "memory": "512Mi",
+      "env": { "GCUL_MODE": "demo" }
+    },
+    {
+      "id": "gcul-chatbot",
+      "dir": "apps/services/chatbot-assistance-service",
+      "dockerfile": "deploy/docker/Dockerfile.chatbot",
+      "port": 8080,
+      "memory": "2Gi",
+      "cpu": "2",
+      "timeout": "300",
+      "env": { "CHATBOT_AUTO_INGEST": "false" }
+    }
+  ]
+}

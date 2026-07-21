@@ -4,7 +4,7 @@ import { api } from "../api";
 import { AssistantBar, StepHeader } from "../components";
 
 export function ForgotPasswordPage() {
-  const [identifier, setIdentifier] = useState("alex.morgan@email.com");
+  const [identifier, setIdentifier] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [sent, setSent] = useState(false);

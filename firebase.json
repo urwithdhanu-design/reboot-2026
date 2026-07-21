@@ -14,6 +14,34 @@
                                                          "region":  "us-central1",
                                                          "serviceId":  "gcul-kyc"
                                                      },
+                                             "source":  "/api/auth/register"
+                                         },
+                                         {
+                                             "run":  {
+                                                         "region":  "us-central1",
+                                                         "serviceId":  "gcul-kyc"
+                                                     },
+                                             "source":  "/api/auth/login"
+                                         },
+                                         {
+                                             "run":  {
+                                                         "region":  "us-central1",
+                                                         "serviceId":  "gcul-kyc"
+                                                     },
+                                             "source":  "/api/auth/forgot-password"
+                                         },
+                                         {
+                                             "run":  {
+                                                         "region":  "us-central1",
+                                                         "serviceId":  "gcul-kyc"
+                                                     },
+                                             "source":  "/api/auth/reset-password"
+                                         },
+                                         {
+                                             "run":  {
+                                                         "region":  "us-central1",
+                                                         "serviceId":  "gcul-kyc"
+                                                     },
                                              "source":  "/api/auth/**"
                                          },
                                          {
@@ -42,7 +70,21 @@
                                                          "region":  "us-central1",
                                                          "serviceId":  "gcul-policy"
                                                      },
+                                             "source":  "/api/products"
+                                         },
+                                         {
+                                             "run":  {
+                                                         "region":  "us-central1",
+                                                         "serviceId":  "gcul-policy"
+                                                     },
                                              "source":  "/api/products/**"
+                                         },
+                                         {
+                                             "run":  {
+                                                         "region":  "us-central1",
+                                                         "serviceId":  "gcul-policy"
+                                                     },
+                                             "source":  "/api/policies"
                                          },
                                          {
                                              "run":  {
@@ -56,7 +98,21 @@
                                                          "region":  "us-central1",
                                                          "serviceId":  "gcul-policy"
                                                      },
+                                             "source":  "/api/quotes"
+                                         },
+                                         {
+                                             "run":  {
+                                                         "region":  "us-central1",
+                                                         "serviceId":  "gcul-policy"
+                                                     },
                                              "source":  "/api/quotes/**"
+                                         },
+                                         {
+                                             "run":  {
+                                                         "region":  "us-central1",
+                                                         "serviceId":  "gcul-policy"
+                                                     },
+                                             "source":  "/api/payments"
                                          },
                                          {
                                              "run":  {
@@ -70,7 +126,21 @@
                                                          "region":  "us-central1",
                                                          "serviceId":  "gcul-policy"
                                                      },
+                                             "source":  "/api/vendors"
+                                         },
+                                         {
+                                             "run":  {
+                                                         "region":  "us-central1",
+                                                         "serviceId":  "gcul-policy"
+                                                     },
                                              "source":  "/api/vendors/**"
+                                         },
+                                         {
+                                             "run":  {
+                                                         "region":  "us-central1",
+                                                         "serviceId":  "gcul-policy"
+                                                     },
+                                             "source":  "/api/vendor-portal"
                                          },
                                          {
                                              "run":  {
@@ -84,7 +154,21 @@
                                                          "region":  "us-central1",
                                                          "serviceId":  "gcul-payment"
                                                      },
+                                             "source":  "/api/payment-ledger"
+                                         },
+                                         {
+                                             "run":  {
+                                                         "region":  "us-central1",
+                                                         "serviceId":  "gcul-payment"
+                                                     },
                                              "source":  "/api/payment-ledger/**"
+                                         },
+                                         {
+                                             "run":  {
+                                                         "region":  "us-central1",
+                                                         "serviceId":  "gcul-notification"
+                                                     },
+                                             "source":  "/api/notifications"
                                          },
                                          {
                                              "run":  {
@@ -98,7 +182,21 @@
                                                          "region":  "us-central1",
                                                          "serviceId":  "gcul-claims"
                                                      },
+                                             "source":  "/api/claims"
+                                         },
+                                         {
+                                             "run":  {
+                                                         "region":  "us-central1",
+                                                         "serviceId":  "gcul-claims"
+                                                     },
                                              "source":  "/api/claims/**"
+                                         },
+                                         {
+                                             "run":  {
+                                                         "region":  "us-central1",
+                                                         "serviceId":  "gcul-parametric"
+                                                     },
+                                             "source":  "/api/parametric"
                                          },
                                          {
                                              "run":  {
@@ -112,6 +210,13 @@
                                                          "region":  "us-central1",
                                                          "serviceId":  "gcul-premium-deposit"
                                                      },
+                                             "source":  "/api/premium-deposits"
+                                         },
+                                         {
+                                             "run":  {
+                                                         "region":  "us-central1",
+                                                         "serviceId":  "gcul-premium-deposit"
+                                                     },
                                              "source":  "/api/premium-deposits/**"
                                          },
                                          {
@@ -119,7 +224,21 @@
                                                          "region":  "us-central1",
                                                          "serviceId":  "gcul-blockchain-orchestrator"
                                                      },
+                                             "source":  "/api/blockchain"
+                                         },
+                                         {
+                                             "run":  {
+                                                         "region":  "us-central1",
+                                                         "serviceId":  "gcul-blockchain-orchestrator"
+                                                     },
                                              "source":  "/api/blockchain/**"
+                                         },
+                                         {
+                                             "run":  {
+                                                         "region":  "us-central1",
+                                                         "serviceId":  "gcul-chatbot"
+                                                     },
+                                             "source":  "/api/chatbot"
                                          },
                                          {
                                              "run":  {
@@ -148,6 +267,34 @@
                                                          "region":  "us-central1",
                                                          "serviceId":  "gcul-kyc"
                                                      },
+                                             "source":  "/api/auth/register"
+                                         },
+                                         {
+                                             "run":  {
+                                                         "region":  "us-central1",
+                                                         "serviceId":  "gcul-kyc"
+                                                     },
+                                             "source":  "/api/auth/login"
+                                         },
+                                         {
+                                             "run":  {
+                                                         "region":  "us-central1",
+                                                         "serviceId":  "gcul-kyc"
+                                                     },
+                                             "source":  "/api/auth/forgot-password"
+                                         },
+                                         {
+                                             "run":  {
+                                                         "region":  "us-central1",
+                                                         "serviceId":  "gcul-kyc"
+                                                     },
+                                             "source":  "/api/auth/reset-password"
+                                         },
+                                         {
+                                             "run":  {
+                                                         "region":  "us-central1",
+                                                         "serviceId":  "gcul-kyc"
+                                                     },
                                              "source":  "/api/auth/**"
                                          },
                                          {
@@ -176,7 +323,21 @@
                                                          "region":  "us-central1",
                                                          "serviceId":  "gcul-policy"
                                                      },
+                                             "source":  "/api/products"
+                                         },
+                                         {
+                                             "run":  {
+                                                         "region":  "us-central1",
+                                                         "serviceId":  "gcul-policy"
+                                                     },
                                              "source":  "/api/products/**"
+                                         },
+                                         {
+                                             "run":  {
+                                                         "region":  "us-central1",
+                                                         "serviceId":  "gcul-policy"
+                                                     },
+                                             "source":  "/api/policies"
                                          },
                                          {
                                              "run":  {
@@ -190,7 +351,21 @@
                                                          "region":  "us-central1",
                                                          "serviceId":  "gcul-policy"
                                                      },
+                                             "source":  "/api/quotes"
+                                         },
+                                         {
+                                             "run":  {
+                                                         "region":  "us-central1",
+                                                         "serviceId":  "gcul-policy"
+                                                     },
                                              "source":  "/api/quotes/**"
+                                         },
+                                         {
+                                             "run":  {
+                                                         "region":  "us-central1",
+                                                         "serviceId":  "gcul-policy"
+                                                     },
+                                             "source":  "/api/payments"
                                          },
                                          {
                                              "run":  {
@@ -204,7 +379,21 @@
                                                          "region":  "us-central1",
                                                          "serviceId":  "gcul-policy"
                                                      },
+                                             "source":  "/api/vendors"
+                                         },
+                                         {
+                                             "run":  {
+                                                         "region":  "us-central1",
+                                                         "serviceId":  "gcul-policy"
+                                                     },
                                              "source":  "/api/vendors/**"
+                                         },
+                                         {
+                                             "run":  {
+                                                         "region":  "us-central1",
+                                                         "serviceId":  "gcul-policy"
+                                                     },
+                                             "source":  "/api/vendor-portal"
                                          },
                                          {
                                              "run":  {
@@ -218,7 +407,21 @@
                                                          "region":  "us-central1",
                                                          "serviceId":  "gcul-payment"
                                                      },
+                                             "source":  "/api/payment-ledger"
+                                         },
+                                         {
+                                             "run":  {
+                                                         "region":  "us-central1",
+                                                         "serviceId":  "gcul-payment"
+                                                     },
                                              "source":  "/api/payment-ledger/**"
+                                         },
+                                         {
+                                             "run":  {
+                                                         "region":  "us-central1",
+                                                         "serviceId":  "gcul-notification"
+                                                     },
+                                             "source":  "/api/notifications"
                                          },
                                          {
                                              "run":  {
@@ -232,7 +435,21 @@
                                                          "region":  "us-central1",
                                                          "serviceId":  "gcul-claims"
                                                      },
+                                             "source":  "/api/claims"
+                                         },
+                                         {
+                                             "run":  {
+                                                         "region":  "us-central1",
+                                                         "serviceId":  "gcul-claims"
+                                                     },
                                              "source":  "/api/claims/**"
+                                         },
+                                         {
+                                             "run":  {
+                                                         "region":  "us-central1",
+                                                         "serviceId":  "gcul-parametric"
+                                                     },
+                                             "source":  "/api/parametric"
                                          },
                                          {
                                              "run":  {
@@ -246,6 +463,13 @@
                                                          "region":  "us-central1",
                                                          "serviceId":  "gcul-premium-deposit"
                                                      },
+                                             "source":  "/api/premium-deposits"
+                                         },
+                                         {
+                                             "run":  {
+                                                         "region":  "us-central1",
+                                                         "serviceId":  "gcul-premium-deposit"
+                                                     },
                                              "source":  "/api/premium-deposits/**"
                                          },
                                          {
@@ -253,7 +477,21 @@
                                                          "region":  "us-central1",
                                                          "serviceId":  "gcul-blockchain-orchestrator"
                                                      },
+                                             "source":  "/api/blockchain"
+                                         },
+                                         {
+                                             "run":  {
+                                                         "region":  "us-central1",
+                                                         "serviceId":  "gcul-blockchain-orchestrator"
+                                                     },
                                              "source":  "/api/blockchain/**"
+                                         },
+                                         {
+                                             "run":  {
+                                                         "region":  "us-central1",
+                                                         "serviceId":  "gcul-chatbot"
+                                                     },
+                                             "source":  "/api/chatbot"
                                          },
                                          {
                                              "run":  {

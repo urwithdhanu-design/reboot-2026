@@ -27,8 +27,9 @@ public class RegisterRequest {
 	@JsonProperty("terms_accepted")
 	private Boolean termsAccepted;
 
+	@NotBlank
 	@Size(min = 8, max = 128)
-	private String password = "ChangeMe123!";
+	private String password;
 
 	public String getFullName() {
 		return fullName;

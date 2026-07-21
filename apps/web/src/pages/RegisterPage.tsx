@@ -2,22 +2,33 @@ import { useState, type FormEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { api } from "../api";
 import { AssistantBar, StepHeader } from "../components";
-import { IconMail, IconPhone, IconShield, IconUser } from "../icons";
+import { IconLock, IconMail, IconPhone, IconShield, IconUser } from "../icons";
 import { useSession } from "../session";
 
 export function RegisterPage() {
   const navigate = useNavigate();
   const { setSession } = useSession();
-  const [fullName, setFullName] = useState("Alex Morgan");
-  const [email, setEmail] = useState("alex.morgan@email.com");
-  const [mobile, setMobile] = useState("+44 20 2555 0199");
-  const [terms, setTerms] = useState(true);
+  const [fullName, setFullName] = useState("");
+  const [email, setEmail] = useState("");
+  const [mobile, setMobile] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [terms, setTerms] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
     setError(null);
+    if (password.length < 8) {
+      setError("Password must be at least 8 characters");
+      return;
+    }
+    if (password !== confirmPassword) {
+      setError("Passwords do not match");
+      return;
+    }
     setLoading(true);
     try {
       const res = await api.register({
@@ -25,7 +36,7 @@ export function RegisterPage() {
         email,
         mobile_number: mobile,
         terms_accepted: terms,
-        password: "ChangeMe123!",
+        password,
       });
       setSession(res.access_token, res.user);
       navigate("/login");
@@ -96,6 +107,50 @@ export function RegisterPage() {
           </div>
         </div>
 
+        <div className="field">
+          <label htmlFor="password">Password</label>
+          <div className="input-shell">
+            <span className="icon">
+              <IconLock />
+            </span>
+            <input
+              id="password"
+              type={showPassword ? "text" : "password"}
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+              minLength={8}
+              autoComplete="new-password"
+            />
+            <button
+              type="button"
+              className="link-quiet"
+              onClick={() => setShowPassword((v) => !v)}
+              aria-label="Toggle password visibility"
+            >
+              {showPassword ? "Hide" : "Show"}
+            </button>
+          </div>
+        </div>
+
+        <div className="field">
+          <label htmlFor="confirmPassword">Confirm password</label>
+          <div className="input-shell">
+            <span className="icon">
+              <IconLock />
+            </span>
+            <input
+              id="confirmPassword"
+              type={showPassword ? "text" : "password"}
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              required
+              minLength={8}
+              autoComplete="new-password"
+            />
+          </div>
+        </div>
+
         <label className="checkbox-row">
           <input
             type="checkbox"
@@ -111,7 +166,11 @@ export function RegisterPage() {
           </p>
         ) : null}
 
-        <button className="btn-primary" type="submit" disabled={loading || !terms}>
+        <button
+          className="btn-primary"
+          type="submit"
+          disabled={loading || !terms || password.length < 8 || password !== confirmPassword}
+        >
           {loading ? "Creating…" : "Create Account"}
         </button>
       </form>

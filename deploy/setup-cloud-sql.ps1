@@ -21,12 +21,12 @@ $Instance = $Cfg.instanceName
 gcloud config set project $ProjectId
 gcloud services enable sqladmin.googleapis.com secretmanager.googleapis.com --project $ProjectId
 
-$exists = $true
-try {
-  gcloud sql instances describe $Instance --project $ProjectId | Out-Null
-} catch {
-  $exists = $false
-}
+$prevEa = $ErrorActionPreference
+$ErrorActionPreference = "SilentlyContinue"
+
+$exists = $false
+gcloud sql instances describe $Instance --project $ProjectId 2>$null | Out-Null
+if ($LASTEXITCODE -eq 0) { $exists = $true }
 
 if (-not $exists) {
   if (-not $RootPassword) {
@@ -43,6 +43,7 @@ if (-not $exists) {
     --availability-type=$($Cfg.availabilityType) `
     --root-password=$RootPassword `
     --project $ProjectId
+  if ($LASTEXITCODE -ne 0) { throw "Cloud SQL instance create failed (exit $LASTEXITCODE)" }
 }
 
 $conn = gcloud sql instances describe $Instance --project $ProjectId --format="value(connectionName)"
@@ -50,8 +51,9 @@ Write-Host "Connection name: $conn"
 
 foreach ($prop in $Cfg.serviceDatabases.PSObject.Properties) {
   $dbName = $prop.Value
-  $dbExists = $true
-  try { gcloud sql databases describe $dbName --instance=$Instance --project $ProjectId | Out-Null } catch { $dbExists = $false }
+  $dbExists = $false
+  gcloud sql databases describe $dbName --instance=$Instance --project $ProjectId 2>$null | Out-Null
+  if ($LASTEXITCODE -eq 0) { $dbExists = $true }
   if (-not $dbExists) {
     Write-Host "Creating database $dbName ..."
     gcloud sql databases create $dbName --instance=$Instance --project $ProjectId
@@ -59,18 +61,20 @@ foreach ($prop in $Cfg.serviceDatabases.PSObject.Properties) {
 }
 
 $appUser = $Cfg.dbUser
-$users = gcloud sql users list --instance=$Instance --project $ProjectId --format="value(name)" 2>$null
+$users = @(gcloud sql users list --instance=$Instance --project $ProjectId --format="value(name)" 2>$null)
 if ($users -notcontains $appUser) {
   $appPass = if ($env:GCUL_DB_PASSWORD) { $env:GCUL_DB_PASSWORD } else { -join ((48..57) + (65..90) + (97..122) | Get-Random -Count 32 | ForEach-Object { [char]$_ }) }
   Write-Host "Creating user $appUser ..."
   gcloud sql users create $appUser --instance=$Instance --password=$appPass --project $ProjectId
   $secret = $Cfg.secretName
-  $secretExists = $true
-  try { gcloud secrets describe $secret --project $ProjectId | Out-Null } catch { $secretExists = $false }
+  $secretExists = $false
+  gcloud secrets describe $secret --project $ProjectId 2>$null | Out-Null
+  if ($LASTEXITCODE -eq 0) { $secretExists = $true }
   if (-not $secretExists) {
     gcloud secrets create $secret --replication-policy="automatic" --project $ProjectId
+    if ($LASTEXITCODE -ne 0) { throw "Failed to create secret $secret" }
   }
-  gcloud secrets versions add $secret --data-file=- --project $ProjectId
+  $appPass | gcloud secrets versions add $secret --data-file=- --project $ProjectId
   Write-Host "App DB password stored in Secret Manager: $secret"
   $projectNumber = gcloud projects describe $ProjectId --format="value(projectNumber)"
   $runSa = "$projectNumber-compute@developer.gserviceaccount.com"
@@ -103,5 +107,6 @@ $out = @{
 }
 $outPath = Join-Path $PSScriptRoot "cloud-sql-connection.json"
 $out | ConvertTo-Json -Depth 5 | Set-Content -Encoding utf8 $outPath
+$ErrorActionPreference = $prevEa
 Write-Host "Wrote $outPath"
 Write-Host "Next: `$env:GCUL_USE_CLOUD_SQL = 'true'; .\deploy\deploy-cloud-run.ps1"

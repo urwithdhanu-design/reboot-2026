@@ -26,8 +26,8 @@ export function MarketplacePage() {
       .listProducts(category, query || undefined)
       .then((res) => {
         if (!alive) return;
-        setCategories(res.categories);
-        setProducts(res.products);
+        setCategories(res.categories ?? ["All", "Health", "Vehicle", "Pet", "Property", "Life", "Travel"]);
+        setProducts(res.products ?? []);
       })
       .catch((err) => {
         if (!alive) return;

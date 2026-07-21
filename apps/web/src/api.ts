@@ -103,11 +103,15 @@ async function request<T>(
   if (token) headers.set("Authorization", `Bearer ${token}`);
 
   const res = await fetch(`${API_BASE}${path}`, { ...options, headers });
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok) {
-    const body = data as { detail?: string; message?: string; error?: string };
+  const contentType = res.headers.get("content-type") ?? "";
+  const data = contentType.includes("application/json")
+    ? await res.json().catch(() => null)
+    : null;
+  if (!res.ok || data === null) {
+    const body = (data ?? {}) as { detail?: string; message?: string; error?: string };
     const detail =
-      body.detail ?? body.message ?? body.error ?? res.statusText;
+      body.detail ?? body.message ?? body.error ??
+      (data === null ? "Invalid API response (expected JSON)" : res.statusText);
     throw new Error(typeof detail === "string" ? detail : "Request failed");
   }
   return data as T;
@@ -119,7 +123,7 @@ export const api = {
     email: string;
     mobile_number: string;
     terms_accepted: boolean;
-    password?: string;
+    password: string;
   }) =>
     request<AuthResponse>("/api/auth/register", {
       method: "POST",
