@@ -10,6 +10,8 @@ Deploy Java/Python microservices to **Cloud Run** and the customer + admin React
 
 Default Firebase/GCP project id in this repo: **`insure360-83a36`** (see `apps/web/firebase.js` and `.firebaserc`).
 
+**Two “Community Hub” GCP projects:** see **[deploy/GCP-PROJECTS.md](GCP-PROJECTS.md)** — GCUL Cloud Run + SQL are on **`community-hub-6fb1b`**, not **`community-hub-482291`** (Console name “Community Hub”).
+
 **Billing:** Cloud Run and Cloud Build require an active billing account on the GCP project. If `insure360-83a36` has no billing, use a billed project that matches Firebase (for example **`community-hub-6fb1b`**) by setting `GCP_PROJECT` before running the scripts. Firebase Hosting rewrites to Cloud Run must use services in the **same** GCP project as Hosting.
 
 ## 1. Create or configure the GCP project
@@ -30,7 +32,8 @@ Builds each service with Cloud Build and deploys ten services:
 
 | Cloud Run service | API prefixes |
 |-------------------|--------------|
-| `gcul-kyc` | `/api/auth`, `/api/kyc`, `/api/wallet`, `/api/assistant` |
+| `gcul-kyc` | `/api/auth`, `/api/kyc`, `/api/assistant` |
+| `gcul-wallet` | `/api/wallet` |
 | `gcul-policy` | `/api/products`, `/api/policies`, `/api/quotes`, `/api/payments`, `/api/vendors`, `/api/vendor-portal` |
 | `gcul-payment` | `/api/payment-ledger` |
 | `gcul-notification` | `/api/notifications` |
@@ -112,6 +115,7 @@ This is **not** one Cloud SQL instance per microservice. Cost layout:
 | Cloud Run service | PostgreSQL database |
 |-------------------|---------------------|
 | `gcul-kyc` | `gcul_kyc` |
+| `gcul-wallet` | `gcul_wallet` |
 | `gcul-policy` | `gcul_policy` |
 | `gcul-payment` | `gcul_payment` |
 | `gcul-notification` | `gcul_notification` |

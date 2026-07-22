@@ -25,6 +25,7 @@ public final class UserMapper {
 			map.put("wallet", wallet);
 		}
 		else {
+			// Wallet data is owned by wallet-service; use GET /api/wallet when needed.
 			map.put("wallet", null);
 		}
 		return map;

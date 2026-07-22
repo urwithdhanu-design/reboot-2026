@@ -1,8 +1,13 @@
 # GCUL Microservices
 
+**Local dev:** [`LOCAL-DEV.md`](LOCAL-DEV.md) · **Scripts:** [`../../scripts/README.md`](../../scripts/README.md)
+
+**Start all Java APIs:** `scripts\start-local-apis.cmd` from repo root.
+
 | Service | Port | Responsibility |
 |---------|------|----------------|
-| `kyc-service` | 8081 | Register, login, KYC verification, digital account/wallet |
+| `kyc-service` | 8081 | Register, login, KYC |
+| `wallet-service` | 8089 | Digital wallet (create / view address) |
 | `policy-service` | 8082 | Products, quotes, Stripe checkout, vendors |
 | `payment-service` | 8083 | Payment ledger & settlement records (`/api/payment-ledger`) |
 | `notification-service` | 8084 | Email / in-app notifications (`/api/notifications`) |

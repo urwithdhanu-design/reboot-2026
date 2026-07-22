@@ -25,7 +25,16 @@ See [`packages/gcul-sdk/README.md`](packages/gcul-sdk/README.md).
 
 ## Run insurance apps
 
-See [`apps/README.md`](apps/README.md) and [`apps/services/README.md`](apps/services/README.md).
+**Local dev (start all APIs + local vs Cloud Run flag):** [`apps/services/LOCAL-DEV.md`](apps/services/LOCAL-DEV.md)
+
+```cmd
+cd C:\projects\gcul
+scripts\start-local-apis.cmd
+scripts\set-api-target.cmd local
+cd apps\web && npm run dev
+```
+
+See also [`apps/README.md`](apps/README.md) and [`scripts/README.md`](scripts/README.md).
 
 ### GCUL wire-up (orchestrator + sidecar)
 

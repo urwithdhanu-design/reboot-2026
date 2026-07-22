@@ -1,7 +1,7 @@
 import { defineConfig, loadEnv, type ProxyOptions } from 'vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
-import { readFileSync } from 'node:fs'
+import { readFileSync, existsSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -25,6 +25,7 @@ function proxyEntry(target: string): ProxyOptions {
 function buildApiProxy(s: Record<string, string>, admin = false): Record<string, ProxyOptions> {
   const L = {
     kyc: 'http://127.0.0.1:8081',
+    wallet: 'http://127.0.0.1:8089',
     policy: 'http://127.0.0.1:8082',
     payment: 'http://127.0.0.1:8083',
     notification: 'http://127.0.0.1:8084',
@@ -37,7 +38,7 @@ function buildApiProxy(s: Record<string, string>, admin = false): Record<string,
   const map: Record<string, ProxyOptions> = {
     '/api/auth': proxyEntry(s.kyc || L.kyc),
     '/api/kyc': proxyEntry(s.kyc || L.kyc),
-    '/api/wallet': proxyEntry(s.kyc || L.kyc),
+    '/api/wallet': proxyEntry(s.wallet || L.wallet),
     '/api/assistant': proxyEntry(s.kyc || L.kyc),
     '/api/admin/customers': proxyEntry(s.kyc || L.kyc),
     '/api/admin/kyc-queue': proxyEntry(s.kyc || L.kyc),
@@ -63,17 +64,37 @@ function buildApiProxy(s: Record<string, string>, admin = false): Record<string,
   return map
 }
 
+function resolveApiTarget(
+  mode: string,
+  appDir: string,
+  repoRoot: string,
+): 'local' | 'cloud' {
+  const appEnv = loadEnv(mode, appDir, '')
+  const sharedFile = join(repoRoot, '.local-dev', 'api-target.env')
+  let sharedTarget: string | undefined
+  if (existsSync(sharedFile)) {
+    const text = readFileSync(sharedFile, 'utf-8')
+    const m = text.match(/^\s*VITE_API_TARGET\s*=\s*(\w+)/m)
+    if (m) sharedTarget = m[1]
+  }
+  const raw =
+    appEnv.VITE_API_TARGET ||
+    sharedTarget ||
+    (appEnv.VITE_API_PROXY === 'cloud' ? 'cloud' : 'local')
+  return raw === 'cloud' ? 'cloud' : 'local'
+}
+
 export default defineConfig(({ mode }) => {
-  const env = loadEnv(mode, rootDir, '')
-  const useCloud = env.VITE_API_PROXY === 'cloud'
+  const apiTarget = resolveApiTarget(mode, rootDir, repoRoot)
+  const useCloud = apiTarget === 'cloud'
   const proxy = useCloud
     ? buildApiProxy(loadCloudTargets().services, true)
     : buildApiProxy({}, true)
 
   console.log(
     useCloud
-      ? '[vite] API proxy: Cloud Run (deploy/cloud-api.targets.json)'
-      : '[vite] API proxy: local (set VITE_API_PROXY=cloud for Cloud Run)',
+      ? '[vite] API target: cloud (deploy/cloud-api.targets.json)'
+      : '[vite] API target: local (127.0.0.1:8081-8089) — scripts\\start-local-apis.cmd',
   )
 
   return {

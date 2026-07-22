@@ -1,0 +1,85 @@
+[INFO] Scanning for projects...
+[INFO] 
+[INFO] --------------< com.gcul:blockchain-orchestrator-service >--------------
+[INFO] Building blockchain-orchestrator-service 0.0.1-SNAPSHOT
+[INFO]   from pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] >>> spring-boot:4.1.0:run (default-cli) > test-compile @ blockchain-orchestrator-service >>>
+[INFO] 
+[INFO] --- resources:3.5.0:resources (default-resources) @ blockchain-orchestrator-service ---
+[INFO] Copying 2 resources from src\main\resources to target\classes
+[INFO] Copying 0 resource from src\main\resources to target\classes
+[INFO] 
+[INFO] --- compiler:3.15.0:compile (default-compile) @ blockchain-orchestrator-service ---
+[INFO] Recompiling the module because of changed source code.
+[INFO] Compiling 10 source files with javac [debug parameters release 17] to target\classes
+[INFO] 
+[INFO] --- resources:3.5.0:testResources (default-testResources) @ blockchain-orchestrator-service ---
+[INFO] skip non existing resourceDirectory C:\projects\gcul\apps\services\blockchain-orchestrator-service\src\test\resources
+[INFO] 
+[INFO] --- compiler:3.15.0:testCompile (default-testCompile) @ blockchain-orchestrator-service ---
+[INFO] No sources to compile
+[INFO] 
+[INFO] <<< spring-boot:4.1.0:run (default-cli) < test-compile @ blockchain-orchestrator-service <<<
+[INFO] 
+[INFO] 
+[INFO] --- spring-boot:4.1.0:run (default-cli) @ blockchain-orchestrator-service ---
+[INFO] Attaching agents: []
+
+  .   ____          _            __ _ _
+ /\\ / ___'_ __ _ _(_)_ __  __ _ \ \ \ \
+( ( )\___ | '_ | '_| | '_ \/ _` | \ \ \ \
+ \\/  ___)| |_)| | | | | || (_| |  ) ) ) )
+  '  |____| .__|_| |_|_| |_\__, | / / / /
+ =========|_|==============|___/=/_/_/_/
+
+ :: Spring Boot ::                (v4.1.0)
+
+2026-07-22T19:45:14.110+05:30  INFO 22800 --- [blockchain-orchestrator-service] [           main] BlockchainOrchestratorServiceApplication : Starting BlockchainOrchestratorServiceApplication using Java 17.0.19 with PID 22800 (C:\projects\gcul\apps\services\blockchain-orchestrator-service\target\classes started by DELL in C:\projects\gcul\apps\services\blockchain-orchestrator-service)
+2026-07-22T19:45:14.120+05:30  INFO 22800 --- [blockchain-orchestrator-service] [           main] BlockchainOrchestratorServiceApplication : No active profile set, falling back to 1 default profile: "default"
+2026-07-22T19:45:17.127+05:30  INFO 22800 --- [blockchain-orchestrator-service] [           main] .s.d.r.c.RepositoryConfigurationDelegate : Bootstrapping Spring Data JPA repositories in DEFAULT mode.
+2026-07-22T19:45:17.416+05:30  INFO 22800 --- [blockchain-orchestrator-service] [           main] .s.d.r.c.RepositoryConfigurationDelegate : Finished Spring Data repository scanning in 222 ms. Found 1 JPA repository interface.
+2026-07-22T19:45:20.065+05:30  INFO 22800 --- [blockchain-orchestrator-service] [           main] o.s.boot.tomcat.TomcatWebServer          : Tomcat initialized with port 8088 (http)
+2026-07-22T19:45:20.228+05:30  INFO 22800 --- [blockchain-orchestrator-service] [           main] o.apache.catalina.core.StandardService   : Starting service [Tomcat]
+2026-07-22T19:45:20.233+05:30  INFO 22800 --- [blockchain-orchestrator-service] [           main] o.apache.catalina.core.StandardEngine    : Starting Servlet engine: [Apache Tomcat/11.0.22]
+2026-07-22T19:45:20.494+05:30  INFO 22800 --- [blockchain-orchestrator-service] [           main] b.w.c.s.WebApplicationContextInitializer : Root WebApplicationContext: initialization completed in 6255 ms
+2026-07-22T19:45:21.282+05:30  INFO 22800 --- [blockchain-orchestrator-service] [           main] org.hibernate.orm.jpa                    : HHH008540: Processing PersistenceUnitInfo [name: default]
+2026-07-22T19:45:21.472+05:30  INFO 22800 --- [blockchain-orchestrator-service] [           main] org.hibernate.orm.core                   : HHH000001: Hibernate ORM core version 7.4.1.Final
+2026-07-22T19:45:23.549+05:30  INFO 22800 --- [blockchain-orchestrator-service] [           main] o.s.o.j.p.SpringPersistenceUnitInfo      : No LoadTimeWeaver setup: ignoring JPA class transformer
+2026-07-22T19:45:23.718+05:30  INFO 22800 --- [blockchain-orchestrator-service] [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Starting...
+2026-07-22T19:45:24.508+05:30  INFO 22800 --- [blockchain-orchestrator-service] [           main] com.zaxxer.hikari.pool.HikariPool        : HikariPool-1 - Added connection conn0: url=jdbc:h2:file:./data/blockchain-db user=SA
+2026-07-22T19:45:24.514+05:30  INFO 22800 --- [blockchain-orchestrator-service] [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Start completed.
+2026-07-22T19:45:24.743+05:30  INFO 22800 --- [blockchain-orchestrator-service] [           main] org.hibernate.orm.connections.pooling    : HHH10001005: Database info:
+	Database JDBC URL [jdbc:h2:file:./data/blockchain-db]
+	Database driver: H2 JDBC Driver
+	Database dialect: H2Dialect
+	Database version: 2.4.240
+	Default catalog/schema: blockchain-db/public
+	Autocommit mode: undefined/unknown
+	Isolation level: READ_COMMITTED [default READ_COMMITTED]
+	JDBC fetch size: 100
+	Pool: DataSourceConnectionProvider
+	Minimum pool size: undefined/unknown
+	Maximum pool size: undefined/unknown
+2026-07-22T19:45:27.161+05:30  INFO 22800 --- [blockchain-orchestrator-service] [           main] org.hibernate.orm.core                   : HHH000489: No JTA platform available (set 'hibernate.transaction.jta.platform' to enable JTA platform integration)
+2026-07-22T19:45:27.328+05:30  INFO 22800 --- [blockchain-orchestrator-service] [           main] j.LocalContainerEntityManagerFactoryBean : Initialized JPA EntityManagerFactory for persistence unit 'default'
+2026-07-22T19:45:27.926+05:30  INFO 22800 --- [blockchain-orchestrator-service] [           main] o.s.d.j.r.query.QueryEnhancerFactories   : Hibernate is in classpath; If applicable, HQL parser will be used.
+2026-07-22T19:45:29.141+05:30  INFO 22800 --- [blockchain-orchestrator-service] [           main] o.s.boot.tomcat.TomcatWebServer          : Tomcat started on port 8088 (http) with context path '/'
+2026-07-22T19:45:29.148+05:30  INFO 22800 --- [blockchain-orchestrator-service] [           main] BlockchainOrchestratorServiceApplication : Started BlockchainOrchestratorServiceApplication in 16.195 seconds (process running for 17.279)
+2026-07-22T19:47:51.428+05:30  INFO 22800 --- [blockchain-orchestrator-service] [nio-8088-exec-3] o.a.c.c.C.[Tomcat].[localhost].[/]       : Initializing Spring DispatcherServlet 'dispatcherServlet'
+2026-07-22T19:47:51.428+05:30  INFO 22800 --- [blockchain-orchestrator-service] [nio-8088-exec-3] o.s.web.servlet.DispatcherServlet        : Initializing Servlet 'dispatcherServlet'
+2026-07-22T19:47:51.429+05:30  INFO 22800 --- [blockchain-orchestrator-service] [nio-8088-exec-3] o.s.web.servlet.DispatcherServlet        : Completed initialization in 1 ms
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD FAILURE
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  06:25 min
+[INFO] Finished at: 2026-07-22T19:51:13+05:30
+[INFO] ------------------------------------------------------------------------
+[ERROR] Failed to execute goal org.springframework.boot:spring-boot-maven-plugin:4.1.0:run (default-cli) on project blockchain-orchestrator-service: Process terminated with exit code: -1 -> [Help 1]
+[ERROR] 
+[ERROR] To see the full stack trace of the errors, re-run Maven with the -e switch.
+[ERROR] Re-run Maven using the -X switch to enable full debug logging.
+[ERROR] 
+[ERROR] For more information about the errors and possible solutions, please read the following articles:
+[ERROR] [Help 1] http://cwiki.apache.org/confluence/display/MAVEN/MojoExecutionException

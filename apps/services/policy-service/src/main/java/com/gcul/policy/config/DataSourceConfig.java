@@ -1,5 +1,7 @@
 package com.gcul.policy.config;
 
+import com.zaxxer.hikari.HikariDataSource;
+
 import javax.sql.DataSource;
 
 import org.slf4j.Logger;
@@ -30,12 +32,12 @@ public class DataSourceConfig {
 		if (cloudSqlEnabled) {
 			log.info("Policy datasource: Google Cloud PostgreSQL ({})",
 					cloudInstance.isBlank() ? cloudUrl : cloudInstance);
-			return DataSourceBuilder.create()
+			return tuneCloudPool(DataSourceBuilder.create()
 					.driverClassName(cloudDriver)
 					.url(resolveCloudUrl(cloudUrl, cloudInstance))
 					.username(cloudUsername)
 					.password(cloudPassword)
-					.build();
+					.build());
 		}
 
 		log.info("Policy datasource: H2 ({})", h2Url);
@@ -55,5 +57,13 @@ public class DataSourceConfig {
 		return jdbcUrl + separator
 				+ "cloudSqlInstance=" + instance
 				+ "&socketFactory=com.google.cloud.sql.postgres.SocketFactory";
+	}
+
+	private static DataSource tuneCloudPool(DataSource dataSource) {
+		if (dataSource instanceof HikariDataSource pool) {
+			pool.setMaximumPoolSize(2);
+			pool.setMinimumIdle(0);
+		}
+		return dataSource;
 	}
 }

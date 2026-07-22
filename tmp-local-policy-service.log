@@ -1,0 +1,92 @@
+[INFO] Scanning for projects...
+[INFO] 
+[INFO] ----------------------< com.gcul:policy-service >-----------------------
+[INFO] Building policy-service 0.0.1-SNAPSHOT
+[INFO]   from pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] >>> spring-boot:4.1.0:run (default-cli) > test-compile @ policy-service >>>
+Downloading from central: https://repo.maven.apache.org/maven2/org/eclipse/angus/angus-mail/2.0.5/angus-mail-2.0.5.jar
+Progress (1): 0.9/501 kBProgress (1): 2.3/501 kBProgress (1): 3.6/501 kBProgress (1): 5.0/501 kBProgress (1): 6.4/501 kBProgress (1): 7.7/501 kBProgress (1): 9.1/501 kBProgress (1): 10/501 kB Progress (1): 11/501 kBProgress (1): 13/501 kBProgress (1): 14/501 kBProgress (1): 15/501 kBProgress (1): 17/501 kBProgress (1): 18/501 kBProgress (1): 20/501 kBProgress (1): 21/501 kBProgress (1): 22/501 kBProgress (1): 24/501 kBProgress (1): 25/501 kBProgress (1): 26/501 kBProgress (1): 28/501 kBProgress (1): 29/501 kBProgress (1): 31/501 kBProgress (1): 32/501 kBProgress (1): 33/501 kBProgress (1): 35/501 kBProgress (1): 36/501 kBProgress (1): 37/501 kBProgress (1): 39/501 kBProgress (1): 40/501 kBProgress (1): 41/501 kBProgress (1): 43/501 kBProgress (1): 44/501 kBProgress (1): 46/501 kBProgress (1): 47/501 kBProgress (1): 48/501 kBProgress (1): 50/501 kBProgress (1): 51/501 kBProgress (1): 52/501 kBProgress (1): 54/501 kBProgress (1): 55/501 kBProgress (1): 59/501 kBProgress (1): 61/501 kBProgress (1): 65/501 kBProgress (1): 69/501 kBProgress (1): 73/501 kBProgress (1): 77/501 kBProgress (1): 82/501 kBProgress (1): 86/501 kBProgress (1): 90/501 kBProgress (1): 94/501 kBProgress (1): 99/501 kBProgress (1): 103/501 kBProgress (1): 107/501 kBProgress (1): 111/501 kBProgress (1): 115/501 kBProgress (1): 120/501 kBProgress (1): 124/501 kBProgress (1): 128/501 kBProgress (1): 132/501 kBProgress (1): 137/501 kBProgress (1): 141/501 kBProgress (1): 145/501 kBProgress (1): 149/501 kBProgress (1): 154/501 kBProgress (1): 158/501 kBProgress (1): 162/501 kBProgress (1): 166/501 kBProgress (1): 170/501 kBProgress (1): 175/501 kBProgress (1): 179/501 kBProgress (1): 183/501 kBProgress (1): 187/501 kBProgress (1): 192/501 kBProgress (1): 196/501 kBProgress (1): 200/501 kBProgress (1): 204/501 kBProgress (1): 208/501 kBProgress (1): 213/501 kBProgress (1): 217/501 kBProgress (1): 221/501 kBProgress (1): 238/501 kBProgress (1): 254/501 kBProgress (1): 270/501 kBProgress (1): 287/501 kBProgress (1): 303/501 kBProgress (1): 319/501 kBProgress (1): 323/501 kBProgress (1): 339/501 kBProgress (1): 355/501 kBProgress (1): 372/501 kBProgress (1): 388/501 kBProgress (1): 405/501 kBProgress (1): 421/501 kBProgress (1): 437/501 kBProgress (1): 454/501 kBProgress (1): 470/501 kBProgress (1): 486/501 kBProgress (1): 501 kB                        Downloaded from central: https://repo.maven.apache.org/maven2/org/eclipse/angus/angus-mail/2.0.5/angus-mail-2.0.5.jar (501 kB at 91 kB/s)
+[INFO] 
+[INFO] --- resources:3.5.0:resources (default-resources) @ policy-service ---
+[INFO] Copying 2 resources from src\main\resources to target\classes
+[INFO] Copying 1 resource from src\main\resources to target\classes
+[INFO] 
+[INFO] --- compiler:3.15.0:compile (default-compile) @ policy-service ---
+[INFO] Recompiling the module because of changed source code.
+[INFO] Compiling 29 source files with javac [debug parameters release 17] to target\classes
+[WARNING] /C:/projects/gcul/apps/services/policy-service/src/main/java/com/gcul/policy/config/DotEnvEnvironmentPostProcessor.java:[19,56] org.springframework.boot.env.EnvironmentPostProcessor in org.springframework.boot.env has been deprecated and marked for removal
+[INFO] 
+[INFO] --- resources:3.5.0:testResources (default-testResources) @ policy-service ---
+[INFO] skip non existing resourceDirectory C:\projects\gcul\apps\services\policy-service\src\test\resources
+[INFO] 
+[INFO] --- compiler:3.15.0:testCompile (default-testCompile) @ policy-service ---
+[INFO] Recompiling the module because of changed dependency.
+[INFO] Compiling 1 source file with javac [debug parameters release 17] to target\test-classes
+[INFO] 
+[INFO] <<< spring-boot:4.1.0:run (default-cli) < test-compile @ policy-service <<<
+[INFO] 
+[INFO] 
+[INFO] --- spring-boot:4.1.0:run (default-cli) @ policy-service ---
+[INFO] Attaching agents: []
+
+  .   ____          _            __ _ _
+ /\\ / ___'_ __ _ _(_)_ __  __ _ \ \ \ \
+( ( )\___ | '_ | '_| | '_ \/ _` | \ \ \ \
+ \\/  ___)| |_)| | | | | || (_| |  ) ) ) )
+  '  |____| .__|_| |_|_| |_\__, | / / / /
+ =========|_|==============|___/=/_/_/_/
+
+ :: Spring Boot ::                (v4.1.0)
+
+2026-07-22T19:45:27.996+05:30  INFO 29248 --- [policy-service] [           main] c.gcul.policy.PolicyServiceApplication   : Starting PolicyServiceApplication using Java 17.0.19 with PID 29248 (C:\projects\gcul\apps\services\policy-service\target\classes started by DELL in C:\projects\gcul\apps\services\policy-service)
+2026-07-22T19:45:28.003+05:30  INFO 29248 --- [policy-service] [           main] c.gcul.policy.PolicyServiceApplication   : No active profile set, falling back to 1 default profile: "default"
+2026-07-22T19:45:29.316+05:30  INFO 29248 --- [policy-service] [           main] .s.d.r.c.RepositoryConfigurationDelegate : Bootstrapping Spring Data JPA repositories in DEFAULT mode.
+2026-07-22T19:45:29.409+05:30  INFO 29248 --- [policy-service] [           main] .s.d.r.c.RepositoryConfigurationDelegate : Finished Spring Data repository scanning in 78 ms. Found 3 JPA repository interfaces.
+2026-07-22T19:45:30.367+05:30  INFO 29248 --- [policy-service] [           main] o.s.boot.tomcat.TomcatWebServer          : Tomcat initialized with port 8082 (http)
+2026-07-22T19:45:30.385+05:30  INFO 29248 --- [policy-service] [           main] o.apache.catalina.core.StandardService   : Starting service [Tomcat]
+2026-07-22T19:45:30.385+05:30  INFO 29248 --- [policy-service] [           main] o.apache.catalina.core.StandardEngine    : Starting Servlet engine: [Apache Tomcat/11.0.22]
+2026-07-22T19:45:30.472+05:30  INFO 29248 --- [policy-service] [           main] b.w.c.s.WebApplicationContextInitializer : Root WebApplicationContext: initialization completed in 2348 ms
+2026-07-22T19:45:30.583+05:30  INFO 29248 --- [policy-service] [           main] c.gcul.policy.config.DataSourceConfig    : Policy datasource: H2 (jdbc:h2:file:./data/policy-db;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE;DEFAULT_NULL_ORDERING=HIGH)
+2026-07-22T19:45:30.754+05:30  INFO 29248 --- [policy-service] [           main] org.hibernate.orm.jpa                    : HHH008540: Processing PersistenceUnitInfo [name: default]
+2026-07-22T19:45:30.892+05:30  INFO 29248 --- [policy-service] [           main] org.hibernate.orm.core                   : HHH000001: Hibernate ORM core version 7.4.1.Final
+2026-07-22T19:45:31.517+05:30  INFO 29248 --- [policy-service] [           main] o.s.o.j.p.SpringPersistenceUnitInfo      : No LoadTimeWeaver setup: ignoring JPA class transformer
+2026-07-22T19:45:31.549+05:30  INFO 29248 --- [policy-service] [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Starting...
+2026-07-22T19:45:31.781+05:30  INFO 29248 --- [policy-service] [           main] com.zaxxer.hikari.pool.HikariPool        : HikariPool-1 - Added connection conn0: url=jdbc:h2:file:./data/policy-db user=SA
+2026-07-22T19:45:31.783+05:30  INFO 29248 --- [policy-service] [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Start completed.
+2026-07-22T19:45:31.853+05:30  INFO 29248 --- [policy-service] [           main] org.hibernate.orm.connections.pooling    : HHH10001005: Database info:
+	Database JDBC URL [jdbc:h2:file:./data/policy-db]
+	Database driver: H2 JDBC Driver
+	Database dialect: H2Dialect
+	Database version: 2.4.240
+	Default catalog/schema: policy-db/public
+	Autocommit mode: undefined/unknown
+	Isolation level: READ_COMMITTED [default READ_COMMITTED]
+	JDBC fetch size: 100
+	Pool: DataSourceConnectionProvider
+	Minimum pool size: undefined/unknown
+	Maximum pool size: undefined/unknown
+2026-07-22T19:45:32.913+05:30  INFO 29248 --- [policy-service] [           main] org.hibernate.orm.core                   : HHH000489: No JTA platform available (set 'hibernate.transaction.jta.platform' to enable JTA platform integration)
+2026-07-22T19:45:33.018+05:30  INFO 29248 --- [policy-service] [           main] j.LocalContainerEntityManagerFactoryBean : Initialized JPA EntityManagerFactory for persistence unit 'default'
+2026-07-22T19:45:33.097+05:30  INFO 29248 --- [policy-service] [           main] o.s.d.j.r.query.QueryEnhancerFactories   : Hibernate is in classpath; If applicable, HQL parser will be used.
+2026-07-22T19:45:34.777+05:30  INFO 29248 --- [policy-service] [           main] o.s.boot.tomcat.TomcatWebServer          : Tomcat started on port 8082 (http) with context path '/'
+2026-07-22T19:45:34.784+05:30  INFO 29248 --- [policy-service] [           main] c.gcul.policy.PolicyServiceApplication   : Started PolicyServiceApplication in 7.769 seconds (process running for 8.8)
+2026-07-22T19:45:35.026+05:30  INFO 29248 --- [policy-service] [           main] c.gcul.policy.config.VendorDataSeeder    : Seeded Vitality vendor (login vendor.vitality@example.com / VendorDemo123!)
+2026-07-22T19:45:35.058+05:30  INFO 29248 --- [policy-service] [           main] com.gcul.policy.config.PlanDataSeeder    : Upserted 9 insurance product cards
+2026-07-22T19:47:51.191+05:30  INFO 29248 --- [policy-service] [nio-8082-exec-4] o.a.c.c.C.[Tomcat].[localhost].[/]       : Initializing Spring DispatcherServlet 'dispatcherServlet'
+2026-07-22T19:47:51.191+05:30  INFO 29248 --- [policy-service] [nio-8082-exec-4] o.s.web.servlet.DispatcherServlet        : Initializing Servlet 'dispatcherServlet'
+2026-07-22T19:47:51.192+05:30  INFO 29248 --- [policy-service] [nio-8082-exec-4] o.s.web.servlet.DispatcherServlet        : Completed initialization in 1 ms
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD FAILURE
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  06:25 min
+[INFO] Finished at: 2026-07-22T19:51:13+05:30
+[INFO] ------------------------------------------------------------------------
+[ERROR] Failed to execute goal org.springframework.boot:spring-boot-maven-plugin:4.1.0:run (default-cli) on project policy-service: Process terminated with exit code: -1 -> [Help 1]
+[ERROR] 
+[ERROR] To see the full stack trace of the errors, re-run Maven with the -e switch.
+[ERROR] Re-run Maven using the -X switch to enable full debug logging.
+[ERROR] 
+[ERROR] For more information about the errors and possible solutions, please read the following articles:
+[ERROR] [Help 1] http://cwiki.apache.org/confluence/display/MAVEN/MojoExecutionException

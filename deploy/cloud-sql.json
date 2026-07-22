@@ -10,6 +10,7 @@
   "secretName": "gcul-db-password",
   "serviceDatabases": {
     "gcul-kyc": "gcul_kyc",
+    "gcul-wallet": "gcul_wallet",
     "gcul-policy": "gcul_policy",
     "gcul-payment": "gcul_payment",
     "gcul-notification": "gcul_notification",

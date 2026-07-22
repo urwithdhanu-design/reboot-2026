@@ -29,6 +29,13 @@ $maxInst = if ($Manifest.cloudRun.maxInstances -ne $null) { $Manifest.cloudRun.m
 $concurrency = if ($Manifest.cloudRun.concurrency -ne $null) { $Manifest.cloudRun.concurrency } else { 80 }
 
 $useCloudSql = $env:GCUL_USE_CLOUD_SQL -eq "true"
+if (-not $useCloudSql) {
+  $connPathAuto = Join-Path $PSScriptRoot "cloud-sql-connection.json"
+  if (Test-Path $connPathAuto) {
+    $useCloudSql = $true
+    Write-Host "GCUL_USE_CLOUD_SQL not set; using Cloud SQL (found cloud-sql-connection.json). Set GCUL_USE_CLOUD_SQL=false to deploy with ephemeral H2." -ForegroundColor Yellow
+  }
+}
 $usePubSub = $env:GCUL_USE_PUBSUB -eq "true"
 $cloudSqlConn = $null
 $sqlCfg = $null
@@ -62,10 +69,13 @@ foreach ($svc in $Manifest.services) {
   Write-Host "`n=== $id ===" -ForegroundColor Cyan
 
   if (-not $SkipBuild) {
+    # Windows: avoid concurrent gcloud submit temp-file locks; small pause between services
+    if ($deployedUrls.Count -gt 0) { Start-Sleep -Seconds 3 }
     gcloud builds submit $Root `
       --config $CloudBuildConfig `
       --substitutions="_IMAGE=$image,_DOCKERFILE=$($svc.dockerfile),_SERVICE_DIR=$($svc.dir)" `
-      --project $ProjectId
+      --project $ProjectId `
+      --quiet
     if ($LASTEXITCODE -ne 0) {
       throw "Cloud Build failed for $id (exit $LASTEXITCODE)"
     }
@@ -95,6 +105,9 @@ foreach ($svc in $Manifest.services) {
       "GCUL_PUBSUB_TOPIC_PREFIX=gcul"
     )
   }
+  if ($id -eq "gcul-wallet" -and $deployedUrls.ContainsKey("gcul-kyc")) {
+    $envPairs += "GCUL_KYC_SERVICE_URL=$($deployedUrls['gcul-kyc'])"
+  }
 
   $deployArgs = @(
     "run", "deploy", $id,
@@ -121,7 +134,9 @@ foreach ($svc in $Manifest.services) {
   }
 
   gcloud @deployArgs
-
+  if ($LASTEXITCODE -ne 0) {
+    Write-Warning "Cloud Run deploy failed for $id (exit $LASTEXITCODE) - continuing with remaining services"
+  }
   $url = gcloud run services describe $id --region $Region --project $ProjectId --format="value(status.url)"
   $deployedUrls[$id] = $url
   Write-Host "URL: $url"

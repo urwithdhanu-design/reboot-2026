@@ -15,6 +15,9 @@ keys/
 .idea/
 .vscode/
 
+# Local dev scripts (logs)
+.local-dev/
+
 # Local service databases / runtime
 **/data/
 *.mv.db

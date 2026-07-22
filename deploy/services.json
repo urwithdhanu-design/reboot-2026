@@ -16,6 +16,15 @@
       "env": {}
     },
     {
+      "id": "gcul-wallet",
+      "dir": "apps/services/wallet-service",
+      "dockerfile": "deploy/docker/Dockerfile.java",
+      "port": 8080,
+      "memory": "512Mi",
+      "env": {},
+      "links": ["gcul-kyc"]
+    },
+    {
       "id": "gcul-policy",
       "dir": "apps/services/policy-service",
       "dockerfile": "deploy/docker/Dockerfile.java",
