@@ -18,8 +18,8 @@ Run from repo root: `cd C:\projects\gcul`
 
 | Script / file | Purpose |
 |---------------|---------|
+| `scripts\set-api-target.cmd cloud` | UI dev proxies `/api/*` to **Cloud Run** (default) |
 | `scripts\set-api-target.cmd local` | UI dev proxies `/api/*` to **localhost** |
-| `scripts\set-api-target.cmd cloud` | UI dev proxies `/api/*` to **Cloud Run** (`deploy/cloud-api.targets.json`) |
 | `.local-dev\api-target.env` | Same setting (`VITE_API_TARGET=local` or `cloud`) — used by `apps/web` and `apps/admin` Vite |
 
 Restart `npm run dev` after changing the API target.

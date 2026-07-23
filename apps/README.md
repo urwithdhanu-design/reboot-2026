@@ -18,8 +18,8 @@ scripts\status-local-apis.cmd
 
 | Target | Command / file |
 |--------|----------------|
-| **Local** Java on your PC | `scripts\set-api-target.cmd local` or `.local-dev\api-target.env` → `VITE_API_TARGET=local` |
-| **Cloud Run** on GCP | `scripts\set-api-target.cmd cloud` or `VITE_API_TARGET=cloud` |
+| **Cloud Run** on GCP (default) | `scripts\set-api-target.cmd cloud` or `.local-dev\api-target.env` → `VITE_API_TARGET=cloud` |
+| **Local** Java on your PC | `scripts\set-api-target.cmd local` or `VITE_API_TARGET=local` |
 
 Restart Vite after changing the flag.
 

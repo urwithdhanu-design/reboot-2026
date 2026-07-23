@@ -47,8 +47,8 @@ Customer and admin dev servers proxy `/api/*` based on **`VITE_API_TARGET`**:
 
 | Flag | Meaning |
 |------|---------|
-| **`local`** (default) | Vite → `http://127.0.0.1:8081`–`8089` (start backends first) |
-| **`cloud`** | Vite → URLs in `deploy/cloud-api.targets.json` (Cloud Run) |
+| **`cloud`** (default) | Vite → URLs in `deploy/cloud-api.targets.json` (Cloud Run) |
+| **`local`** | Vite → `http://127.0.0.1:8081`–`8089` (start backends first) |
 
 ### Shared config file (both web + admin)
 
@@ -59,20 +59,20 @@ Edit:
 ```
 
 ```env
-VITE_API_TARGET=local
+VITE_API_TARGET=cloud
 ```
 
-or
+or for localhost APIs:
 
 ```env
-VITE_API_TARGET=cloud
+VITE_API_TARGET=local
 ```
 
 ### Or use CMD
 
 ```cmd
-scripts\set-api-target.cmd local
 scripts\set-api-target.cmd cloud
+scripts\set-api-target.cmd local
 ```
 
 **Restart** `npm run dev` after changing the flag (Vite reads config at startup).
@@ -82,15 +82,24 @@ Legacy: `VITE_API_PROXY=cloud` in `apps/web/.env.local` still works.
 ### Run the UIs
 
 ```cmd
-scripts\set-api-target.cmd local
 cd apps\web
 npm run dev
 ```
 
-- Customer: http://localhost:5173  
-- Admin: `cd apps\admin` → `npm run dev` → http://localhost:5174  
+- Customer: http://localhost:5174  
+- Admin: `cd apps\admin` → `npm run dev` → http://localhost:5175  
 
-Console on startup shows either `API target: local` or `API target: cloud`.
+No extra step needed for Cloud Run APIs unless you switched to `local`.
+
+For **localhost** Java APIs:
+
+```cmd
+scripts\set-api-target.cmd local
+scripts\start-local-apis.cmd
+```
+
+Vite prints `API target: cloud` (default) or `API target: local`.  
+**Firebase Hosting** builds always send `/api/*` to Cloud Run via `firebase.json` (no env flag).
 
 ---
 

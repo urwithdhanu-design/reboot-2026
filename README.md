@@ -34,7 +34,7 @@ See [`packages/gcul-sdk/README.md`](packages/gcul-sdk/README.md).
 ```cmd
 cd C:\projects\gcul
 scripts\start-local-apis.cmd
-scripts\set-api-target.cmd local
+scripts\set-api-target.cmd cloud
 cd apps\web && npm run dev
 ```
 

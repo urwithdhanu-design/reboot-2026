@@ -80,8 +80,8 @@ function resolveApiTarget(
   const raw =
     appEnv.VITE_API_TARGET ||
     sharedTarget ||
-    (appEnv.VITE_API_PROXY === 'cloud' ? 'cloud' : 'local')
-  return raw === 'cloud' ? 'cloud' : 'local'
+    (appEnv.VITE_API_PROXY === 'local' ? 'local' : 'cloud')
+  return raw === 'local' ? 'local' : 'cloud'
 }
 
 export default defineConfig(({ mode }) => {
