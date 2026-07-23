@@ -5,7 +5,7 @@
   "firebaseAdminHosting": "https://gcul-admin.web.app",
   "services": {
     "kyc": "https://gcul-kyc-au44fcofwq-uc.a.run.app",
-    "wallet": "http://127.0.0.1:8089",
+    "wallet": "https://gcul-wallet-au44fcofwq-uc.a.run.app",
     "policy": "https://gcul-policy-au44fcofwq-uc.a.run.app",
     "payment": "https://gcul-payment-au44fcofwq-uc.a.run.app",
     "notification": "https://gcul-notification-au44fcofwq-uc.a.run.app",

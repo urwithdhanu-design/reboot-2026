@@ -34,11 +34,14 @@ function buildApiProxy(s: Record<string, string>, admin = false): Record<string,
     blockchain: "http://127.0.0.1:8088",
     chatbot: "http://127.0.0.1:8090",
   };
+  const walletTarget = s.wallet || L.wallet;
+  const kycTarget = s.kyc || L.kyc;
+  // Wallet must be registered before other /api/* rules (Vite matches first prefix).
   const map: Record<string, ProxyOptions> = {
-    "/api/auth": proxyEntry(s.kyc || L.kyc),
-    "/api/kyc": proxyEntry(s.kyc || L.kyc),
-    "/api/wallet": proxyEntry(s.wallet || L.wallet),
-    "/api/assistant": proxyEntry(s.kyc || L.kyc),
+    "/api/wallet": proxyEntry(walletTarget),
+    "/api/auth": proxyEntry(kycTarget),
+    "/api/kyc": proxyEntry(kycTarget),
+    "/api/assistant": proxyEntry(kycTarget),
     "/api/products": proxyEntry(s.policy || L.policy),
     "/api/policies": proxyEntry(s.policy || L.policy),
     "/api/quotes": proxyEntry(s.policy || L.policy),
@@ -88,7 +91,7 @@ export default defineConfig(({ mode }) => {
 
   console.log(
     useCloud
-      ? "[vite] API target: cloud (deploy/cloud-api.targets.json)"
+      ? `[vite] API target: cloud (wallet → ${loadCloudTargets().services.wallet ?? "?"})`
       : "[vite] API target: local (127.0.0.1:8081-8089) — scripts\\start-local-apis.cmd",
   );
 

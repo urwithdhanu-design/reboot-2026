@@ -32,14 +32,22 @@ public class NotificationPubSubBootstrap implements ApplicationRunner, AutoClose
 				EventTopics.PAYMENT,
 				EventTopics.POLICY,
 				EventTopics.BLOCKCHAIN,
-				EventTopics.CLAIM
+				EventTopics.CLAIM,
+				EventTopics.AUDIT
 		}) {
-			GculEventSubscriber subscriber = new GculEventSubscriber(properties.isEnabled(), properties.getProjectId());
-			String subId = PubSubNames.subscriptionId(
-					properties.getTopicPrefix(), topic, properties.getServiceId());
-			subscriber.start(subId, properties.getServiceId(), java.util.List.of(handler::handle));
-			group.add(subscriber);
+			startTopicSubscriber(topic);
 		}
+	}
+
+	private void startTopicSubscriber(String topicSuffix) throws Exception {
+		GculEventSubscriber subscriber = new GculEventSubscriber(properties.isEnabled(), properties.getProjectId());
+		String subId = PubSubNames.subscriptionId(
+				properties.getTopicPrefix(), topicSuffix, properties.getServiceId());
+		subscriber.start(
+				subId,
+				properties.getServiceId(),
+				java.util.List.of((eventType, payload) -> handler.handle(topicSuffix, eventType, payload)));
+		group.add(subscriber);
 	}
 
 	@Override

@@ -3,6 +3,7 @@ import { join } from "node:path";
 
 const LOCAL = {
   kyc: "http://127.0.0.1:8081",
+  wallet: "http://127.0.0.1:8089",
   policy: "http://127.0.0.1:8082",
   payment: "http://127.0.0.1:8083",
   notification: "http://127.0.0.1:8084",
@@ -33,7 +34,7 @@ export function buildApiProxyMap(targets, options = {}) {
   const map = {
     "/api/auth": proxyEntry(s.kyc || LOCAL.kyc),
     "/api/kyc": proxyEntry(s.kyc || LOCAL.kyc),
-    "/api/wallet": proxyEntry(s.kyc || LOCAL.kyc),
+    "/api/wallet": proxyEntry(s.wallet || LOCAL.wallet),
     "/api/assistant": proxyEntry(s.kyc || LOCAL.kyc),
     "/api/products": proxyEntry(s.policy || LOCAL.policy),
     "/api/policies": proxyEntry(s.policy || LOCAL.policy),

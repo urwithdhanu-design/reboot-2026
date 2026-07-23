@@ -74,4 +74,12 @@ gcloud run services update gcul-kyc `
   --update-secrets "EMAIL_PASS=${secretPass}:latest" `
   --quiet
 
+Write-Host "Updating gcul-notification with same Gmail SMTP (ops DL / Pub/Sub alerts) ..."
+gcloud run services update gcul-notification `
+  --region $Region `
+  --project $ProjectId `
+  --update-env-vars $envVars `
+  --update-secrets "EMAIL_PASS=${secretPass}:latest" `
+  --quiet
+
 Write-Host "Done. Forgot-password emails will send from $emailUser when users exist in KYC DB."

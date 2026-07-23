@@ -1,7 +1,7 @@
 ﻿{
     "gcul-notification":  "https://gcul-notification-au44fcofwq-uc.a.run.app",
     "gcul-kyc":  "https://gcul-kyc-au44fcofwq-uc.a.run.app",
-    "gcul-wallet":  "",
+    "gcul-wallet":  "https://gcul-wallet-au44fcofwq-uc.a.run.app",
     "gcul-claims":  "https://gcul-claims-au44fcofwq-uc.a.run.app",
     "gcul-sidecar":  "https://gcul-sidecar-au44fcofwq-uc.a.run.app",
     "gcul-chatbot":  "https://gcul-chatbot-au44fcofwq-uc.a.run.app",

@@ -8,14 +8,17 @@ import org.springframework.stereotype.Component;
 import com.gcul.messaging.EventTopics;
 import com.gcul.messaging.GculEventPublisher;
 import com.gcul.kyc.model.UserAccount;
+import com.gcul.kyc.ops.OpsDlMailService;
 
 @Component
 public class CustomerEventPublisher {
 
 	private final GculEventPublisher publisher;
+	private final OpsDlMailService opsMail;
 
-	public CustomerEventPublisher(GculEventPublisher publisher) {
+	public CustomerEventPublisher(GculEventPublisher publisher, OpsDlMailService opsMail) {
 		this.publisher = publisher;
+		this.opsMail = opsMail;
 	}
 
 	public void customerRegistered(UserAccount user) {
@@ -29,6 +32,7 @@ public class CustomerEventPublisher {
 		payload.put("mobile", user.getMobileNumber());
 		payload.put("status", "REGISTERED");
 		publisher.publish(EventTopics.CUSTOMER, payload);
+		opsMail.customerRegistered(user);
 	}
 
 	public void customerVerified(UserAccount user) {

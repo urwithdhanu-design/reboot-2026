@@ -10,8 +10,9 @@ param(
 
 $ErrorActionPreference = "Stop"
 $Root = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
-$map = @{
+  $map = @{
   "gcul-kyc" = "kyc"
+  "gcul-wallet" = "wallet"
   "gcul-policy" = "policy"
   "gcul-payment" = "payment"
   "gcul-notification" = "notification"

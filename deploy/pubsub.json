@@ -63,7 +63,7 @@
         "gcul-claims",
         "gcul-notification"
       ],
-      "subscribers": ["gcul-audit"]
+      "subscribers": ["gcul-audit", "gcul-notification"]
     }
   ]
 }

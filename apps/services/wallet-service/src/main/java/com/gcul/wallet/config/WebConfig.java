@@ -31,7 +31,7 @@ public class WebConfig {
 	FilterRegistrationBean<JwtAuthFilter> jwtFilter(JwtAuthFilter filter) {
 		FilterRegistrationBean<JwtAuthFilter> registration = new FilterRegistrationBean<>();
 		registration.setFilter(filter);
-		registration.addUrlPatterns("/api/*");
+		registration.addUrlPatterns("/api/wallet", "/api/wallet/*");
 		registration.setOrder(1);
 		return registration;
 	}
