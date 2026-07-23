@@ -10,7 +10,7 @@ npm install
 npm run dev
 ```
 
-Open http://localhost:5174
+Open http://localhost:5175
 
 Requires **policy-service** on `:8082` for Vendors / Vendor portal APIs.
 

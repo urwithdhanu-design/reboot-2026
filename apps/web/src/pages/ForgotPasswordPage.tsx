@@ -1,7 +1,12 @@
 import { useState, type FormEvent } from "react";
 import { Link } from "react-router-dom";
 import { api } from "../api";
-import { AssistantBar, StepHeader } from "../components";
+import {
+  AssistantBar,
+  AuthError,
+  AuthLayout,
+  AuthSuccess,
+} from "../components";
 
 export function ForgotPasswordPage() {
   const [identifier, setIdentifier] = useState("");
@@ -28,66 +33,77 @@ export function ForgotPasswordPage() {
   }
 
   return (
-    <div className="screen">
-      <StepHeader title="Forgot password" />
-      <div className="hero-copy">
-        <h1>Reset your password</h1>
-        <p>Enter the email or phone on your account and we&apos;ll send a reset link.</p>
-      </div>
-
-      {sent ? (
-        <div className="stack">
-          <p className="manage-notice" role="status">
-            {emailed
-              ? "If an account exists, reset instructions are on their way. Check your inbox."
-              : "If an account exists, a reset link is ready below (email is not configured in this environment)."}
-          </p>
-          {devResetUrl ? (
-            <p className="muted" style={{ margin: 0, wordBreak: "break-all" }}>
-              Demo reset link:{" "}
-              <Link to={devResetUrl.includes("/reset-password")
-                ? `/reset-password${devResetUrl.slice(devResetUrl.indexOf("?"))}`
-                : "/forgot-password"}>
-                Open reset page
-              </Link>
+    <AuthLayout
+        eyebrow="Account recovery"
+        title={sent ? "Check your inbox" : "Forgot password?"}
+        lead={
+          sent
+            ? "We’ve processed your request. Follow the link in your email to choose a new password."
+            : "Enter the email or phone number on your account. We’ll send secure reset instructions."
+        }
+        backTo="/login"
+        backLabel="Back to sign in"
+        footer={
+          !sent ? (
+            <p style={{ margin: 0 }}>
+              Remember your password? <Link to="/login">Sign in</Link>
             </p>
-          ) : null}
-          <Link to="/login" className="btn-primary" style={{ textAlign: "center", textDecoration: "none" }}>
-            Back to login
-          </Link>
-        </div>
-      ) : (
-        <form className="stack" onSubmit={onSubmit}>
-          <div className="field">
-            <label htmlFor="identifier">Email / Phone</label>
-            <div className="input-shell">
-              <input
-                id="identifier"
-                value={identifier}
-                onChange={(e) => setIdentifier(e.target.value)}
-                required
-                autoComplete="username"
-              />
+          ) : null
+        }
+        assistant={<AssistantBar screen="forgot" />}
+      >
+        {sent ? (
+          <AuthSuccess title="Reset link sent">
+            <p>
+              {emailed
+                ? "If an account exists for that email or number, you’ll receive an email shortly. The link expires after 30 minutes."
+                : "If an account exists, use the demo link below (email is not configured in this environment)."}
+            </p>
+            {devResetUrl ? (
+              <p style={{ margin: "0 0 16px", wordBreak: "break-all", fontSize: "0.85rem" }}>
+                <Link
+                  to={
+                    devResetUrl.includes("/reset-password")
+                      ? `/reset-password${devResetUrl.slice(devResetUrl.indexOf("?"))}`
+                      : "/forgot-password"
+                  }
+                >
+                  Open password reset page
+                </Link>
+              </p>
+            ) : null}
+            <Link to="/login" className="btn-primary" style={{ display: "block", textAlign: "center", textDecoration: "none" }}>
+              Return to sign in
+            </Link>
+          </AuthSuccess>
+        ) : (
+          <form className="stack" onSubmit={onSubmit}>
+            <div className="field">
+              <label htmlFor="identifier">Email or mobile</label>
+              <div className="input-shell">
+                <input
+                  id="identifier"
+                  type="text"
+                  inputMode="email"
+                  autoComplete="username"
+                  placeholder="you@email.com"
+                  value={identifier}
+                  onChange={(e) => setIdentifier(e.target.value)}
+                  required
+                />
+              </div>
+              <p className="muted" style={{ margin: "6px 0 0", fontSize: "0.78rem" }}>
+                For your security, we won’t confirm whether this account exists.
+              </p>
             </div>
-          </div>
 
-          {error ? (
-            <p className="error" role="alert">
-              {error}
-            </p>
-          ) : null}
+            {error ? <AuthError message={error} /> : null}
 
-          <button className="btn-primary" type="submit" disabled={loading}>
-            {loading ? "Sending…" : "Send reset link"}
-          </button>
-
-          <p className="muted" style={{ fontSize: "0.85rem", margin: 0 }}>
-            Remembered it? <Link to="/login">Back to login</Link>
-          </p>
-        </form>
-      )}
-
-      <AssistantBar screen="forgot" />
-    </div>
+            <button className="btn-primary" type="submit" disabled={loading}>
+              {loading ? "Sending…" : "Send reset link"}
+            </button>
+          </form>
+        )}
+      </AuthLayout>
   );
 }

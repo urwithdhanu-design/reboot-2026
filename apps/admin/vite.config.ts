@@ -99,6 +99,6 @@ export default defineConfig(({ mode }) => {
 
   return {
     plugins: [react(), tailwindcss()],
-    server: { port: 5174, proxy },
+    server: { port: 5175, proxy },
   }
 })

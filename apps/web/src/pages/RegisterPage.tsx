@@ -1,8 +1,13 @@
 import { useState, type FormEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { api } from "../api";
-import { AssistantBar, StepHeader } from "../components";
-import { IconLock, IconMail, IconPhone, IconShield, IconUser } from "../icons";
+import {
+  AssistantBar,
+  AuthError,
+  AuthLayout,
+  PasswordStrength,
+} from "../components";
+import { IconLock, IconMail, IconPhone, IconUser } from "../icons";
 import { useSession } from "../session";
 
 export function RegisterPage() {
@@ -17,6 +22,12 @@ export function RegisterPage() {
   const [terms, setTerms] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const canSubmit =
+    terms &&
+    fullName.trim().length > 1 &&
+    password.length >= 8 &&
+    password === confirmPassword;
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
@@ -39,7 +50,7 @@ export function RegisterPage() {
         password,
       });
       setSession(res.access_token, res.user);
-      navigate("/login");
+      navigate("/kyc");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Registration failed");
     } finally {
@@ -48,140 +59,139 @@ export function RegisterPage() {
   }
 
   return (
-    <div className="screen">
-      <StepHeader title="Register" />
-      <div className="hero-row">
-        <div className="hero-copy">
-          <h1>Register</h1>
-          <p>Your trusted insurance partner, always with you.</p>
-        </div>
-        <div className="hero-art" aria-hidden>
-          <IconShield size={52} />
-        </div>
-      </div>
-
-      <form className="stack" onSubmit={onSubmit}>
-        <div className="field">
-          <label htmlFor="fullName">Full Name</label>
-          <div className="input-shell">
-            <span className="icon">
-              <IconUser />
-            </span>
-            <input
-              id="fullName"
-              value={fullName}
-              onChange={(e) => setFullName(e.target.value)}
-              required
-            />
-          </div>
-        </div>
-
-        <div className="field">
-          <label htmlFor="email">Email Address</label>
-          <div className="input-shell">
-            <span className="icon">
-              <IconMail />
-            </span>
-            <input
-              id="email"
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-            />
-          </div>
-        </div>
-
-        <div className="field">
-          <label htmlFor="mobile">Mobile Number</label>
-          <div className="input-shell">
-            <span className="icon">
-              <IconPhone />
-            </span>
-            <input
-              id="mobile"
-              value={mobile}
-              onChange={(e) => setMobile(e.target.value)}
-              required
-            />
-          </div>
-        </div>
-
-        <div className="field">
-          <label htmlFor="password">Password</label>
-          <div className="input-shell">
-            <span className="icon">
-              <IconLock />
-            </span>
-            <input
-              id="password"
-              type={showPassword ? "text" : "password"}
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              minLength={8}
-              autoComplete="new-password"
-            />
-            <button
-              type="button"
-              className="link-quiet"
-              onClick={() => setShowPassword((v) => !v)}
-              aria-label="Toggle password visibility"
-            >
-              {showPassword ? "Hide" : "Show"}
-            </button>
-          </div>
-        </div>
-
-        <div className="field">
-          <label htmlFor="confirmPassword">Confirm password</label>
-          <div className="input-shell">
-            <span className="icon">
-              <IconLock />
-            </span>
-            <input
-              id="confirmPassword"
-              type={showPassword ? "text" : "password"}
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-              required
-              minLength={8}
-              autoComplete="new-password"
-            />
-          </div>
-        </div>
-
-        <label className="checkbox-row">
-          <input
-            type="checkbox"
-            checked={terms}
-            onChange={(e) => setTerms(e.target.checked)}
-          />
-          I agree to Terms &amp; Conditions
-        </label>
-
-        {error ? (
-          <p className="error" role="alert">
-            {error}
+    <AuthLayout
+        eyebrow="Get started"
+        title="Create your account"
+        lead="Join in minutes. We’ll guide you through secure identity verification before you buy cover."
+        backLabel="Back"
+        footer={
+          <p style={{ margin: 0 }}>
+            Already registered? <Link to="/login">Sign in</Link>
           </p>
-        ) : null}
+        }
+        assistant={<AssistantBar screen="register" />}
+      >
+        <form className="stack" onSubmit={onSubmit}>
+          <div className="field">
+            <label htmlFor="fullName">Full name</label>
+            <div className="input-shell">
+              <span className="icon" aria-hidden>
+                <IconUser />
+              </span>
+              <input
+                id="fullName"
+                autoComplete="name"
+                placeholder="Alex Morgan"
+                value={fullName}
+                onChange={(e) => setFullName(e.target.value)}
+                required
+              />
+            </div>
+          </div>
 
-        <button
-          className="btn-primary"
-          type="submit"
-          disabled={loading || !terms || password.length < 8 || password !== confirmPassword}
-        >
-          {loading ? "Creating…" : "Create Account"}
-        </button>
-      </form>
+          <div className="field">
+            <label htmlFor="email">Email address</label>
+            <div className="input-shell">
+              <span className="icon" aria-hidden>
+                <IconMail />
+              </span>
+              <input
+                id="email"
+                type="email"
+                autoComplete="email"
+                placeholder="you@email.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+              />
+            </div>
+          </div>
 
-      <p className="muted" style={{ fontSize: "0.85rem", margin: 0 }}>
-        Already registered? <Link to="/login">Login</Link>
-        {" · "}
-        <Link to="/">Browse products</Link>
-      </p>
+          <div className="field">
+            <label htmlFor="mobile">Mobile number</label>
+            <div className="input-shell">
+              <span className="icon" aria-hidden>
+                <IconPhone />
+              </span>
+              <input
+                id="mobile"
+                type="tel"
+                autoComplete="tel"
+                placeholder="+44 7700 900000"
+                value={mobile}
+                onChange={(e) => setMobile(e.target.value)}
+                required
+              />
+            </div>
+          </div>
 
-      <AssistantBar screen="register" />
-    </div>
+          <div className="field">
+            <label htmlFor="password">Password</label>
+            <div className="input-shell">
+              <span className="icon" aria-hidden>
+                <IconLock />
+              </span>
+              <input
+                id="password"
+                type={showPassword ? "text" : "password"}
+                autoComplete="new-password"
+                placeholder="At least 8 characters"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                minLength={8}
+              />
+              <button
+                type="button"
+                className="link-quiet"
+                onClick={() => setShowPassword((v) => !v)}
+                aria-label={showPassword ? "Hide password" : "Show password"}
+              >
+                {showPassword ? "Hide" : "Show"}
+              </button>
+            </div>
+            <PasswordStrength password={password} />
+          </div>
+
+          <div className="field">
+            <label htmlFor="confirmPassword">Confirm password</label>
+            <div className="input-shell">
+              <span className="icon" aria-hidden>
+                <IconLock />
+              </span>
+              <input
+                id="confirmPassword"
+                type={showPassword ? "text" : "password"}
+                autoComplete="new-password"
+                placeholder="Re-enter password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                required
+                minLength={8}
+              />
+            </div>
+            {confirmPassword && password !== confirmPassword ? (
+              <p className="error" style={{ margin: "4px 0 0", fontSize: "0.8rem" }}>
+                Passwords do not match
+              </p>
+            ) : null}
+          </div>
+
+          <label className="checkbox-row">
+            <input
+              type="checkbox"
+              checked={terms}
+              onChange={(e) => setTerms(e.target.checked)}
+            />
+            I agree to the Terms &amp; Conditions and Privacy Policy
+          </label>
+
+          {error ? <AuthError message={error} /> : null}
+
+          <button className="btn-primary" type="submit" disabled={loading || !canSubmit}>
+            {loading ? "Creating account…" : "Create account"}
+          </button>
+        </form>
+      </AuthLayout>
   );
 }

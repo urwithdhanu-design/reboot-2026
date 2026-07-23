@@ -4,6 +4,13 @@ import { api } from "./api";
 import { useChatbotOptional } from "./chatbot/ChatbotContext";
 import { IconChat, IconChevron } from "./icons";
 
+export {
+  AuthLayout,
+  AuthError,
+  AuthSuccess,
+  PasswordStrength,
+} from "./components/AuthLayout";
+
 export function StepHeader({ title }: { title: string }) {
   return (
     <div className="step-row">
