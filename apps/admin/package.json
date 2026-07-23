@@ -4,6 +4,7 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
+    "sync:cloud-apis": "powershell -NoProfile -ExecutionPolicy Bypass -File ../../deploy/sync-cloud-api-targets.ps1",
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "oxlint",

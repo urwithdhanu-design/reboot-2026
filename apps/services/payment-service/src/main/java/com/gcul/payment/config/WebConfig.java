@@ -2,11 +2,15 @@ package com.gcul.payment.config;
 
 import java.util.List;
 
+import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import org.springframework.web.filter.CorsFilter;
+
+import com.gcul.payment.security.JwtService;
+import com.gcul.payment.security.PlatformAdminAuthFilter;
 
 @Configuration
 public class WebConfig {
@@ -22,5 +26,14 @@ public class WebConfig {
 		UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
 		source.registerCorsConfiguration("/**", config);
 		return new CorsFilter(source);
+	}
+
+	@Bean
+	FilterRegistrationBean<PlatformAdminAuthFilter> platformAdminAuthFilter(JwtService jwtService) {
+		FilterRegistrationBean<PlatformAdminAuthFilter> registration = new FilterRegistrationBean<>();
+		registration.setFilter(new PlatformAdminAuthFilter(jwtService));
+		registration.addUrlPatterns("/api/*");
+		registration.setOrder(1);
+		return registration;
 	}
 }

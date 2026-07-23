@@ -6,21 +6,27 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
+import org.springframework.core.annotation.Order;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.gcul.policy.cache.MarketplaceCatalogCache;
 import com.gcul.policy.model.InsurancePlan;
 import com.gcul.policy.repository.InsurancePlanRepository;
 
 @Component
+@Order(2)
 public class PlanDataSeeder implements ApplicationRunner {
 
 	private static final Logger log = LoggerFactory.getLogger(PlanDataSeeder.class);
 
 	private final InsurancePlanRepository repository;
+	private final MarketplaceCatalogCache catalogCache;
 
-	public PlanDataSeeder(InsurancePlanRepository repository) {
+	public PlanDataSeeder(InsurancePlanRepository repository, MarketplaceCatalogCache catalogCache) {
 		this.repository = repository;
+		this.catalogCache = catalogCache;
 	}
 
 	@Override
@@ -29,6 +35,11 @@ public class PlanDataSeeder implements ApplicationRunner {
 		List<InsurancePlan> seed = catalog();
 		repository.saveAll(seed);
 		log.info("Upserted {} insurance product cards", seed.size());
+		refreshCache();
+	}
+
+	public void refreshCache() {
+		catalogCache.storePlans(repository.findAll(Sort.by("category", "title")));
 	}
 
 	private static String bullets(String... items) {

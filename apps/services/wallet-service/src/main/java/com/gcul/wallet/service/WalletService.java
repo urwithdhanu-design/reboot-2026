@@ -7,8 +7,10 @@ import java.util.HexFormat;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import com.gcul.wallet.client.KycStatusClient;
@@ -44,6 +46,7 @@ public class WalletService {
 				});
 	}
 
+	@Transactional
 	public Map<String, Object> createWallet(String userId, String email, String bearerToken) {
 		var existing = repository.findByUserId(userId);
 		if (existing.isPresent() && existing.get().isConnected()) {
@@ -57,25 +60,45 @@ public class WalletService {
 					"Complete KYC verification before creating a wallet");
 		}
 
-		String seed = userId + ":" + (email == null ? "" : email) + ":" + HexFormat.of().formatHex(randomBytes(4));
-		String digest = sha256(seed);
-		String address = "0x" + digest.substring(0, 4) + "..." + digest.substring(digest.length() - 6);
-
 		CustomerWallet wallet = existing.orElseGet(CustomerWallet::new);
 		wallet.setUserId(userId);
 		wallet.setUserEmail(email);
-		wallet.setAddress(address);
+		wallet.setAddress(generateAddress(userId, email));
 		wallet.setStatus("connected");
 		wallet.setProvider("secure_wallet");
 		wallet.setMode("demo");
 		wallet.setNote("Demo digital account for policy storage and payouts.");
-		repository.save(wallet);
+
+		try {
+			repository.saveAndFlush(wallet);
+		}
+		catch (DataIntegrityViolationException ex) {
+			wallet = repository.findByUserId(userId)
+					.orElseThrow(() -> new ResponseStatusException(HttpStatus.CONFLICT,
+							"Wallet already exists for this account"));
+			if (!wallet.isConnected()) {
+				wallet.setUserEmail(email);
+				wallet.setAddress(generateAddress(userId, email));
+				wallet.setStatus("connected");
+				wallet.setProvider("secure_wallet");
+				wallet.setMode("demo");
+				wallet.setNote("Demo digital account for policy storage and payouts.");
+				wallet = repository.saveAndFlush(wallet);
+			}
+		}
+
 		walletEvents.walletLinked(userId, wallet);
 
 		Map<String, Object> response = toResponse(wallet);
 		response.put("ledger", "gcul");
-		response.put("reused", false);
+		response.put("reused", existing.isPresent());
 		return response;
+	}
+
+	private String generateAddress(String userId, String email) {
+		String seed = userId + ":" + (email == null ? "" : email) + ":" + HexFormat.of().formatHex(randomBytes(4));
+		String digest = sha256(seed);
+		return "0x" + digest.substring(0, 4) + "..." + digest.substring(digest.length() - 6);
 	}
 
 	private Map<String, Object> toResponse(CustomerWallet wallet) {

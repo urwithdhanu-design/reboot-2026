@@ -45,6 +45,9 @@ Write-Host "Building customer app (apps/web) ..."
 Pop-Location
 
 $firebaseJson = @{
+  firestore = @{
+    rules = "deploy/firestore.rules"
+  }
   hosting = @(
     @{
       target = "customer"
@@ -81,9 +84,9 @@ $customerSite = $ProjectId
 firebase target:apply hosting customer $customerSite --project $ProjectId
 firebase target:apply hosting admin gcul-admin --project $ProjectId
 
-Write-Host "Deploying Firebase Hosting (customer + admin) ..."
+Write-Host "Deploying Firebase Hosting (customer + admin) + Firestore rules ..."
 Push-Location $Root
-firebase deploy --only hosting --project $ProjectId
+firebase deploy --only hosting,firestore:rules --project $ProjectId
 Pop-Location
 
 $customerUrl = "https://${ProjectId}.web.app"

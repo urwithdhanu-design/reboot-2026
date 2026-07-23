@@ -3,7 +3,6 @@ package com.gcul.policy.model;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
-import jakarta.persistence.Lob;
 import jakarta.persistence.Table;
 
 @Entity
@@ -23,8 +22,7 @@ public class InsurancePlan {
 	@Column(length = 500)
 	private String tagline;
 
-	@Lob
-	@Column(name = "bullets_json")
+	@Column(name = "bullets_json", columnDefinition = "TEXT")
 	private String bulletsJson;
 
 	@Column(name = "cta_label", length = 120)

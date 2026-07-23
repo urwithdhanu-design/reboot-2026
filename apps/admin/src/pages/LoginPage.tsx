@@ -1,22 +1,31 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { Button } from '../components/ui';
 import { Lock, Mail, ShieldCheck } from 'lucide-react';
 
 export function LoginPage() {
   const { login } = useAuth();
+  const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [remember, setRemember] = useState(true);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError(null);
     setLoading(true);
-    await login(email, password);
-    setLoading(false);
+    try {
+      await login(email, password);
+      navigate('/', { replace: true });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Sign in failed');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -138,6 +147,12 @@ export function LoginPage() {
                 />
                 Keep me signed in on this device
               </label>
+
+              {error ? (
+                <p className="text-sm text-red-600 bg-red-50 border border-red-100 rounded-lg px-3 py-2" role="alert">
+                  {error}
+                </p>
+              ) : null}
 
               <Button type="submit" size="lg" className="w-full shadow-sm" disabled={loading}>
                 {loading ? 'Signing in…' : 'Sign in to admin'}

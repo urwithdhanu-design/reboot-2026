@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useCallback, type ReactNode } from 'react';
+import { adminApi, ADMIN_TOKEN_KEY, type AdminAuthUser } from '../api';
 
 interface AdminUser {
   id: string;
@@ -9,35 +10,48 @@ interface AdminUser {
 
 interface AuthContextType {
   user: AdminUser | null;
-  login: (email: string, password: string) => Promise<boolean>;
+  login: (email: string, password: string) => Promise<void>;
   logout: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
 
-const ADMIN_USER: AdminUser = {
-  id: 'admin-001',
-  name: 'Platform Admin',
-  email: 'admin@reboot2026.local',
-  role: 'Operations Manager',
-};
+const USER_KEY = 'gcul-admin-user';
+
+function toAdminUser(u: AdminAuthUser): AdminUser {
+  return {
+    id: u.id,
+    name: u.full_name,
+    email: u.email,
+    role: u.role,
+  };
+}
+
+function loadStoredUser(): AdminUser | null {
+  const token = localStorage.getItem(ADMIN_TOKEN_KEY);
+  const raw = localStorage.getItem(USER_KEY);
+  if (!token || !raw) return null;
+  try {
+    return JSON.parse(raw) as AdminUser;
+  } catch {
+    return null;
+  }
+}
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<AdminUser | null>(() => {
-    const s = localStorage.getItem('gcul-admin-user');
-    return s ? JSON.parse(s) : null;
-  });
+  const [user, setUser] = useState<AdminUser | null>(loadStoredUser);
 
-  const login = useCallback(async (email: string, _password: string) => {
-    await new Promise((r) => setTimeout(r, 500));
-    const u = { ...ADMIN_USER, email };
-    localStorage.setItem('gcul-admin-user', JSON.stringify(u));
+  const login = useCallback(async (email: string, password: string) => {
+    const res = await adminApi.adminLogin(email.trim(), password);
+    localStorage.setItem(ADMIN_TOKEN_KEY, res.access_token);
+    const u = toAdminUser(res.user);
+    localStorage.setItem(USER_KEY, JSON.stringify(u));
     setUser(u);
-    return true;
   }, []);
 
   const logout = useCallback(() => {
-    localStorage.removeItem('gcul-admin-user');
+    localStorage.removeItem(ADMIN_TOKEN_KEY);
+    localStorage.removeItem(USER_KEY);
     setUser(null);
   }, []);
 

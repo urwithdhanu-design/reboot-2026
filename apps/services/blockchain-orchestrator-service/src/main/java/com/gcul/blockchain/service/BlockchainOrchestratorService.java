@@ -11,6 +11,10 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
+import com.gcul.blockchain.chain.ChainLedger;
+import com.gcul.blockchain.chain.ChainTransactionType;
+import com.gcul.blockchain.chain.InsuranceChainService;
+import com.gcul.blockchain.chain.InsuranceChainService.RecordTxRequest;
 import com.gcul.blockchain.gcul.GculSidecarClient;
 import com.gcul.blockchain.model.LedgerTransaction;
 import com.gcul.blockchain.repository.LedgerTransactionRepository;
@@ -20,10 +24,15 @@ public class BlockchainOrchestratorService {
 
 	private final LedgerTransactionRepository repo;
 	private final GculSidecarClient gcul;
+	private final InsuranceChainService insuranceChain;
 
-	public BlockchainOrchestratorService(LedgerTransactionRepository repo, GculSidecarClient gcul) {
+	public BlockchainOrchestratorService(
+			LedgerTransactionRepository repo,
+			GculSidecarClient gcul,
+			InsuranceChainService insuranceChain) {
 		this.repo = repo;
 		this.gcul = gcul;
+		this.insuranceChain = insuranceChain;
 	}
 
 	public Map<String, Object> submit(Map<String, Object> body) {
@@ -85,6 +94,20 @@ public class BlockchainOrchestratorService {
 		if (externalDigest != null) {
 			saved.put("digest", externalDigest);
 		}
+
+		ChainLedger ledger = type.contains("claim") ? ChainLedger.CLAIMS : ChainLedger.WORKFLOW;
+		ChainTransactionType chainType = type.contains("claim")
+				? ChainTransactionType.CLAIM_SETTLED
+				: ChainTransactionType.SETTLEMENT;
+		insuranceChain.recordTransaction(new RecordTxRequest(
+				chainType,
+				ledger,
+				saved,
+				to,
+				"wallet",
+				externalDigest,
+				null));
+
 		return saved;
 	}
 

@@ -12,9 +12,11 @@ type CloudTargets = {
 };
 
 function loadCloudTargets(): CloudTargets {
-  return JSON.parse(
-    readFileSync(join(repoRoot, "deploy/cloud-api.targets.json"), "utf-8"),
-  ) as CloudTargets;
+  const raw = readFileSync(join(repoRoot, "deploy/cloud-api.targets.json"), "utf-8").replace(
+    /^\uFEFF/,
+    "",
+  );
+  return JSON.parse(raw) as CloudTargets;
 }
 
 function proxyEntry(target: string): ProxyOptions {
@@ -82,7 +84,6 @@ function resolveApiTarget(
 }
 
 export default defineConfig(({ mode }) => {
-  const env = loadEnv(mode, rootDir, "");
   const apiTarget = resolveApiTarget(mode, rootDir, repoRoot);
   const useCloud = apiTarget === "cloud";
   const proxy = useCloud

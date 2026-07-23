@@ -35,5 +35,6 @@ $json.firebaseHosting = "https://${ProjectId}.web.app"
 $json.firebaseAdminHosting = "https://gcul-admin.web.app"
 $json.services = $services
 $out = Join-Path $PSScriptRoot "cloud-api.targets.json"
-$json | ConvertTo-Json -Depth 5 | Set-Content -Encoding utf8 $out
+$jsonText = $json | ConvertTo-Json -Depth 5
+[System.IO.File]::WriteAllText($out, $jsonText + "`n", [System.Text.UTF8Encoding]::new($false))
 Write-Host "Updated $out"

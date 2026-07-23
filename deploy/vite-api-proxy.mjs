@@ -22,7 +22,8 @@ export function proxyEntry(target) {
 /** @param {string} repoRoot */
 export function loadCloudApiTargets(repoRoot) {
   const path = join(repoRoot, "deploy/cloud-api.targets.json");
-  return JSON.parse(readFileSync(path, "utf-8"));
+  const raw = readFileSync(path, "utf-8").replace(/^\uFEFF/, "");
+  return JSON.parse(raw);
 }
 
 /**
@@ -31,15 +32,18 @@ export function loadCloudApiTargets(repoRoot) {
  */
 export function buildApiProxyMap(targets, options = {}) {
   const s = targets;
+  const kyc = s.kyc || LOCAL.kyc;
+  const policy = s.policy || LOCAL.policy;
+  // Wallet before other /api/* prefixes (Vite matches first registered rule).
   const map = {
-    "/api/auth": proxyEntry(s.kyc || LOCAL.kyc),
-    "/api/kyc": proxyEntry(s.kyc || LOCAL.kyc),
     "/api/wallet": proxyEntry(s.wallet || LOCAL.wallet),
-    "/api/assistant": proxyEntry(s.kyc || LOCAL.kyc),
-    "/api/products": proxyEntry(s.policy || LOCAL.policy),
-    "/api/policies": proxyEntry(s.policy || LOCAL.policy),
-    "/api/quotes": proxyEntry(s.policy || LOCAL.policy),
-    "/api/payments": proxyEntry(s.policy || LOCAL.policy),
+    "/api/auth": proxyEntry(kyc),
+    "/api/kyc": proxyEntry(kyc),
+    "/api/assistant": proxyEntry(kyc),
+    "/api/products": proxyEntry(policy),
+    "/api/policies": proxyEntry(policy),
+    "/api/quotes": proxyEntry(policy),
+    "/api/payments": proxyEntry(policy),
     "/api/payment-ledger": proxyEntry(s.payment || LOCAL.payment),
     "/api/notifications": proxyEntry(s.notification || LOCAL.notification),
     "/api/claims": proxyEntry(s.claims || LOCAL.claims),
@@ -49,8 +53,13 @@ export function buildApiProxyMap(targets, options = {}) {
     "/api/chatbot": proxyEntry(s.chatbot || LOCAL.chatbot),
   };
   if (options.admin) {
-    map["/api/vendors"] = proxyEntry(s.policy || LOCAL.policy);
-    map["/api/vendor-portal"] = proxyEntry(s.policy || LOCAL.policy);
+    map["/api/admin/customers"] = proxyEntry(kyc);
+    map["/api/admin/kyc-queue"] = proxyEntry(kyc);
+    map["/api/admin/customer-stats"] = proxyEntry(kyc);
+    map["/api/admin/policies"] = proxyEntry(policy);
+    map["/api/admin/policy-stats"] = proxyEntry(policy);
+    map["/api/vendors"] = proxyEntry(policy);
+    map["/api/vendor-portal"] = proxyEntry(policy);
   }
   return map;
 }

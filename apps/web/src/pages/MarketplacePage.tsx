@@ -1,8 +1,19 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { api, type Product } from "../api";
+import { loadMarketplaceFromFirestore } from "../firestore/catalogCache";
 import { AssistantBar, BottomNav, StepHeader } from "../components";
 import { IconSearch, productIcon } from "../icons";
+
+const DEFAULT_CATEGORIES = [
+  "All",
+  "Health",
+  "Vehicle",
+  "Pet",
+  "Property",
+  "Life",
+  "Travel",
+];
 
 export function MarketplacePage() {
   const navigate = useNavigate();
@@ -22,21 +33,42 @@ export function MarketplacePage() {
 
   useEffect(() => {
     let alive = true;
-    const load = () =>
-      api
+    const load = async () => {
+      const cached = await loadMarketplaceFromFirestore();
+      if (cached && alive) {
+        const cat = category === "All" ? undefined : category;
+        const q = (query || "").trim().toLowerCase();
+        let list = cached.products;
+        if (cat) {
+          list = list.filter((p) => p.category.toLowerCase() === cat.toLowerCase());
+        }
+        if (q) {
+          list = list.filter(
+            (p) =>
+              p.title.toLowerCase().includes(q) ||
+              p.description.toLowerCase().includes(q),
+          );
+        }
+        setCategories(cached.categories);
+        setProducts(list);
+        setError(null);
+        return;
+      }
+      return api
         .listProducts(category === "All" ? undefined : category, query || undefined)
         .then((res) => {
           if (!alive) return;
-          setCategories(res.categories ?? ["All", "Health", "Vehicle", "Pet", "Property", "Life", "Travel"]);
+          setCategories(res.categories ?? DEFAULT_CATEGORIES);
           setProducts(res.products ?? []);
           setError(null);
-        })
-        .catch((err) => {
+        });
+    };
+
+    load().catch((err) => {
           if (!alive) return;
           setError(err instanceof Error ? err.message : "Failed to load products");
         });
 
-    load();
     return () => {
       alive = false;
     };

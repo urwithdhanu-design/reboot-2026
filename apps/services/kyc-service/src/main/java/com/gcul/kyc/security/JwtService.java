@@ -9,6 +9,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import com.gcul.kyc.model.UserAccount;
+import com.gcul.kyc.security.PlatformRoles;
 
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
@@ -33,6 +34,7 @@ public class JwtService {
 				.subject(user.getId())
 				.claim("email", user.getEmail())
 				.claim("name", user.getFullName())
+				.claim("role", user.getRole() == null ? PlatformRoles.CUSTOMER : user.getRole())
 				.issuedAt(now)
 				.expiration(new Date(now.getTime() + expirationMs))
 				.signWith(key)

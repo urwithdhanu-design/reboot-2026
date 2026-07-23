@@ -98,6 +98,21 @@ public class AuthController {
 		return UserMapper.authResponse(jwt.createToken(user), user);
 	}
 
+	@PostMapping("/admin/login")
+	public Map<String, Object> adminLogin(@Valid @RequestBody LoginRequest body) {
+		UserAccount user = store.findByEmail(body.getIdentifier().trim())
+				.orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED,
+						"Invalid email or password"));
+
+		if (!passwords.matches(body.getPassword(), user.getPasswordHash())) {
+			throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid email or password");
+		}
+		if (!user.isPlatformAdmin()) {
+			throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Not a platform admin account");
+		}
+		return UserMapper.authResponse(jwt.createToken(user), user);
+	}
+
 	@PostMapping("/forgot-password")
 	public Map<String, Object> forgotPassword(@Valid @RequestBody ForgotPasswordRequest body) {
 		return passwordReset.requestReset(body.getIdentifier());

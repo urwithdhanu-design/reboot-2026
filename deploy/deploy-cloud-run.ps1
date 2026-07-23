@@ -14,7 +14,8 @@
 param(
   [string] $ProjectId = $(if ($env:GCP_PROJECT) { $env:GCP_PROJECT } else { throw "Set GCP_PROJECT" }),
   [string] $Region = $(if ($env:GCP_REGION) { $env:GCP_REGION } else { "us-central1" }),
-  [switch] $SkipBuild
+  [switch] $SkipBuild,
+  [string[]] $ServiceIds = @()
 )
 
 $ErrorActionPreference = "Stop"
@@ -63,7 +64,22 @@ gcloud config set project $ProjectId
 
 $deployedUrls = @{}
 
-foreach ($svc in $Manifest.services) {
+if ($ServiceIds.Count -eq 1 -and $ServiceIds[0] -match ',') {
+  $ServiceIds = $ServiceIds[0].Split(',') | ForEach-Object { $_.Trim() } | Where-Object { $_ }
+}
+
+$serviceList = @($Manifest.services)
+if ($ServiceIds.Count -gt 0) {
+  $want = @{}
+  foreach ($s in $ServiceIds) { $want[$s] = $true }
+  $serviceList = @($Manifest.services | Where-Object { $want.ContainsKey($_.id) })
+  if ($serviceList.Count -eq 0) {
+    throw "No matching services in services.json for: $($ServiceIds -join ', ')"
+  }
+  Write-Host "Deploying subset: $($serviceList.id -join ', ')" -ForegroundColor Cyan
+}
+
+foreach ($svc in $serviceList) {
   $id = $svc.id
   $image = "$Region-docker.pkg.dev/$ProjectId/$Repo/${id}:latest"
   Write-Host "`n=== $id ===" -ForegroundColor Cyan
@@ -105,6 +121,21 @@ foreach ($svc in $Manifest.services) {
       "GCUL_PUBSUB_TOPIC_PREFIX=gcul"
     )
   }
+  if ($id -eq "gcul-kyc") {
+    $adminEmail = if ($env:GCUL_ADMIN_EMAIL) { $env:GCUL_ADMIN_EMAIL } else { "admin@reboot2026.local" }
+    $adminPass = if ($env:GCUL_ADMIN_PASSWORD) { $env:GCUL_ADMIN_PASSWORD } else { "Reboot2026!Admin" }
+    $envPairs += @(
+      "GCUL_ADMIN_SEED=true",
+      "GCUL_ADMIN_EMAIL=$adminEmail",
+      "GCUL_ADMIN_PASSWORD=$adminPass"
+    )
+  }
+  if ($id -eq "gcul-policy") {
+    $envPairs += @(
+      "GCUL_FIRESTORE_ENABLED=true",
+      "GCUL_FIRESTORE_PROJECT=$ProjectId"
+    )
+  }
   if ($id -eq "gcul-wallet" -and $deployedUrls.ContainsKey("gcul-kyc")) {
     $envPairs += "GCUL_KYC_SERVICE_URL=$($deployedUrls['gcul-kyc'])"
   }
@@ -142,9 +173,9 @@ foreach ($svc in $Manifest.services) {
   Write-Host "URL: $url"
 }
 
-# Wire orchestrator to other Cloud Run services
+# Wire orchestrator to other Cloud Run services (full deploy only)
 $orchId = "gcul-blockchain-orchestrator"
-if ($deployedUrls.ContainsKey($orchId)) {
+if ($ServiceIds.Count -eq 0 -and $deployedUrls.ContainsKey($orchId)) {
   Write-Host "`nLinking blockchain orchestrator to peer services ..." -ForegroundColor Cyan
   $orchEnv = @(
     "SPRING_PROFILES_ACTIVE=cloud",
@@ -184,6 +215,10 @@ if ($deployedUrls.ContainsKey($orchId)) {
 }
 
 $outFile = Join-Path $PSScriptRoot "cloud-run-urls.json"
+if ($ServiceIds.Count -gt 0 -and (Test-Path $outFile)) {
+  $existing = Get-Content $outFile -Raw | ConvertFrom-Json
+  $existing.PSObject.Properties | ForEach-Object { $deployedUrls[$_.Name] = $_.Value }
+}
 $deployedUrls | ConvertTo-Json | Set-Content -Encoding utf8 $outFile
 Write-Host "`nWrote service URLs to $outFile"
 Write-Host "Cost notes: deploy/COST.md"

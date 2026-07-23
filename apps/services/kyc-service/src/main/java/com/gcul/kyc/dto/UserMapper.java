@@ -5,6 +5,7 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 
 import com.gcul.kyc.model.UserAccount;
+import com.gcul.kyc.security.PlatformRoles;
 
 public final class UserMapper {
 
@@ -17,6 +18,7 @@ public final class UserMapper {
 		map.put("full_name", user.getFullName());
 		map.put("email", user.getEmail());
 		map.put("mobile_number", user.getMobileNumber());
+		map.put("role", user.getRole() == null ? PlatformRoles.CUSTOMER : user.getRole());
 		map.put("kyc_status", user.getKycStatus() == null ? "not_started" : user.getKycStatus());
 		if (user.hasConnectedWallet()) {
 			Map<String, Object> wallet = new HashMap<>();

@@ -10,6 +10,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
+import com.gcul.blockchain.chain.ChainLedger;
+import com.gcul.blockchain.chain.ChainTransactionType;
+import com.gcul.blockchain.chain.InsuranceChainService;
+import com.gcul.blockchain.chain.InsuranceChainService.RecordTxRequest;
 import com.gcul.messaging.EventTopics;
 import com.gcul.messaging.GculEventPublisher;
 
@@ -20,9 +24,11 @@ public class PolicyMintService {
 
 	private final GculEventPublisher publisher;
 	private final Set<String> mintedPolicies = ConcurrentHashMap.newKeySet();
+	private final InsuranceChainService insuranceChain;
 
-	public PolicyMintService(GculEventPublisher publisher) {
+	public PolicyMintService(GculEventPublisher publisher, InsuranceChainService insuranceChain) {
 		this.publisher = publisher;
+		this.insuranceChain = insuranceChain;
 	}
 
 	public boolean handle(String eventType, Map<String, Object> payload) {
@@ -50,6 +56,29 @@ public class PolicyMintService {
 		minted.put("network", "Ethereum Sepolia");
 		minted.put("status", "MINTED");
 		publisher.publish(EventTopics.BLOCKCHAIN, minted);
+
+		insuranceChain.recordTransaction(new RecordTxRequest(
+				ChainTransactionType.WORKFLOW_STEP,
+				ChainLedger.POLICY,
+				Map.of(
+						"policyId", policyId,
+						"policyNumber", str(payload.get("policyNumber")),
+						"tokenId", tokenId,
+						"transactionHash", txHash,
+						"workflow", "policy_mint"),
+				str(payload.get("customerId")),
+				"policy_service",
+				null,
+				null));
+		insuranceChain.recordTransaction(new RecordTxRequest(
+				ChainTransactionType.POLICY_ISSUED,
+				ChainLedger.POLICY,
+				minted,
+				str(payload.get("customerId")),
+				"blockchain_orchestrator",
+				txHash,
+				null));
+
 		log.info("Mint completed policyId={} tokenId={}", policyId, tokenId);
 		return true;
 	}

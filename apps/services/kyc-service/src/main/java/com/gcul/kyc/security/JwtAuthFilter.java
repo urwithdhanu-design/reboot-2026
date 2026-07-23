@@ -22,9 +22,9 @@ public class JwtAuthFilter extends OncePerRequestFilter {
 	private static final Set<String> PUBLIC_PREFIXES = Set.of(
 			"/api/auth/register",
 			"/api/auth/login",
+			"/api/auth/admin/login",
 			"/api/auth/forgot-password",
 			"/api/auth/reset-password",
-			"/api/admin",
 			"/api/assistant",
 			"/health",
 			"/error");
@@ -61,6 +61,12 @@ public class JwtAuthFilter extends OncePerRequestFilter {
 			Claims claims = jwtService.parse(header.substring(7));
 			var user = userStore.findById(claims.getSubject())
 					.orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "User not found"));
+			if (path.startsWith("/api/admin") && !user.isPlatformAdmin()) {
+				response.setStatus(HttpStatus.FORBIDDEN.value());
+				response.setContentType("application/json");
+				response.getWriter().write("{\"detail\":\"Platform admin access required\"}");
+				return;
+			}
 			request.setAttribute("currentUser", user);
 			filterChain.doFilter(request, response);
 		}

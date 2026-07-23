@@ -1,0 +1,15 @@
+package com.gcul.blockchain.chain;
+
+public enum ChainTransactionType {
+	POLICY_ISSUED,
+	POLICY_UPDATED,
+	CLAIM_FILED,
+	CLAIM_SETTLED,
+	IDENTITY_ANCHOR,
+	DOCUMENT_HASH,
+	ROLE_GRANT,
+	AUDIT_RECORD,
+	WORKFLOW_STEP,
+	SETTLEMENT,
+	FRAUD_SIGNAL
+}

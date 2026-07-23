@@ -1,5 +1,11 @@
 const API_BASE = import.meta.env.VITE_API_BASE ?? '';
 
+export const ADMIN_TOKEN_KEY = 'gcul-admin-token';
+
+export function getAdminToken(): string | null {
+  return localStorage.getItem(ADMIN_TOKEN_KEY);
+}
+
 async function request<T>(path: string, options: RequestInit = {}, token?: string | null): Promise<T> {
   const headers = new Headers(options.headers);
   headers.set('Content-Type', 'application/json');
@@ -20,6 +26,27 @@ async function request<T>(path: string, options: RequestInit = {}, token?: strin
   }
   return data as T;
 }
+
+function adminRequest<T>(path: string, options: RequestInit = {}): Promise<T> {
+  const token = getAdminToken();
+  if (!token) {
+    return Promise.reject(new Error('Not signed in'));
+  }
+  return request<T>(path, options, token);
+}
+
+export type AdminAuthUser = {
+  id: string;
+  full_name: string;
+  email: string;
+  role: string;
+};
+
+export type AdminAuthResponse = {
+  access_token: string;
+  token_type: string;
+  user: AdminAuthUser;
+};
 
 export type Vendor = {
   id: string;
@@ -94,7 +121,55 @@ export type PaymentLedgerRow = {
   created_at?: string;
 };
 
+export type InsuranceChainTx = {
+  id: string;
+  block_height: number | null;
+  type: string;
+  ledger: string;
+  payload: string;
+  document_hash?: string | null;
+  actor_id?: string | null;
+  actor_role?: string | null;
+  fraud_score?: number | null;
+  tx_hash: string;
+  signature?: string;
+  public_key?: string;
+  created_at: string;
+};
+
+export type InsuranceChainBlock = {
+  height: number;
+  hash: string;
+  previous_hash: string;
+  merkle_root: string;
+  transaction_count: number;
+  mined_at: string;
+  validator_id: string;
+  transactions: InsuranceChainTx[];
+};
+
+export type InsuranceChainResponse = {
+  network: {
+    network_name: string;
+    chain_id: number;
+    consensus: string;
+    hash_algorithm: string;
+    block_height: number;
+    transaction_count: number;
+    validator_id: string;
+    peers: string[];
+  };
+  validation: { valid: boolean; block_count: number; errors: string[] };
+  blocks: InsuranceChainBlock[];
+};
+
 export const adminApi = {
+  adminLogin: (identifier: string, password: string) =>
+    request<AdminAuthResponse>('/api/auth/admin/login', {
+      method: 'POST',
+      body: JSON.stringify({ identifier, password }),
+    }),
+
   listProducts: () =>
     request<{ categories: string[]; products: unknown[] }>('/api/products'),
 
@@ -103,22 +178,22 @@ export const adminApi = {
     if (q) params.set('q', q);
     if (kycStatus && kycStatus !== 'all') params.set('kyc_status', kycStatus);
     const qs = params.toString();
-    return request<{ customers: AdminCustomer[]; count: number }>(
+    return adminRequest<{ customers: AdminCustomer[]; count: number }>(
       `/api/admin/customers${qs ? `?${qs}` : ''}`,
     );
   },
 
   listKycQueue: () =>
-    request<{ queue: KycQueueItem[]; count: number }>('/api/admin/kyc-queue'),
+    adminRequest<{ queue: KycQueueItem[]; count: number }>('/api/admin/kyc-queue'),
 
   updateCustomerKyc: (userId: string, status: string) =>
-    request<AdminCustomer>(`/api/admin/customers/${encodeURIComponent(userId)}/kyc`, {
+    adminRequest<AdminCustomer>(`/api/admin/customers/${encodeURIComponent(userId)}/kyc`, {
       method: 'PATCH',
       body: JSON.stringify({ status }),
     }),
 
   customerStats: () =>
-    request<{
+    adminRequest<{
       total_customers: number;
       kyc_verified: number;
       kyc_in_progress: number;
@@ -126,39 +201,44 @@ export const adminApi = {
     }>('/api/admin/customer-stats'),
 
   listPolicies: () =>
-    request<{ policies: AdminPolicyRow[]; count: number }>('/api/admin/policies'),
+    adminRequest<{ policies: AdminPolicyRow[]; count: number }>('/api/admin/policies'),
 
   policyStats: () =>
-    request<{ total_quotes: number; total_applications: number }>('/api/admin/policy-stats'),
+    adminRequest<{ total_quotes: number; total_applications: number }>('/api/admin/policy-stats'),
 
   listPayments: () =>
-    request<{ payments: PaymentLedgerRow[]; count: number }>('/api/payment-ledger'),
+    adminRequest<{ payments: PaymentLedgerRow[]; count: number }>('/api/payment-ledger'),
+
+  insuranceChain: () => request<InsuranceChainResponse>('/api/blockchain/chain'),
+
+  insuranceChainCapabilities: () =>
+    request<{ capabilities: Record<string, unknown> }>('/api/blockchain/chain/capabilities'),
 
   listVendors: (status?: string) => {
     const qs = status ? `?status=${encodeURIComponent(status)}` : '';
-    return request<{ vendors: Vendor[]; count: number }>(`/api/vendors${qs}`);
+    return adminRequest<{ vendors: Vendor[]; count: number }>(`/api/vendors${qs}`);
   },
 
   onboardVendor: (body: Record<string, string>) =>
-    request<Vendor>('/api/vendors/onboard', {
+    adminRequest<Vendor>('/api/vendors/onboard', {
       method: 'POST',
       body: JSON.stringify(body),
     }),
 
   updateVendor: (id: string, body: Record<string, string>) =>
-    request<Vendor>(`/api/vendors/${encodeURIComponent(id)}`, {
+    adminRequest<Vendor>(`/api/vendors/${encodeURIComponent(id)}`, {
       method: 'PUT',
       body: JSON.stringify(body),
     }),
 
   publishVendor: (id: string, body?: Record<string, string>) =>
-    request<Vendor>(`/api/vendors/${encodeURIComponent(id)}/publish`, {
+    adminRequest<Vendor>(`/api/vendors/${encodeURIComponent(id)}/publish`, {
       method: 'POST',
       body: JSON.stringify(body ?? {}),
     }),
 
   resendVendorInvite: (id: string) =>
-    request<{ ok: boolean; emailed_to: string; temp_password: string }>(
+    adminRequest<{ ok: boolean; emailed_to: string; temp_password: string }>(
       `/api/vendors/${encodeURIComponent(id)}/resend-invite`,
       { method: 'POST' },
     ),

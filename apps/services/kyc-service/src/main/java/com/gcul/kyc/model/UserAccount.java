@@ -1,5 +1,7 @@
 package com.gcul.kyc.model;
 
+import com.gcul.kyc.security.PlatformRoles;
+
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
@@ -57,6 +59,21 @@ public class UserAccount {
 
 	@Column(name = "wallet_note", length = 255)
 	private String walletNote;
+
+	@Column(nullable = false, length = 32)
+	private String role = PlatformRoles.CUSTOMER;
+
+	public String getRole() {
+		return role;
+	}
+
+	public void setRole(String role) {
+		this.role = role;
+	}
+
+	public boolean isPlatformAdmin() {
+		return PlatformRoles.isPlatformAdmin(role);
+	}
 
 	public String getId() {
 		return id;
