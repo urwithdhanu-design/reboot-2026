@@ -19,6 +19,7 @@ import com.gcul.kyc.dto.RegisterRequest;
 import com.gcul.kyc.dto.ResetPasswordRequest;
 import com.gcul.kyc.dto.UserMapper;
 import com.gcul.kyc.mail.MailService;
+import com.gcul.kyc.messaging.CustomerEventPublisher;
 import com.gcul.kyc.model.UserAccount;
 import com.gcul.kyc.security.JwtService;
 import com.gcul.kyc.security.PasswordResetService;
@@ -39,18 +40,21 @@ public class AuthController {
 	private final JwtService jwt;
 	private final MailService mail;
 	private final PasswordResetService passwordReset;
+	private final CustomerEventPublisher customerEvents;
 
 	public AuthController(
 			UserStore store,
 			PasswordService passwords,
 			JwtService jwt,
 			MailService mail,
-			PasswordResetService passwordReset) {
+			PasswordResetService passwordReset,
+			CustomerEventPublisher customerEvents) {
 		this.store = store;
 		this.passwords = passwords;
 		this.jwt = jwt;
 		this.mail = mail;
 		this.passwordReset = passwordReset;
+		this.customerEvents = customerEvents;
 	}
 
 	@PostMapping("/register")
@@ -76,6 +80,7 @@ public class AuthController {
 		store.save(user);
 
 		mail.sendWelcome(user.getEmail(), user.getFullName());
+		customerEvents.customerRegistered(user);
 
 		return UserMapper.authResponse(jwt.createToken(user), user);
 	}

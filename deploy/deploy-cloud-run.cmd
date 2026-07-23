@@ -6,6 +6,7 @@ REM   deploy\deploy-cloud-run.cmd
 REM
 REM Optional:
 REM   set GCUL_USE_CLOUD_SQL=false     (ephemeral H2 on Cloud Run - not recommended)
+REM   set GCUL_USE_PUBSUB=true         (after deploy\setup-pubsub.cmd)
 REM   deploy\deploy-cloud-run.cmd skipbuild
 setlocal
 set "SCRIPT_DIR=%~dp0"

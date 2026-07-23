@@ -1,0 +1,8 @@
+{
+  "eventId": "evt-4003",
+  "eventType": "PolicyActivated",
+  "timestamp": "2026-07-18T14:06:00Z",
+  "policyNumber": "INS10001",
+  "tokenId": "101",
+  "status": "ACTIVE"
+}

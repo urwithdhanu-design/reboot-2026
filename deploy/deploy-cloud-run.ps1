@@ -154,6 +154,13 @@ if ($deployedUrls.ContainsKey($orchId)) {
     "GCUL_PAYMENT_SERVICE_URL=$($deployedUrls['gcul-payment'])",
     "GCUL_BLOCKCHAIN_SERVICE_URL=$($deployedUrls[$orchId])"
   )
+  if ($usePubSub) {
+    $orchEnv += @(
+      "GCUL_PUBSUB_ENABLED=true",
+      "GCUL_PUBSUB_PROJECT=$ProjectId",
+      "GCUL_PUBSUB_TOPIC_PREFIX=gcul"
+    )
+  }
   if ($useCloudSql -and $sqlCfg.serviceDatabases.PSObject.Properties.Name -contains $orchId) {
     $orchEnv += @(
       "GCUL_CLOUD_SQL_ENABLED=true",

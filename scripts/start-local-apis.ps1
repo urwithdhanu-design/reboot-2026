@@ -37,7 +37,8 @@ $JavaServices = @(
   @{ id = "claims";           dir = "apps\services\claims-service";                 port = 8085 },
   @{ id = "parametric";       dir = "apps\services\parametric-claim-service";         port = 8086 },
   @{ id = "premium-deposit";  dir = "apps\services\premium-deposit-service";        port = 8087 },
-  @{ id = "blockchain";       dir = "apps\services\blockchain-orchestrator-service"; port = 8088 }
+  @{ id = "blockchain";       dir = "apps\services\blockchain-orchestrator-service"; port = 8088 },
+  @{ id = "audit";            dir = "apps\services\audit-service";                  port = 8092 }
 )
 
 $PythonServices = @(

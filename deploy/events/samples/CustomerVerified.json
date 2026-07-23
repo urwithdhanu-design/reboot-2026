@@ -1,0 +1,7 @@
+{
+  "eventId": "evt-1002",
+  "eventType": "CustomerVerified",
+  "timestamp": "2026-07-18T11:00:00Z",
+  "customerId": "C10001",
+  "kycStatus": "VERIFIED"
+}

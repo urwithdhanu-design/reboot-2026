@@ -12,7 +12,7 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
-$ports = 8081..8089
+$ports = 8081..8089 + 8092
 if ($IncludePython) { $ports += 8090, 8091 }
 
 $pids = @()

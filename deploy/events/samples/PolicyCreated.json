@@ -1,0 +1,11 @@
+{
+  "eventId": "evt-4001",
+  "eventType": "PolicyCreated",
+  "timestamp": "2026-07-18T14:00:00Z",
+  "policyNumber": "INS10001",
+  "customerId": "C10001",
+  "walletAddress": "0xABCD12345",
+  "policyType": "Health",
+  "coverageAmount": 500000,
+  "premium": 2500
+}

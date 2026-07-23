@@ -2,64 +2,68 @@
   "topicPrefix": "gcul",
   "topics": [
     {
-      "suffix": "kyc.user-registered",
-      "description": "New customer account created",
+      "suffix": "customer-events",
+      "description": "CustomerRegistered, CustomerVerified (KYC)",
+      "eventTypes": ["CustomerRegistered", "CustomerVerified"],
       "publishers": ["gcul-kyc"],
-      "subscribers": ["gcul-notification", "gcul-blockchain-orchestrator"]
+      "subscribers": ["gcul-wallet", "gcul-notification", "gcul-audit"]
     },
     {
-      "suffix": "kyc.kyc-submitted",
-      "description": "Customer completed KYC flow",
-      "publishers": ["gcul-kyc"],
-      "subscribers": ["gcul-notification"]
+      "suffix": "wallet-events",
+      "description": "WalletLinked (MetaMask / secure wallet)",
+      "eventTypes": ["WalletLinked"],
+      "publishers": ["gcul-wallet"],
+      "subscribers": ["gcul-policy", "gcul-notification", "gcul-audit"]
     },
     {
-      "suffix": "kyc.kyc-status-changed",
-      "description": "Admin or system updated KYC status",
-      "publishers": ["gcul-kyc"],
-      "subscribers": ["gcul-notification"]
+      "suffix": "payment-events",
+      "description": "PremiumPaid, ClaimPaid",
+      "eventTypes": ["PremiumPaid", "ClaimPaid"],
+      "publishers": ["gcul-payment", "gcul-policy"],
+      "subscribers": ["gcul-policy", "gcul-notification", "gcul-audit"]
     },
     {
-      "suffix": "policy.quote-created",
-      "description": "Quote estimated and stored",
+      "suffix": "policy-events",
+      "description": "PolicyCreated, PolicyMintRequested, PolicyActivated",
+      "eventTypes": ["PolicyCreated", "PolicyMintRequested", "PolicyActivated"],
       "publishers": ["gcul-policy"],
-      "subscribers": ["gcul-notification", "gcul-payment"]
+      "subscribers": ["gcul-blockchain-orchestrator", "gcul-notification", "gcul-audit"]
     },
     {
-      "suffix": "policy.checkout-started",
-      "description": "Stripe checkout session created",
-      "publishers": ["gcul-policy"],
-      "subscribers": ["gcul-payment", "gcul-notification"]
-    },
-    {
-      "suffix": "payment.ledger-recorded",
-      "description": "Payment ledger row created or updated",
-      "publishers": ["gcul-payment"],
-      "subscribers": ["gcul-notification", "gcul-blockchain-orchestrator"]
-    },
-    {
-      "suffix": "claims.claim-filed",
-      "description": "New or updated insurance claim",
-      "publishers": ["gcul-claims"],
-      "subscribers": ["gcul-notification", "gcul-blockchain-orchestrator"]
-    },
-    {
-      "suffix": "parametric.trigger-evaluated",
-      "description": "Parametric rule evaluation result",
-      "publishers": ["gcul-parametric"],
-      "subscribers": ["gcul-claims", "gcul-notification"]
-    },
-    {
-      "suffix": "premium-deposit.movement",
-      "description": "Premium deposit credit/debit",
-      "publishers": ["gcul-premium-deposit"],
-      "subscribers": ["gcul-blockchain-orchestrator"]
-    },
-    {
-      "suffix": "blockchain.transaction-recorded",
-      "description": "On-chain or demo ledger write",
+      "suffix": "blockchain-events",
+      "description": "PolicyMinted (on-chain token id link)",
+      "eventTypes": ["PolicyMinted"],
       "publishers": ["gcul-blockchain-orchestrator"],
-      "subscribers": ["gcul-notification"]
+      "subscribers": ["gcul-policy", "gcul-notification", "gcul-audit"]
+    },
+    {
+      "suffix": "claim-events",
+      "description": "ClaimRequested, ClaimValidated, ClaimApproved",
+      "eventTypes": ["ClaimRequested", "ClaimValidated", "ClaimApproved"],
+      "publishers": ["gcul-claims"],
+      "subscribers": ["gcul-parametric", "gcul-payment", "gcul-notification", "gcul-audit"]
+    },
+    {
+      "suffix": "notification-events",
+      "description": "Email/SMS/push dispatched",
+      "eventTypes": ["NotificationSent"],
+      "publishers": ["gcul-notification"],
+      "subscribers": ["gcul-audit"]
+    },
+    {
+      "suffix": "audit-events",
+      "description": "Cross-cutting audit copies (optional fan-in)",
+      "eventTypes": ["AuditRecord"],
+      "publishers": [
+        "gcul-kyc",
+        "gcul-wallet",
+        "gcul-payment",
+        "gcul-policy",
+        "gcul-blockchain-orchestrator",
+        "gcul-claims",
+        "gcul-notification"
+      ],
+      "subscribers": ["gcul-audit"]
     }
   ]
 }

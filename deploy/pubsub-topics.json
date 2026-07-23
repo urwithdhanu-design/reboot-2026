@@ -1,0 +1,15 @@
+﻿{
+    "runServiceAccount":  "573487116918-compute@developer.gserviceaccount.com",
+    "topics":  [
+                   "gcul.customer-events",
+                   "gcul.wallet-events",
+                   "gcul.payment-events",
+                   "gcul.policy-events",
+                   "gcul.blockchain-events",
+                   "gcul.claim-events",
+                   "gcul.notification-events",
+                   "gcul.audit-events"
+               ],
+    "topicPrefix":  "gcul",
+    "projectId":  "community-hub-6fb1b"
+}

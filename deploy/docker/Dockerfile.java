@@ -3,10 +3,13 @@ ARG SERVICE_DIR
 FROM eclipse-temurin:17-jdk-alpine AS build
 ARG SERVICE_DIR
 WORKDIR /build
+COPY apps/libs/gcul-messaging/pom.xml ./gcul-messaging/pom.xml
+COPY apps/libs/gcul-messaging/src ./gcul-messaging/src
 COPY ${SERVICE_DIR}/mvnw ./mvnw
 COPY ${SERVICE_DIR}/.mvn ./.mvn
+RUN chmod +x mvnw && ./mvnw -q -f gcul-messaging/pom.xml install -DskipTests
 COPY ${SERVICE_DIR}/pom.xml ./pom.xml
-RUN chmod +x mvnw && ./mvnw -q dependency:go-offline -DskipTests
+RUN ./mvnw -q dependency:go-offline -DskipTests
 COPY ${SERVICE_DIR}/src ./src
 RUN ./mvnw -q -DskipTests package
 

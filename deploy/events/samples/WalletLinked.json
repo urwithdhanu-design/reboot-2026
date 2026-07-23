@@ -1,0 +1,9 @@
+{
+  "eventId": "evt-2001",
+  "eventType": "WalletLinked",
+  "timestamp": "2026-07-18T12:00:00Z",
+  "customerId": "C10001",
+  "walletAddress": "0xABCD12345",
+  "network": "Ethereum Sepolia",
+  "status": "SUCCESS"
+}

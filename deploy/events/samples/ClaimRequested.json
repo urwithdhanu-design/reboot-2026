@@ -1,0 +1,8 @@
+{
+  "eventId": "evt-6001",
+  "eventType": "ClaimRequested",
+  "timestamp": "2026-07-19T09:00:00Z",
+  "claimNumber": "CLM1001",
+  "policyNumber": "INS10001",
+  "claimAmount": 100000
+}

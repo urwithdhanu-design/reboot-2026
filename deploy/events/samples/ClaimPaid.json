@@ -1,0 +1,8 @@
+{
+  "eventId": "evt-3002",
+  "eventType": "ClaimPaid",
+  "timestamp": "2026-07-19T12:00:00Z",
+  "claimNumber": "CLM1001",
+  "transactionId": "TXN987654",
+  "amount": 95000
+}

@@ -1,0 +1,11 @@
+{
+  "eventId": "evt-5001",
+  "eventType": "PolicyMinted",
+  "timestamp": "2026-07-18T14:05:00Z",
+  "policyNumber": "INS10001",
+  "tokenId": "101",
+  "walletAddress": "0xABCD12345",
+  "contractAddress": "0x987654",
+  "transactionHash": "0xABC123",
+  "blockNumber": 8452345
+}

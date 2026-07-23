@@ -1,0 +1,7 @@
+{
+  "eventId": "evt-6003",
+  "eventType": "ClaimApproved",
+  "timestamp": "2026-07-19T11:00:00Z",
+  "claimNumber": "CLM1001",
+  "approvedAmount": 95000
+}

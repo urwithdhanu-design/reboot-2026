@@ -11,6 +11,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import com.gcul.kyc.dto.UserMapper;
+import com.gcul.kyc.messaging.CustomerEventPublisher;
 import com.gcul.kyc.model.UserAccount;
 import com.gcul.kyc.repository.UserAccountRepository;
 
@@ -18,9 +19,11 @@ import com.gcul.kyc.repository.UserAccountRepository;
 public class AdminCustomerService {
 
 	private final UserAccountRepository repository;
+	private final CustomerEventPublisher customerEvents;
 
-	public AdminCustomerService(UserAccountRepository repository) {
+	public AdminCustomerService(UserAccountRepository repository, CustomerEventPublisher customerEvents) {
 		this.repository = repository;
+		this.customerEvents = customerEvents;
 	}
 
 	@Transactional(readOnly = true)
@@ -62,6 +65,9 @@ public class AdminCustomerService {
 				.orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Customer not found"));
 		user.setKycStatus(normalized);
 		repository.save(user);
+		if ("verified".equals(normalized)) {
+			customerEvents.customerVerified(user);
+		}
 		return toAdminRow(user);
 	}
 

@@ -2,6 +2,8 @@
 
 Run from repo root: `cd C:\projects\gcul`
 
+| `scripts\install-gcul-messaging.cmd` | Install `apps/libs/gcul-messaging` into local Maven (before first Java build) |
+
 ## Local Java APIs
 
 | Script | Purpose |
@@ -9,7 +11,7 @@ Run from repo root: `cd C:\projects\gcul`
 | `scripts\start-local-apis.cmd` | Start all 9 Java microservices (background, logs in `.local-dev\logs\`) |
 | `scripts\start-local-apis.cmd python` | Also chatbot (:8090) + gcul-sidecar (:8091) |
 | `scripts\status-local-apis.cmd` | Ports up/down + H2 vs Cloud SQL from `/health` |
-| `scripts\stop-local-apis.cmd` | Stop services on ports 8081-8089 |
+| `scripts\stop-local-apis.cmd` | Stop services on ports 8081-8089, 8092 |
 | `scripts\stop-local-apis.cmd python` | Also stop 8090-8091 |
 
 ## Local vs Cloud Run (customer + admin UI)

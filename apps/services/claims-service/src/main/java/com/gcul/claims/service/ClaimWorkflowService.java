@@ -13,6 +13,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
 import com.gcul.claims.model.InsuranceClaim;
+import com.gcul.claims.messaging.ClaimEventPublisher;
 import com.gcul.claims.repository.ClaimRepository;
 
 @Service
@@ -22,9 +23,11 @@ public class ClaimWorkflowService {
 			"submitted", "in_review", "approved", "rejected", "paid");
 
 	private final ClaimRepository repo;
+	private final ClaimEventPublisher claimEvents;
 
-	public ClaimWorkflowService(ClaimRepository repo) {
+	public ClaimWorkflowService(ClaimRepository repo, ClaimEventPublisher claimEvents) {
 		this.repo = repo;
+		this.claimEvents = claimEvents;
 	}
 
 	public Map<String, Object> create(Map<String, Object> body) {
@@ -43,7 +46,9 @@ public class ClaimWorkflowService {
 		claim.setStatus("submitted");
 		claim.setCreatedAt(Instant.now());
 		claim.setUpdatedAt(Instant.now());
-		return toMap(repo.save(claim));
+		InsuranceClaim saved = repo.save(claim);
+		claimEvents.claimRequested(saved);
+		return toMap(saved);
 	}
 
 	public List<Map<String, Object>> list(String status) {
@@ -65,7 +70,11 @@ public class ClaimWorkflowService {
 		InsuranceClaim claim = find(id);
 		claim.setStatus(status);
 		claim.setUpdatedAt(Instant.now());
-		return toMap(repo.save(claim));
+		InsuranceClaim saved = repo.save(claim);
+		if ("approved".equals(status)) {
+			claimEvents.claimApproved(saved);
+		}
+		return toMap(saved);
 	}
 
 	private InsuranceClaim find(String id) {

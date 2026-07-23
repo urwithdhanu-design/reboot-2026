@@ -1,0 +1,11 @@
+{
+  "eventId": "evt-1001",
+  "eventType": "CustomerRegistered",
+  "timestamp": "2026-07-18T10:00:00Z",
+  "customerId": "C10001",
+  "firstName": "John",
+  "lastName": "Doe",
+  "email": "john@email.com",
+  "mobile": "9876543210",
+  "status": "REGISTERED"
+}

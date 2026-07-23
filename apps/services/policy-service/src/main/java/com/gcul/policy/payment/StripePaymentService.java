@@ -10,6 +10,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
+import com.gcul.messaging.EventTopics;
+import com.gcul.messaging.GculEventPublisher;
 import com.gcul.policy.config.StripeProperties;
 import com.gcul.policy.mail.MailService;
 import com.gcul.policy.quote.QuoteService;
@@ -26,12 +28,19 @@ public class StripePaymentService {
 	private final StripeProperties properties;
 	private final QuoteService quotes;
 	private final MailService mail;
+	private final GculEventPublisher eventPublisher;
 	private final Set<String> paymentEmailsSent = ConcurrentHashMap.newKeySet();
+	private final Set<String> premiumPaidPublished = ConcurrentHashMap.newKeySet();
 
-	public StripePaymentService(StripeProperties properties, QuoteService quotes, MailService mail) {
+	public StripePaymentService(
+			StripeProperties properties,
+			QuoteService quotes,
+			MailService mail,
+			GculEventPublisher eventPublisher) {
 		this.properties = properties;
 		this.quotes = quotes;
 		this.mail = mail;
+		this.eventPublisher = eventPublisher;
 	}
 
 	@PostConstruct
@@ -121,6 +130,9 @@ public class StripePaymentService {
 			if (paid && paymentEmailsSent.add(sessionId)) {
 				notifyPaymentEmail(session, amountTotal);
 			}
+			if (paid && premiumPaidPublished.add(sessionId)) {
+				publishPremiumPaid(session, amountTotal);
+			}
 			return map;
 		}
 		catch (StripeException ex) {
@@ -155,6 +167,19 @@ public class StripePaymentService {
 		catch (Exception ignored) {
 			// Quote may have expired from in-memory store; don't fail payment status
 		}
+	}
+
+	private void publishPremiumPaid(Session session, double amountTotal) {
+		String quoteId = session.getClientReferenceId();
+		Map<String, Object> payload = new LinkedHashMap<>();
+		payload.put("eventType", "PremiumPaid");
+		payload.put("quoteId", quoteId);
+		payload.put("stripeSessionId", session.getId());
+		payload.put("amount", amountTotal);
+		payload.put("currency", session.getCurrency());
+		payload.put("paymentStatus", session.getPaymentStatus());
+		payload.put("customerId", quoteId);
+		eventPublisher.publish(EventTopics.PAYMENT, payload);
 	}
 
 	private void ensureConfigured() {

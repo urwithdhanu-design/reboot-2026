@@ -12,6 +12,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
 import com.gcul.wallet.client.KycStatusClient;
+import com.gcul.wallet.messaging.WalletEventPublisher;
 import com.gcul.wallet.model.CustomerWallet;
 import com.gcul.wallet.repository.CustomerWalletRepository;
 
@@ -20,11 +21,16 @@ public class WalletService {
 
 	private final CustomerWalletRepository repository;
 	private final KycStatusClient kycStatusClient;
+	private final WalletEventPublisher walletEvents;
 	private final SecureRandom random = new SecureRandom();
 
-	public WalletService(CustomerWalletRepository repository, KycStatusClient kycStatusClient) {
+	public WalletService(
+			CustomerWalletRepository repository,
+			KycStatusClient kycStatusClient,
+			WalletEventPublisher walletEvents) {
 		this.repository = repository;
 		this.kycStatusClient = kycStatusClient;
+		this.walletEvents = walletEvents;
 	}
 
 	public Map<String, Object> getWallet(String userId) {
@@ -64,6 +70,7 @@ public class WalletService {
 		wallet.setMode("demo");
 		wallet.setNote("Demo digital account for policy storage and payouts.");
 		repository.save(wallet);
+		walletEvents.walletLinked(userId, wallet);
 
 		Map<String, Object> response = toResponse(wallet);
 		response.put("ledger", "gcul");

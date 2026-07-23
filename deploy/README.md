@@ -80,6 +80,7 @@ No `VITE_API_BASE` is required in production: APIs are same-origin via Hosting r
 | `deploy/deploy-firebase.ps1` | Build SPAs + deploy Hosting |
 | `deploy/setup-cloud-sql.ps1` | Cloud SQL instance + databases |
 | `deploy/setup-pubsub.ps1` | Pub/Sub topics + IAM |
+| `deploy/setup-pubsub.cmd` | Same (CMD); creates subscriptions by default |
 | `deploy/pubsub.json` | Topic catalog (publishers/subscribers) |
 | `.firebaserc` | Firebase project + hosting targets |
 
@@ -139,12 +140,13 @@ $env:GCUL_USE_CLOUD_SQL = "true"
 
 ## Pub/Sub (event bus)
 
-Topics are defined in **`deploy/pubsub.json`** (e.g. `gcul.kyc.user-registered`, `gcul.policy.quote-created`). **Infra only** until each service publishes/subscribes in code.
+Topics are defined in **`deploy/pubsub.json`** (e.g. `gcul.customer-events`, `gcul.policy-events`). Full event payloads and consumers: **[`docs/EVENT-CATALOG.md`](../docs/EVENT-CATALOG.md)**. Sample JSON: **`deploy/events/samples/`**. **Infra only** until each service publishes/subscribes in code.
 
 ```powershell
 $env:GCP_PROJECT = "community-hub-6fb1b"
-.\deploy\setup-pubsub.ps1              # topics + IAM for Cloud Run SA
-.\deploy\setup-pubsub.ps1 -CreateSubscriptions   # optional pull subs per subscriber
+.\deploy\setup-pubsub.cmd              # topics + subs + IAM (CMD)
+.\deploy\setup-pubsub.ps1 -CreateSubscriptions   # PowerShell equivalent
+.\deploy\setup-pubsub.cmd nosubs       # topics + IAM only
 $env:GCUL_USE_PUBSUB = "true"
 .\deploy\deploy-cloud-run.ps1         # sets GCUL_PUBSUB_ENABLED, GCUL_PUBSUB_PROJECT, GCUL_PUBSUB_TOPIC_PREFIX
 ```

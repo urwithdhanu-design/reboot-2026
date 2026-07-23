@@ -1,0 +1,8 @@
+{
+  "eventId": "evt-6002",
+  "eventType": "ClaimValidated",
+  "timestamp": "2026-07-19T10:00:00Z",
+  "claimNumber": "CLM1001",
+  "fraudScore": 8,
+  "status": "PASSED"
+}

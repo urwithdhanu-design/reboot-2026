@@ -1,0 +1,11 @@
+{
+  "eventId": "evt-3001",
+  "eventType": "PremiumPaid",
+  "timestamp": "2026-07-18T13:00:00Z",
+  "paymentId": "PAY1001",
+  "policyNumber": "INS10001",
+  "customerId": "C10001",
+  "amount": 2500,
+  "currency": "INR",
+  "status": "SUCCESS"
+}

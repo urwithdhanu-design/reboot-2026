@@ -1,0 +1,4 @@
+com\gcul\audit\AuditServiceApplication.class
+com\gcul\audit\web\HealthController.class
+com\gcul\audit\messaging\AuditPubSubBootstrap.class
+com\gcul\audit\messaging\AuditEventHandler.class

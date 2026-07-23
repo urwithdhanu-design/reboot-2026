@@ -14,6 +14,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 import com.gcul.kyc.dto.KycSubmitRequest;
 import com.gcul.kyc.dto.UserMapper;
+import com.gcul.kyc.messaging.CustomerEventPublisher;
 import com.gcul.kyc.model.UserAccount;
 import com.gcul.kyc.store.UserStore;
 
@@ -25,9 +26,11 @@ import jakarta.validation.Valid;
 public class KycController {
 
 	private final UserStore store;
+	private final CustomerEventPublisher customerEvents;
 
-	public KycController(UserStore store) {
+	public KycController(UserStore store, CustomerEventPublisher customerEvents) {
 		this.store = store;
+		this.customerEvents = customerEvents;
 	}
 
 	@PostMapping("/submit")
@@ -48,6 +51,10 @@ public class KycController {
 		user.setKycProgressJson(UserMapper.toJson(progress));
 		user.setKycSubmittedAt(Instant.now().toString());
 		store.save(user);
+
+		if ("verified".equals(status)) {
+			customerEvents.customerVerified(user);
+		}
 
 		return Map.of("status", status, "progress", progress);
 	}
