@@ -62,6 +62,8 @@ public class DataSourceConfig {
 		if (dataSource instanceof HikariDataSource pool) {
 			pool.setMaximumPoolSize(2);
 			pool.setMinimumIdle(0);
+			pool.setConnectionTimeout(30_000);
+			pool.setValidationTimeout(5_000);
 		}
 		return dataSource;
 	}
