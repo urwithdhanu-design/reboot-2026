@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
-import { RefreshCw } from 'lucide-react';
+import { RefreshCw, FileText } from 'lucide-react';
 import { AdminLayout } from '../components/layout/AdminLayout';
-import { Card, PageHeader, DataTable, Badge, Button } from '../components/ui';
+import { PageHeader, ContentPanel, AlertBanner, Badge, Button, PaginatedTable } from '../components/ui';
 import { enrichPoliciesWithPayments, type AdminPolicyRow } from '../api';
 import { formatCacheAge } from '../firestore/adminCache';
 import { cachedAdminApi } from '../firestore/cachedAdminApi';
@@ -61,45 +61,58 @@ export function PoliciesPage() {
   return (
     <AdminLayout>
       <PageHeader
-        title="Policy Management"
-        subtitle="Quotes and bound policies — Firestore cache (10 min) with live refresh"
+        icon={FileText}
+        title="Policy management"
+        subtitle="Quotes, bound policies, and payment status across the marketplace"
+        metrics={[
+          { label: 'Applications', value: policies.length },
+          { label: 'Paid', value: policies.filter((p) => p.payment_status === 'paid').length, tone: 'success' },
+          { label: 'Active', value: policies.filter((p) => p.status === 'active').length, tone: 'success' },
+          { label: 'Pending pay', value: policies.filter((p) => (p.payment_status ?? 'pending') !== 'paid').length, tone: 'warning' },
+        ]}
         actions={
           <div className="flex items-center gap-2">
             {cacheLabel ? (
-              <Badge variant="info">Cached · {cacheLabel}</Badge>
+              <span className="rounded-full bg-white/15 px-3 py-1 text-xs font-semibold text-white ring-1 ring-white/25">
+                Cached · {cacheLabel}
+              </span>
             ) : null}
-            <Button size="sm" variant="outline" onClick={() => load(true)} disabled={loading}>
-              <RefreshCw className={`w-4 h-4 mr-1 ${loading ? 'animate-spin' : ''}`} />
+            <Button size="sm" variant="hero" onClick={() => load(true)} disabled={loading}>
+              <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
               Refresh
             </Button>
-            <Badge variant="info">{policies.length} applications</Badge>
           </div>
         }
       />
 
-      {error ? (
-        <p className="text-sm text-red-600 font-semibold mb-4" role="alert">
-          {error}
-        </p>
-      ) : null}
+      {error ? <AlertBanner>{error}</AlertBanner> : null}
 
-      <Card padding={false}>
+      <ContentPanel title="Quotes & policies" description="All customer applications and bound cover">
         {loading ? (
           <p className="p-6 text-sm text-lbg-gray-500">Loading policies…</p>
         ) : (
-          <DataTable
-            headers={[
-              'Quote / policy',
-              'Customer',
-              'Product',
-              'Category',
-              'Premium',
-              'Payment',
-              'Status',
-              'Created',
+          <PaginatedTable
+            columns={[
+              { key: 'policy_number', label: 'Quote / policy', sortable: true },
+              { key: 'customer_name', label: 'Customer', sortable: true },
+              { key: 'product_title', label: 'Product', sortable: true },
+              { key: 'category', label: 'Category', sortable: true },
+              { key: 'premium', label: 'Premium', sortable: true },
+              { key: 'payment_status', label: 'Payment', sortable: true },
+              { key: 'status', label: 'Status', sortable: true },
+              { key: 'created_at', label: 'Created', sortable: true },
             ]}
-          >
-            {policies.map((p) => (
+            rows={policies}
+            rowKey={(p) => p.id}
+            defaultSortKey="created_at"
+            defaultSortDir="desc"
+            getSortValue={(row, key) => {
+              if (key === 'premium') return Number(row.premium);
+              if (key === 'payment_status') return row.payment_status ?? 'pending';
+              return (row as Record<string, string | number>)[key];
+            }}
+            emptyMessage="No quotes yet. Customer quotes appear here after estimate."
+            renderRow={(p) => (
               <tr key={p.id} className="hover:bg-lbg-gray-50">
                 <td className="py-3 px-4">
                   <p className="font-semibold text-sm">{p.policy_number}</p>
@@ -129,13 +142,10 @@ export function PoliciesPage() {
                 </td>
                 <td className="py-3 px-4 text-lbg-gray-400 text-sm">{formatDate(p.created_at)}</td>
               </tr>
-            ))}
-          </DataTable>
+            )}
+          />
         )}
-        {!loading && policies.length === 0 ? (
-          <p className="p-6 text-sm text-lbg-gray-500">No quotes yet. Customer quotes appear here after estimate.</p>
-        ) : null}
-      </Card>
+      </ContentPanel>
     </AdminLayout>
   );
 }

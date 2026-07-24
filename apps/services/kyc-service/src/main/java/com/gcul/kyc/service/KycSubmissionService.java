@@ -7,6 +7,7 @@ import java.util.Map;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.gcul.kyc.admin.AdminCustomerService;
 import com.gcul.kyc.admin.KycAgentSettingsService;
 import com.gcul.kyc.dto.KycSubmitRequest;
 import com.gcul.kyc.dto.UserMapper;
@@ -21,14 +22,17 @@ public class KycSubmissionService {
 	private final UserStore store;
 	private final KycAgentSettingsService agentSettings;
 	private final CustomerEventPublisher customerEvents;
+	private final AdminCustomerService adminCustomers;
 
 	public KycSubmissionService(
 			UserStore store,
 			KycAgentSettingsService agentSettings,
-			CustomerEventPublisher customerEvents) {
+			CustomerEventPublisher customerEvents,
+			AdminCustomerService adminCustomers) {
 		this.store = store;
 		this.agentSettings = agentSettings;
 		this.customerEvents = customerEvents;
+		this.adminCustomers = adminCustomers;
 	}
 
 	@Transactional
@@ -53,6 +57,7 @@ public class KycSubmissionService {
 		if (autoApprove) {
 			customerEvents.customerVerified(user);
 		}
+		adminCustomers.refreshAdminViewCaches();
 
 		Map<String, Object> response = new LinkedHashMap<>();
 		response.put("status", status);

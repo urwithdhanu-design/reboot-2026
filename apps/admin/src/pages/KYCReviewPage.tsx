@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Check, X, Eye, FileText, RefreshCw, Bot } from 'lucide-react';
+import { Check, X, Eye, FileText, RefreshCw, Bot, ShieldCheck } from 'lucide-react';
 import { AdminLayout } from '../components/layout/AdminLayout';
-import { Card, PageHeader, Badge, Button } from '../components/ui';
+import { Card, PageHeader, FilterTabs, AlertBanner, Badge, Button, TablePagination, usePaginatedList } from '../components/ui';
 import { adminApi, type KycQueueItem } from '../api';
 import { formatCacheAge } from '../firestore/adminCache';
 import { cachedAdminApi } from '../firestore/cachedAdminApi';
@@ -38,7 +38,6 @@ function approvalBadgeVariant(
 
 export function KYCReviewPage() {
   const [queue, setQueue] = useState<KycQueueItem[]>([]);
-  const [pendingCount, setPendingCount] = useState(0);
   const [selected, setSelected] = useState<string | undefined>();
   const [filter, setFilter] = useState<Filter>('all');
   const [error, setError] = useState<string | null>(null);
@@ -55,7 +54,6 @@ export function KYCReviewPage() {
       .listKycQueue(force)
       .then((res) => {
         setQueue(res.data.queue);
-        setPendingCount(res.data.pending_count ?? 0);
         setFromCache(res.fromCache);
         setCachedAt(res.cachedAt);
         setSelected((prev) => {
@@ -88,6 +86,12 @@ export function KYCReviewPage() {
     if (filter === 'verified') return queue.filter((k) => k.status === 'verified');
     return queue.filter((k) => k.status === 'rejected');
   }, [queue, filter]);
+
+  const kycList = usePaginatedList(filtered, {
+    defaultSortKey: 'submitted_at',
+    defaultSortDir: 'desc',
+    pageSize: 8,
+  });
 
   const item = queue.find((k) => k.id === selected);
   const isPending = item?.status === 'in_progress';
@@ -124,16 +128,25 @@ export function KYCReviewPage() {
   return (
     <AdminLayout>
       <PageHeader
-        title="KYC Review"
-        subtitle="All KYC submissions — Firestore cache (10 min) with live refresh"
+        icon={ShieldCheck}
+        title="KYC review"
+        subtitle="Identity verification queue — auto-approve agent or manual adjudication"
+        metrics={[
+          { label: 'Submissions', value: queue.length },
+          { label: 'Pending', value: queue.filter((k) => k.status === 'in_progress').length, tone: 'warning' },
+          { label: 'Verified', value: queue.filter((k) => k.status === 'verified').length, tone: 'success' },
+          { label: 'Rejected', value: queue.filter((k) => k.status === 'rejected').length, tone: 'danger' },
+        ]}
         actions={
           <div className="flex items-center gap-2 flex-wrap justify-end">
             {cacheLabel ? (
-              <Badge variant="info">Cached · {cacheLabel}</Badge>
+              <span className="rounded-full bg-white/15 px-3 py-1 text-xs font-semibold text-white ring-1 ring-white/25">
+                Cached · {cacheLabel}
+              </span>
             ) : null}
-            <label className="flex items-center gap-2 text-sm font-medium text-lbg-gray-700 bg-white border border-lbg-gray-200 rounded-lg px-3 py-1.5 cursor-pointer">
-              <Bot className="w-4 h-4 text-lbg-green" aria-hidden />
-              <span>Auto-approve agent</span>
+            <label className="flex items-center gap-2 text-sm font-medium text-white/90 bg-white/10 border border-white/25 rounded-lg px-3 py-1.5 cursor-pointer backdrop-blur-sm">
+              <Bot className="w-4 h-4" aria-hidden />
+              <span>Auto-approve</span>
               <button
                 type="button"
                 role="switch"
@@ -141,24 +154,20 @@ export function KYCReviewPage() {
                 disabled={settingsBusy}
                 onClick={() => void toggleAutoApprove()}
                 className={`relative inline-flex h-6 w-11 shrink-0 rounded-full border-2 border-transparent transition-colors ${
-                  autoApprove ? 'bg-lbg-green' : 'bg-lbg-gray-300'
+                  autoApprove ? 'bg-white' : 'bg-white/30'
                 } ${settingsBusy ? 'opacity-60' : ''}`}
               >
                 <span
-                  className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow transition ${
-                    autoApprove ? 'translate-x-5' : 'translate-x-0'
+                  className={`pointer-events-none inline-block h-5 w-5 transform rounded-full shadow transition ${
+                    autoApprove ? 'translate-x-5 bg-lbg-green' : 'translate-x-0 bg-white'
                   }`}
                 />
               </button>
             </label>
-            <Button size="sm" variant="outline" onClick={() => load(true)} disabled={loading}>
-              <RefreshCw className={`w-4 h-4 mr-1 ${loading ? 'animate-spin' : ''}`} />
+            <Button size="sm" variant="hero" onClick={() => load(true)} disabled={loading}>
+              <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
               Refresh
             </Button>
-            <Badge variant={autoApprove ? 'success' : 'warning'}>
-              {autoApprove ? 'Agent ON' : 'Agent OFF'}
-              {pendingCount > 0 ? ` · ${pendingCount} pending` : ''}
-            </Badge>
           </div>
         }
       />
@@ -179,31 +188,18 @@ export function KYCReviewPage() {
         </Card>
       )}
 
-      {error ? (
-        <p className="text-sm text-red-600 font-semibold mb-4" role="alert">
-          {error}
-        </p>
-      ) : null}
+      {error ? <AlertBanner>{error}</AlertBanner> : null}
 
-      <div className="flex flex-wrap gap-2 mb-4">
-        {(
-          [
-            ['all', `All (${queue.length})`],
-            ['pending', `Pending (${queue.filter((k) => k.status === 'in_progress').length})`],
-            ['verified', `Approved (${queue.filter((k) => k.status === 'verified').length})`],
-            ['rejected', `Rejected (${queue.filter((k) => k.status === 'rejected').length})`],
-          ] as const
-        ).map(([key, label]) => (
-          <Button
-            key={key}
-            size="sm"
-            variant={filter === key ? 'primary' : 'ghost'}
-            onClick={() => setFilter(key)}
-          >
-            {label}
-          </Button>
-        ))}
-      </div>
+      <FilterTabs
+        value={filter}
+        onChange={setFilter}
+        options={[
+          { value: 'all', label: `All (${queue.length})` },
+          { value: 'pending', label: `Pending (${queue.filter((k) => k.status === 'in_progress').length})` },
+          { value: 'verified', label: `Approved (${queue.filter((k) => k.status === 'verified').length})` },
+          { value: 'rejected', label: `Rejected (${queue.filter((k) => k.status === 'rejected').length})` },
+        ]}
+      />
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-1 space-y-2">
@@ -217,7 +213,28 @@ export function KYCReviewPage() {
               <p className="text-sm text-lbg-gray-500">No KYC records in this view.</p>
             </Card>
           ) : null}
-          {filtered.map((k) => (
+          {!loading && filtered.length > 0 ? (
+            <div className="flex items-center justify-between gap-2 px-1">
+              <label className="text-xs text-lbg-gray-500 flex items-center gap-2">
+                Sort
+                <select
+                  value={`${kycList.sortKey}:${kycList.sortDir}`}
+                  onChange={(e) => {
+                    const [key, dir] = e.target.value.split(':') as [string, 'asc' | 'desc'];
+                    kycList.setSort(key, dir);
+                  }}
+                  className="rounded-lg border border-lbg-gray-200 bg-white px-2 py-1 text-xs font-medium"
+                >
+                  <option value="submitted_at:desc">Newest first</option>
+                  <option value="submitted_at:asc">Oldest first</option>
+                  <option value="customer_name:asc">Name A–Z</option>
+                  <option value="customer_name:desc">Name Z–A</option>
+                  <option value="status:asc">Status</option>
+                </select>
+              </label>
+            </div>
+          ) : null}
+          {kycList.pageItems.map((k) => (
             <Card
               key={k.id}
               className={`cursor-pointer transition-colors ${selected === k.id ? 'border-lbg-green ring-1 ring-lbg-green/20' : 'hover:border-lbg-gray-200'}`}
@@ -233,6 +250,17 @@ export function KYCReviewPage() {
               </button>
             </Card>
           ))}
+          {!loading && filtered.length > 0 ? (
+            <TablePagination
+              page={kycList.page}
+              pageSize={kycList.pageSize}
+              totalItems={kycList.totalItems}
+              totalPages={kycList.totalPages}
+              onPageChange={kycList.setPage}
+              onPageSizeChange={kycList.setPageSize}
+              pageSizeOptions={[8, 16, 32]}
+            />
+          ) : null}
         </div>
 
         {item && (

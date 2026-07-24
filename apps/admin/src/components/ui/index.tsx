@@ -1,7 +1,7 @@
 import { type ReactNode, type ButtonHTMLAttributes } from 'react';
 
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
-  variant?: 'primary' | 'secondary' | 'outline' | 'ghost' | 'danger';
+  variant?: 'primary' | 'secondary' | 'outline' | 'ghost' | 'danger' | 'hero';
   size?: 'sm' | 'md' | 'lg';
 }
 
@@ -9,6 +9,7 @@ const variants = {
   primary: 'bg-lbg-green text-white hover:bg-lbg-green-dark shadow-sm',
   secondary: 'bg-lbg-black text-white hover:bg-lbg-gray-600',
   outline: 'border border-lbg-gray-200 text-lbg-gray-600 hover:border-lbg-green hover:text-lbg-green bg-white',
+  hero: 'border border-white/40 text-white bg-white/10 hover:bg-white/20 backdrop-blur-sm',
   ghost: 'text-lbg-gray-600 hover:bg-lbg-gray-100',
   danger: 'bg-red-600 text-white hover:bg-red-700',
 };
@@ -25,7 +26,7 @@ export function Button({ variant = 'primary', size = 'md', className = '', child
 
 export function Card({ children, className = '', padding = true }: { children: ReactNode; className?: string; padding?: boolean }) {
   return (
-    <div className={`bg-white rounded-xl border border-lbg-gray-100 shadow-sm ${padding ? 'p-5' : ''} ${className}`}>
+    <div className={`bg-white rounded-xl border border-lbg-gray-100 shadow-sm ring-1 ring-black/[0.02] ${padding ? 'p-5' : ''} ${className}`}>
       {children}
     </div>
   );
@@ -43,17 +44,8 @@ export function Badge({ children, variant = 'neutral' }: { children: ReactNode; 
   return <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold ${styles[variant]}`}>{children}</span>;
 }
 
-export function PageHeader({ title, subtitle, actions }: { title: string; subtitle?: string; actions?: ReactNode }) {
-  return (
-    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
-      <div>
-        <h1 className="text-2xl font-bold text-lbg-black">{title}</h1>
-        {subtitle && <p className="text-sm text-lbg-gray-400 mt-1">{subtitle}</p>}
-      </div>
-      {actions && <div className="flex items-center gap-2 flex-wrap">{actions}</div>}
-    </div>
-  );
-}
+export { PageHeader, FilterTabs, ContentPanel, AlertBanner } from './PageHeader';
+export type { PageMetric } from './PageHeader';
 
 export function StatCard({ label, value, change, icon: Icon, trend }: {
   label: string; value: string; change?: string; icon: React.ComponentType<{ className?: string }>; trend?: 'up' | 'down' | 'neutral';
@@ -106,3 +98,6 @@ export function SearchInput({ placeholder = 'Search...', value, onChange }: { pl
     />
   );
 }
+
+export { PaginatedTable, TablePagination, usePaginatedList } from './PaginatedTable';
+export type { DataTableColumn } from './PaginatedTable';

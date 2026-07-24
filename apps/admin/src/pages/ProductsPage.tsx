@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useState } from 'react';
 import { AdminLayout } from '../components/layout/AdminLayout';
-import { Card, PageHeader, Badge, Button } from '../components/ui';
+import { Card, PageHeader, ContentPanel, AlertBanner, Badge, Button, TablePagination, usePaginatedList } from '../components/ui';
 import { adminApi, type AdminProduct } from '../api';
-import { RefreshCw, Pencil } from 'lucide-react';
+import { RefreshCw, Pencil, Package } from 'lucide-react';
 
 const CATEGORIES = ['Health', 'Vehicle', 'Pet', 'Property', 'Life', 'Travel'];
 
@@ -34,6 +34,18 @@ export function ProductsPage() {
   useEffect(() => {
     load();
   }, [load]);
+
+  const productList = usePaginatedList(products, {
+    defaultSortKey: 'title',
+    defaultSortDir: 'asc',
+    pageSize: 9,
+    getSortValue: (row, key) => {
+      if (key === 'price_from') return row.price_from;
+      if (key === 'rating') return row.rating;
+      if (key === 'review_count') return row.review_count;
+      return (row as unknown as Record<string, string | number | boolean>)[key] as string | number;
+    },
+  });
 
   const openEdit = (product: AdminProduct) => {
     setEditing(product);
@@ -84,33 +96,57 @@ export function ProductsPage() {
   return (
     <AdminLayout>
       <PageHeader
-        title="Insurance Products"
-        subtitle="Same catalogue as customer marketplace — edits sync to Cloud SQL and Firestore"
+        icon={Package}
+        title="Insurance products"
+        subtitle="Marketplace catalogue — edits sync to Cloud SQL and Firestore"
+        metrics={[
+          { label: 'Products', value: products.length },
+          { label: 'Best sellers', value: products.filter((p) => p.best_seller).length, tone: 'success' },
+          { label: 'Categories', value: new Set(products.map((p) => p.category)).size },
+        ]}
         actions={
           <div className="flex gap-2">
-            <Button size="sm" variant="outline" onClick={() => load()} disabled={loading}>
-              <RefreshCw className={`w-4 h-4 mr-1 ${loading ? 'animate-spin' : ''}`} />
+            <Button size="sm" variant="hero" onClick={() => load()} disabled={loading}>
+              <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
               Refresh
             </Button>
-            <Button size="sm" variant="outline" onClick={() => void syncFirestore()} disabled={syncing}>
+            <Button size="sm" variant="hero" onClick={() => void syncFirestore()} disabled={syncing}>
               {syncing ? 'Syncing…' : 'Sync Firestore'}
             </Button>
           </div>
         }
       />
 
-      {error ? (
-        <p className="text-sm text-red-600 font-semibold mb-4" role="alert">
-          {error}
-        </p>
-      ) : null}
+      {error ? <AlertBanner>{error}</AlertBanner> : null}
 
       {loading && products.length === 0 ? (
         <p className="text-sm text-lbg-gray-500">Loading products…</p>
       ) : null}
 
+      <ContentPanel title="Product catalogue" description="Customer-facing marketplace cards" padding>
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+          <label className="text-sm text-lbg-gray-600 flex items-center gap-2">
+            Sort by
+            <select
+              value={`${productList.sortKey}:${productList.sortDir}`}
+              onChange={(e) => {
+                const [key, dir] = e.target.value.split(':') as [string, 'asc' | 'desc'];
+                productList.setSort(key, dir);
+              }}
+              className="rounded-lg border border-lbg-gray-200 bg-white px-3 py-1.5 text-sm font-medium"
+            >
+              <option value="title:asc">Title A–Z</option>
+              <option value="title:desc">Title Z–A</option>
+              <option value="category:asc">Category</option>
+              <option value="price_from:asc">Price low–high</option>
+              <option value="price_from:desc">Price high–low</option>
+              <option value="rating:desc">Rating</option>
+            </select>
+          </label>
+        </div>
+
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-        {products.map((p) => (
+        {productList.pageItems.map((p) => (
           <Card key={p.id}>
             <div className="flex items-start justify-between mb-3">
               <div>
@@ -142,6 +178,19 @@ export function ProductsPage() {
           </Card>
         ))}
       </div>
+
+      {products.length > 0 ? (
+          <TablePagination
+            page={productList.page}
+            pageSize={productList.pageSize}
+            totalItems={productList.totalItems}
+            totalPages={productList.totalPages}
+            onPageChange={productList.setPage}
+            onPageSizeChange={productList.setPageSize}
+            pageSizeOptions={[9, 18, 36]}
+          />
+      ) : null}
+      </ContentPanel>
 
       {editing ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">

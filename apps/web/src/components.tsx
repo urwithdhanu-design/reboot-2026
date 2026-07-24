@@ -19,6 +19,17 @@ export function StepHeader({ title }: { title: string }) {
   );
 }
 
+export {
+  CustomerPageHeader,
+  CustomerTabs,
+  CustomerPanel,
+  HeaderIconHome,
+  HeaderIconPolicies,
+  HeaderIconClaims,
+  HeaderIconWallet,
+  HeaderIconProfile,
+} from "./components/CustomerPageHeader";
+
 export function AssistantBar({ screen }: { screen: string }) {
   const [message, setMessage] = useState("Loading…");
   const chatbot = useChatbotOptional();
@@ -84,16 +95,16 @@ export function BottomNav({ active = "home" }: { active?: string }) {
     { id: "profile", label: "Profile" },
   ];
   return (
-    <nav className="bottom-nav" aria-label="Primary">
+    <nav className="bottom-nav customer-bottom-nav" aria-label="Primary">
       {items.map((item) => (
         <button
           key={item.id}
           type="button"
-          className={`nav-item${active === item.id ? " active" : ""}`}
+          className={`nav-item customer-nav-item${active === item.id ? " active" : ""}`}
           aria-current={active === item.id ? "page" : undefined}
           onClick={() => navigate(NAV_ROUTES[item.id])}
         >
-          <span aria-hidden>
+          <span className="customer-nav-icon" aria-hidden>
             <NavGlyph id={item.id} />
           </span>
           {item.label}

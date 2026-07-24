@@ -1,7 +1,15 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { RefreshCw } from 'lucide-react';
+import { ClipboardList, RefreshCw } from 'lucide-react';
 import { AdminLayout } from '../components/layout/AdminLayout';
-import { Card, PageHeader, DataTable, Badge, Button } from '../components/ui';
+import {
+  PageHeader,
+  FilterTabs,
+  ContentPanel,
+  AlertBanner,
+  Badge,
+  Button,
+  PaginatedTable,
+} from '../components/ui';
 import { adminApi, type AdminClaimRow } from '../api';
 
 type Filter = 'all' | 'open' | 'approved' | 'rejected';
@@ -68,6 +76,11 @@ export function ClaimsPage() {
     () => claims.filter((c) => c.status === 'approved' || c.status === 'paid').length,
     [claims],
   );
+  const rejectedCount = useMemo(() => claims.filter((c) => c.status === 'rejected').length, [claims]);
+  const totalClaimed = useMemo(
+    () => claims.reduce((sum, c) => sum + Number(c.amount_claimed || 0), 0),
+    [claims],
+  );
 
   async function setStatus(claim: AdminClaimRow, status: string) {
     setBusyId(claim.id);
@@ -85,104 +98,95 @@ export function ClaimsPage() {
   return (
     <AdminLayout>
       <PageHeader
-        title="Claims Processing"
-        subtitle="Live claims from the claims service — submitted, reviewed, and adjudicated"
+        icon={ClipboardList}
+        title="Claims processing"
+        subtitle="Review, adjudicate, and track customer claims from first notice through settlement."
+        metrics={[
+          { label: 'Total claims', value: claims.length },
+          { label: 'Open', value: openCount, tone: 'warning' },
+          { label: 'Approved / paid', value: approvedCount, tone: 'success' },
+          { label: 'Value claimed', value: formatGBP(totalClaimed) },
+        ]}
         actions={
-          <div className="flex items-center gap-2 flex-wrap justify-end">
-            <Button size="sm" variant="outline" onClick={load} disabled={loading}>
-              <RefreshCw className={`w-4 h-4 mr-1 ${loading ? 'animate-spin' : ''}`} />
-              Refresh
-            </Button>
-            <Badge variant="info">{claims.length} total</Badge>
-          </div>
+          <Button size="sm" variant="hero" onClick={load} disabled={loading}>
+            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+            Refresh
+          </Button>
         }
       />
 
-      {error ? (
-        <p className="text-sm text-red-600 font-semibold mb-4" role="alert">
-          {error}
-        </p>
-      ) : null}
+      {error ? <AlertBanner>{error}</AlertBanner> : null}
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-        <Card>
-          <p className="text-xs text-lbg-gray-400 uppercase font-medium">Total claims</p>
-          <p className="text-2xl font-bold mt-1">{claims.length}</p>
-        </Card>
-        <Card>
-          <p className="text-xs text-lbg-gray-400 uppercase font-medium">Open</p>
-          <p className="text-2xl font-bold text-amber-600 mt-1">{openCount}</p>
-        </Card>
-        <Card>
-          <p className="text-xs text-lbg-gray-400 uppercase font-medium">Approved / paid</p>
-          <p className="text-2xl font-bold text-lbg-green mt-1">{approvedCount}</p>
-        </Card>
-      </div>
+      <FilterTabs
+        value={filter}
+        onChange={setFilter}
+        options={[
+          { value: 'all', label: `All (${claims.length})` },
+          { value: 'open', label: `Open (${openCount})` },
+          { value: 'approved', label: `Approved (${approvedCount})` },
+          { value: 'rejected', label: `Rejected (${rejectedCount})` },
+        ]}
+      />
 
-      <div className="flex flex-wrap gap-2 mb-4">
-        {(
-          [
-            ['all', `All (${claims.length})`],
-            ['open', `Open (${openCount})`],
-            ['approved', `Approved (${approvedCount})`],
-            ['rejected', `Rejected (${claims.filter((c) => c.status === 'rejected').length})`],
-          ] as const
-        ).map(([key, label]) => (
-          <Button
-            key={key}
-            size="sm"
-            variant={filter === key ? 'primary' : 'ghost'}
-            onClick={() => setFilter(key)}
-          >
-            {label}
-          </Button>
-        ))}
-      </div>
-
-      <Card padding={false}>
+      <ContentPanel
+        title="Claims register"
+        description="Sorted by submission date · use column headers to re-sort"
+      >
         {loading ? (
-          <p className="p-6 text-sm text-lbg-gray-500">Loading claims…</p>
+          <p className="p-8 text-center text-sm text-lbg-gray-500">Loading claims…</p>
         ) : filtered.length === 0 ? (
-          <p className="p-6 text-sm text-lbg-gray-500">
-            No claims in this view. Customer claims appear here after submission from the app.
-          </p>
+          <div className="px-6 py-12 text-center">
+            <p className="text-sm font-semibold text-lbg-black">No claims in this view</p>
+            <p className="mt-1 text-sm text-lbg-gray-400">
+              Customer claims appear here after submission from the app.
+            </p>
+          </div>
         ) : (
-          <DataTable
-            headers={[
-              'Claim ID',
-              'Customer',
-              'Policy',
-              'Category',
-              'Amount',
-              'Status',
-              'Source',
-              'Description',
-              'Submitted',
-              'Actions',
+          <PaginatedTable
+            columns={[
+              { key: 'id', label: 'Claim ID', sortable: true },
+              { key: 'customer_name', label: 'Customer', sortable: true },
+              { key: 'policy_ref', label: 'Policy', sortable: true },
+              { key: 'category', label: 'Category', sortable: true },
+              { key: 'amount_claimed', label: 'Amount', sortable: true },
+              { key: 'status', label: 'Status', sortable: true },
+              { key: 'source', label: 'Source', sortable: true },
+              { key: 'description', label: 'Description', sortable: true },
+              { key: 'created_at', label: 'Submitted', sortable: true },
+              { key: '_actions', label: 'Actions', sortable: false },
             ]}
-          >
-            {filtered.map((c) => (
-              <tr key={c.id} className="hover:bg-lbg-gray-50">
-                <td className="py-3 px-4 font-mono text-sm">{c.id}</td>
-                <td className="py-3 px-4 font-semibold">{c.customer_name}</td>
-                <td className="py-3 px-4 font-mono text-xs">{c.policy_ref}</td>
-                <td className="py-3 px-4">
+            rows={filtered}
+            rowKey={(c) => c.id}
+            defaultSortKey="created_at"
+            defaultSortDir="desc"
+            getSortValue={(row, key) => {
+              if (key === 'amount_claimed') return Number(row.amount_claimed);
+              if (key === '_actions') return '';
+              return (row as Record<string, string | number>)[key];
+            }}
+            emptyMessage="No claims in this view."
+            renderRow={(c) => (
+              <tr key={c.id} className="hover:bg-lbg-green-light/30 transition-colors">
+                <td className="py-3.5 px-4 font-mono text-sm font-semibold text-lbg-green-dark">{c.id}</td>
+                <td className="py-3.5 px-4 font-semibold text-lbg-black">{c.customer_name}</td>
+                <td className="py-3.5 px-4 font-mono text-xs text-lbg-gray-500">{c.policy_ref}</td>
+                <td className="py-3.5 px-4">
                   <Badge variant="info">{c.category}</Badge>
                 </td>
-                <td className="py-3 px-4 font-bold">{formatGBP(Number(c.amount_claimed))}</td>
-                <td className="py-3 px-4">
+                <td className="py-3.5 px-4 font-bold text-lbg-black">{formatGBP(Number(c.amount_claimed))}</td>
+                <td className="py-3.5 px-4">
                   <Badge variant={statusBadge[c.status] ?? 'neutral'}>
                     {c.status.replace(/_/g, ' ')}
                   </Badge>
                 </td>
-                <td className="py-3 px-4 text-sm text-lbg-gray-500">{c.source ?? '—'}</td>
-                <td className="py-3 px-4 text-sm text-lbg-gray-500 max-w-[200px] truncate">
+                <td className="py-3.5 px-4 text-sm text-lbg-gray-500">{c.source ?? '—'}</td>
+                <td className="py-3.5 px-4 text-sm text-lbg-gray-500 max-w-[200px] truncate" title={c.description}>
                   {c.description || '—'}
                 </td>
-                <td className="py-3 px-4 text-lbg-gray-400 text-sm">{formatDate(c.created_at)}</td>
-                <td className="py-3 px-4">
+                <td className="py-3.5 px-4 text-sm text-lbg-gray-400 whitespace-nowrap">{formatDate(c.created_at)}</td>
+                <td className="py-3.5 px-4">
                   {isOpen(c.status) ? (
-                    <div className="flex gap-1 flex-wrap">
+                    <div className="flex gap-1.5 flex-wrap">
                       {c.status === 'submitted' ? (
                         <Button
                           size="sm"
@@ -193,11 +197,7 @@ export function ClaimsPage() {
                           Review
                         </Button>
                       ) : null}
-                      <Button
-                        size="sm"
-                        disabled={busyId === c.id}
-                        onClick={() => void setStatus(c, 'approved')}
-                      >
+                      <Button size="sm" disabled={busyId === c.id} onClick={() => void setStatus(c, 'approved')}>
                         Approve
                       </Button>
                       <Button
@@ -210,14 +210,14 @@ export function ClaimsPage() {
                       </Button>
                     </div>
                   ) : (
-                    <span className="text-xs text-lbg-gray-400">—</span>
+                    <span className="text-xs text-lbg-gray-400">Complete</span>
                   )}
                 </td>
               </tr>
-            ))}
-          </DataTable>
+            )}
+          />
         )}
-      </Card>
+      </ContentPanel>
     </AdminLayout>
   );
 }

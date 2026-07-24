@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { RefreshCw } from 'lucide-react';
+import { RefreshCw, Users } from 'lucide-react';
 import { AdminLayout } from '../components/layout/AdminLayout';
-import { Card, PageHeader, DataTable, Badge, Button, SearchInput } from '../components/ui';
+import { PageHeader, FilterTabs, ContentPanel, AlertBanner, Badge, Button, SearchInput, PaginatedTable } from '../components/ui';
 import { enrichPoliciesWithPayments, policyCountByEmail, type AdminCustomer } from '../api';
 import { formatCacheAge, FIRESTORE_CACHE_PROJECT } from '../firestore/adminCache';
 import { cachedAdminApi, filterCustomers } from '../firestore/cachedAdminApi';
@@ -19,6 +19,18 @@ const kycBadge: Record<string, 'success' | 'warning' | 'neutral' | 'error'> = {
   not_started: 'neutral',
   rejected: 'error',
 };
+
+const customerColumns = [
+  { key: 'full_name', label: 'Customer', sortable: true },
+  { key: 'email', label: 'Contact', sortable: true },
+  { key: 'account_status', label: 'Status', sortable: true },
+  { key: 'kyc_status', label: 'KYC', sortable: true },
+  { key: 'policyCount', label: 'Quotes / policies', sortable: true },
+  { key: 'wallet_status', label: 'Wallet', sortable: true },
+  { key: 'created_at', label: 'Joined', sortable: true },
+] as const;
+
+type CustomerRow = AdminCustomer & { policyCount: number };
 
 function formatDate(iso?: string) {
   if (!iso) return '—';
@@ -68,68 +80,85 @@ export function CustomersPage() {
     [customers, search, filter],
   );
 
+  const tableRows = useMemo<CustomerRow[]>(
+    () =>
+      rows.map((c) => ({
+        ...c,
+        policyCount: policyCountByEmail(policies, c.email),
+        account_status: c.account_status ?? 'registered',
+        kyc_status: c.kyc_status ?? 'not_started',
+        wallet_status: c.wallet?.address ? c.wallet.address : (c.wallet_status ?? 'none'),
+      })),
+    [rows, policies],
+  );
+
   const cacheLabel = fromCache ? formatCacheAge(cachedAt) : null;
 
   return (
     <AdminLayout>
       <PageHeader
-        title="Customer Management"
-        subtitle={`Live customers · Firestore cache in ${FIRESTORE_CACHE_PROJECT}/gcul_cache (10 min)`}
+        icon={Users}
+        title="Customer management"
+        subtitle={`Registered customers and KYC status · cache in ${FIRESTORE_CACHE_PROJECT}/gcul_cache`}
+        metrics={[
+          { label: 'Customers', value: customers.length },
+          { label: 'KYC verified', value: customers.filter((c) => c.kyc_status === 'verified').length, tone: 'success' },
+          { label: 'Pending KYC', value: customers.filter((c) => c.kyc_status === 'in_progress').length, tone: 'warning' },
+          { label: 'Policies', value: policies.length },
+        ]}
         actions={
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap justify-end">
             {cacheLabel ? (
-              <Badge variant="info">Cached · {cacheLabel}</Badge>
+              <span className="rounded-full bg-white/15 px-3 py-1 text-xs font-semibold text-white ring-1 ring-white/25">
+                Cached · {cacheLabel}
+              </span>
             ) : !loading ? (
-              <Badge variant="neutral">Live API</Badge>
+              <span className="rounded-full bg-white/15 px-3 py-1 text-xs font-semibold text-white ring-1 ring-white/25">
+                Live API
+              </span>
             ) : null}
-            <Button size="sm" variant="outline" onClick={() => load(true)} disabled={loading}>
-              <RefreshCw className={`w-4 h-4 mr-1 ${loading ? 'animate-spin' : ''}`} />
+            <Button size="sm" variant="hero" onClick={() => load(true)} disabled={loading}>
+              <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
               Refresh
-            </Button>
-            <Button size="sm" variant="outline" disabled>
-              Export CSV
             </Button>
           </div>
         }
       />
 
-      {error ? (
-        <p className="text-sm text-red-600 font-semibold mb-4" role="alert">
-          {error}
-        </p>
-      ) : null}
+      {error ? <AlertBanner>{error}</AlertBanner> : null}
 
-      <Card padding={false}>
-        <div className="p-4 border-b border-lbg-gray-100 flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between">
-          <SearchInput value={search} onChange={setSearch} placeholder="Search customers..." />
-          <div className="flex gap-2">
-            <Button variant={filter === 'all' ? 'primary' : 'ghost'} size="sm" onClick={() => setFilter('all')}>
-              All
-            </Button>
-            <Button
-              variant={filter === 'verified' ? 'primary' : 'ghost'}
-              size="sm"
-              onClick={() => setFilter('verified')}
-            >
-              KYC verified
-            </Button>
-            <Button
-              variant={filter === 'in_progress' ? 'primary' : 'ghost'}
-              size="sm"
-              onClick={() => setFilter('in_progress')}
-            >
-              Pending KYC
-            </Button>
-          </div>
+      <FilterTabs
+        value={filter}
+        onChange={setFilter}
+        options={[
+          { value: 'all', label: 'All customers' },
+          { value: 'verified', label: 'KYC verified' },
+          { value: 'in_progress', label: 'Pending KYC' },
+        ]}
+      />
+
+      <ContentPanel title="Customer register" description="Search and sort across your customer base">
+        <div className="border-b border-lbg-gray-100 px-4 py-3 sm:px-5">
+          <SearchInput value={search} onChange={setSearch} placeholder="Search by name, email, or ID…" />
         </div>
         {loading ? (
           <p className="p-6 text-sm text-lbg-gray-500">Loading customers…</p>
         ) : (
-          <DataTable headers={['Customer', 'Contact', 'Status', 'KYC', 'Quotes / policies', 'Wallet', 'Joined']}>
-            {rows.map((c) => {
+          <PaginatedTable
+            columns={[...customerColumns]}
+            rows={tableRows}
+            rowKey={(c) => c.id}
+            defaultSortKey="created_at"
+            defaultSortDir="desc"
+            emptyMessage="No customers match your filters."
+            getSortValue={(row, key) => {
+              if (key === 'policyCount') return row.policyCount;
+              if (key === 'wallet_status') return row.wallet_status;
+              return (row as unknown as Record<string, string | number>)[key];
+            }}
+            renderRow={(c) => {
               const acct = c.account_status ?? 'registered';
               const kyc = c.kyc_status ?? 'not_started';
-              const policyCount = policyCountByEmail(policies, c.email);
               return (
                 <tr key={c.id} className="hover:bg-lbg-gray-50">
                   <td className="py-3 px-4">
@@ -146,7 +175,7 @@ export function CustomersPage() {
                   <td className="py-3 px-4">
                     <Badge variant={kycBadge[kyc] ?? 'neutral'}>{kyc.replace(/_/g, ' ')}</Badge>
                   </td>
-                  <td className="py-3 px-4 font-semibold">{policyCount}</td>
+                  <td className="py-3 px-4 font-semibold">{c.policyCount}</td>
                   <td className="py-3 px-4 text-sm">
                     {c.wallet?.address ? (
                       <span className="font-mono text-xs">{c.wallet.address.slice(0, 10)}…</span>
@@ -157,13 +186,10 @@ export function CustomersPage() {
                   <td className="py-3 px-4 text-lbg-gray-400 text-sm">{formatDate(c.created_at)}</td>
                 </tr>
               );
-            })}
-          </DataTable>
+            }}
+          />
         )}
-        {!loading && rows.length === 0 ? (
-          <p className="p-6 text-sm text-lbg-gray-500">No customers match your filters.</p>
-        ) : null}
-      </Card>
+      </ContentPanel>
     </AdminLayout>
   );
 }

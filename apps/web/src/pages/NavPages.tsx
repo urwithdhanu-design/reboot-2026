@@ -4,7 +4,7 @@ import { api, type AuthUser, type QuoteEstimate } from "../api";
 import { buildClaimDemoForPolicy, sleep } from "../claimsDemoFill";
 import { saveQuoteToCompare, readCompareQuotes } from "../compareBasket";
 import { getCustomerPolicies, quoteToPolicyRef, type CustomerPolicy } from "../customerPolicies";
-import { AssistantBar, BottomNav, StepHeader } from "../components";
+import { AssistantBar, BottomNav, CustomerPageHeader, CustomerPanel, CustomerTabs, HeaderIconClaims, HeaderIconPolicies, HeaderIconProfile } from "../components";
 import { useSession } from "../session";
 
 const PRIMARY_ACTIONS: { id: string; label: string; to?: string }[] = [
@@ -32,6 +32,7 @@ export function PoliciesPage() {
   const location = useLocation();
   const navigate = useNavigate();
   const { user } = useSession();
+  const [tab, setTab] = useState<"manage" | "quotes">("manage");
   const quote = (location.state as { quote?: QuoteEstimate } | null)?.quote;
   const demoSubmitted = Boolean(
     (location.state as { demoSubmitted?: boolean } | null)?.demoSubmitted,
@@ -63,132 +64,161 @@ export function PoliciesPage() {
   }
 
   return (
-    <div className="screen has-nav">
-      <StepHeader title="Policies" />
+    <div className="screen has-nav screen-customer">
+      <CustomerPageHeader
+        title="Policies"
+        subtitle="Manage cover, renewals, and your saved quotes"
+        icon={<HeaderIconPolicies />}
+        accent="teal"
+        metrics={[
+          { label: "Saved quotes", value: savedQuotes.length, tone: "success" },
+          { label: "Status", value: payment?.paid ? "Paid" : "Active" },
+        ]}
+      />
 
-      <section className="manage-hero" aria-label="Manage your policy online">
-        <div className="manage-hero-panel">
-          <h2>Manage your policy online</h2>
-          <p>
-            Existing customers can make a claim or change, renew and cancel their
-            policy online.
-          </p>
-        </div>
-      </section>
+      <CustomerTabs
+        value={tab}
+        onChange={setTab}
+        options={[
+          { value: "manage", label: "Manage" },
+          { value: "quotes", label: "Your quotes" },
+        ]}
+      />
 
-      <div className="manage-actions">
-        <h3 className="manage-actions-title">What would you like to do today?</h3>
-
-        <div className="manage-btn-grid">
-          {PRIMARY_ACTIONS.map((action) => (
-            <button
-              key={action.id}
-              type="button"
-              className="manage-btn manage-btn-primary"
-              onClick={() => onAction(action.id, action.to)}
-            >
-              {action.label}
-            </button>
-          ))}
-        </div>
-
-        <div className="manage-btn-grid manage-btn-grid-secondary">
-          {SECONDARY_ACTIONS.map((action) => (
-            <button
-              key={action.id}
-              type="button"
-              className="manage-btn manage-btn-secondary"
-              onClick={() => onAction(action.id)}
-            >
-              {action.label}
-            </button>
-          ))}
-        </div>
-
-        {notice ? (
-          <p className="manage-notice" role="status">
-            {notice}
-          </p>
-        ) : null}
-      </div>
-
-      <h2 className="section-title" style={{ marginTop: 8 }}>
-        Your quotes
-      </h2>
-      {demoSubmitted ? (
-        <p className="manage-notice" role="status">
-          Demo quote submitted — saved under your account.
-        </p>
-      ) : null}
-      {payment?.paid ? (
-        <p className="manage-notice" role="status">
-          Payment received{payment.session_id ? ` · ${payment.session_id}` : ""}. Your
-          cover can now be treated as paid for this demo.
-        </p>
-      ) : null}
-      {savedQuotes.length > 0 ? (
-        <div className="stack" style={{ gap: 12, marginBottom: 16 }}>
-          {savedQuotes.map((q) => (
-            <div className="quote-card" key={q.quote_id}>
-              <span className="muted">
-                Saved quote
-                {quote?.quote_id === q.quote_id ? " · Just added" : ""}
-                {payment?.paid && quote?.quote_id === q.quote_id ? " · Paid" : ""}
-              </span>
-              <strong>{q.product_title}</strong>
-              <p className="muted" style={{ margin: "4px 0 0" }}>
-                {q.category} · £{q.estimated_premium.toFixed(2)} / {q.price_unit}
-              </p>
-              <p className="muted" style={{ margin: "4px 0 0" }}>
-                Ref: {quoteToPolicyRef(q.quote_id)} · ID: {q.quote_id}
+      {tab === "manage" && (
+        <>
+          <section className="manage-hero" aria-label="Manage your policy online">
+            <div className="manage-hero-panel">
+              <h2>Manage your policy online</h2>
+              <p>
+                Existing customers can make a claim or change, renew and cancel their
+                policy online.
               </p>
             </div>
-          ))}
-        </div>
-      ) : quote ? (
-        <div className="quote-card">
-          <span className="muted">Saved quote{payment?.paid ? " · Paid" : ""}</span>
-          <strong>{quote.product_title}</strong>
-          <p className="muted" style={{ margin: "4px 0 0" }}>
-            {quote.category} · £{quote.estimated_premium.toFixed(2)} /{" "}
-            {quote.price_unit}
-          </p>
-          <p className="muted" style={{ margin: "4px 0 0" }}>
-            Ref: {quoteToPolicyRef(quote.quote_id)} · ID: {quote.quote_id}
-          </p>
-          <button
-            type="button"
-            className="btn-link"
-            style={{ marginTop: 8 }}
-            onClick={() => navigate("/compare")}
-          >
-            Compare with other quotes
-          </button>
-        </div>
-      ) : (
-        <p className="muted" style={{ margin: 0 }}>
-          No saved quote yet. Browse the marketplace to get started.
-        </p>
+          </section>
+
+          <CustomerPanel title="What would you like to do today?" padding>
+            <div className="manage-btn-grid">
+              {PRIMARY_ACTIONS.map((action) => (
+                <button
+                  key={action.id}
+                  type="button"
+                  className="manage-btn manage-btn-primary"
+                  onClick={() => onAction(action.id, action.to)}
+                >
+                  {action.label}
+                </button>
+              ))}
+            </div>
+
+            <div className="manage-btn-grid manage-btn-grid-secondary" style={{ marginTop: 10 }}>
+              {SECONDARY_ACTIONS.map((action) => (
+                <button
+                  key={action.id}
+                  type="button"
+                  className="manage-btn manage-btn-secondary"
+                  onClick={() => onAction(action.id)}
+                >
+                  {action.label}
+                </button>
+              ))}
+            </div>
+
+            {notice ? (
+              <p className="manage-notice" role="status" style={{ marginTop: 12 }}>
+                {notice}
+              </p>
+            ) : null}
+          </CustomerPanel>
+        </>
       )}
 
-      {savedQuotes.length > 0 ? (
-        <button
-          type="button"
-          className="btn-link"
-          style={{ marginBottom: 16 }}
-          onClick={() => navigate("/compare")}
+      {tab === "quotes" && (
+        <CustomerPanel
+          title="Your quotes"
+          description="Saved quotes linked to your account"
+          toolbar={
+            <button type="button" className="btn-link" onClick={() => navigate("/marketplace")}>
+              Browse products
+            </button>
+          }
         >
-          Compare with other quotes
-        </button>
-      ) : null}
+          {demoSubmitted ? (
+            <p className="manage-notice" role="status">
+              Demo quote submitted — saved under your account.
+            </p>
+          ) : null}
+          {payment?.paid ? (
+            <p className="manage-notice" role="status">
+              Payment received{payment.session_id ? ` · ${payment.session_id}` : ""}. Your
+              cover can now be treated as paid for this demo.
+            </p>
+          ) : null}
+          {savedQuotes.length > 0 ? (
+            <div className="stack" style={{ gap: 12 }}>
+              {savedQuotes.map((q) => (
+                <div className="quote-card" key={q.quote_id}>
+                  <span className="muted">
+                    Saved quote
+                    {quote?.quote_id === q.quote_id ? " · Just added" : ""}
+                    {payment?.paid && quote?.quote_id === q.quote_id ? " · Paid" : ""}
+                  </span>
+                  <strong>{q.product_title}</strong>
+                  <p className="muted" style={{ margin: "4px 0 0" }}>
+                    {q.category} · £{q.estimated_premium.toFixed(2)} / {q.price_unit}
+                  </p>
+                  <p className="muted" style={{ margin: "4px 0 0" }}>
+                    Ref: {quoteToPolicyRef(q.quote_id)} · ID: {q.quote_id}
+                  </p>
+                </div>
+              ))}
+            </div>
+          ) : quote ? (
+            <div className="quote-card">
+              <span className="muted">Saved quote{payment?.paid ? " · Paid" : ""}</span>
+              <strong>{quote.product_title}</strong>
+              <p className="muted" style={{ margin: "4px 0 0" }}>
+                {quote.category} · £{quote.estimated_premium.toFixed(2)} / {quote.price_unit}
+              </p>
+              <p className="muted" style={{ margin: "4px 0 0" }}>
+                Ref: {quoteToPolicyRef(quote.quote_id)} · ID: {quote.quote_id}
+              </p>
+              <button
+                type="button"
+                className="btn-link"
+                style={{ marginTop: 8 }}
+                onClick={() => navigate("/compare")}
+              >
+                Compare with other quotes
+              </button>
+            </div>
+          ) : (
+            <p className="muted" style={{ margin: 0 }}>
+              No saved quote yet. Browse the marketplace to get started.
+            </p>
+          )}
 
-      <button
-        className="btn-primary"
-        type="button"
-        onClick={() => navigate("/marketplace")}
-      >
-        Browse products
-      </button>
+          {savedQuotes.length > 0 ? (
+            <button
+              type="button"
+              className="btn-link"
+              style={{ marginTop: 12 }}
+              onClick={() => navigate("/compare")}
+            >
+              Compare with other quotes
+            </button>
+          ) : null}
+
+          <button
+            className="btn-primary"
+            type="button"
+            style={{ marginTop: 14 }}
+            onClick={() => navigate("/marketplace")}
+          >
+            Browse products
+          </button>
+        </CustomerPanel>
+      )}
 
       <AssistantBar screen="marketplace" />
       <BottomNav active="policies" />
@@ -198,6 +228,7 @@ export function PoliciesPage() {
 
 export function ClaimsPage() {
   const { user } = useSession();
+  const [tab, setTab] = useState<"new" | "track">("new");
   const [claims, setClaims] = useState<
     Awaited<ReturnType<typeof api.listClaims>>["claims"]
   >([]);
@@ -314,161 +345,179 @@ export function ClaimsPage() {
   }
 
   return (
-    <div className="screen has-nav">
-      <StepHeader title="Claims" />
-      <div className="claims-header-row">
-        <div>
-          <h2 className="section-title">Claims centre</h2>
-          <p className="muted">
-            Start or track a claim against your saved policies and quotes.
-          </p>
-        </div>
-        <button
-          type="button"
-          className="demo-fill-btn"
-          disabled={demoFilling || submitting || !user || policies.length === 0}
-          onClick={() => void runDemoFill()}
-        >
-          {demoFilling ? "Filling…" : "Demo fill"}
-        </button>
-      </div>
+    <div className="screen has-nav screen-customer">
+      <CustomerPageHeader
+        title="Claims"
+        subtitle="Start a new claim or track progress on existing ones"
+        icon={<HeaderIconClaims />}
+        metrics={[
+          { label: "Your claims", value: visibleClaims.length, tone: "success" },
+          { label: "Policies", value: policies.length },
+        ]}
+        actions={
+          <button
+            type="button"
+            className="demo-fill-btn"
+            style={{ color: "#fff", borderColor: "rgba(255,255,255,0.5)", background: "rgba(255,255,255,0.12)" }}
+            disabled={demoFilling || submitting || !user || policies.length === 0}
+            onClick={() => void runDemoFill()}
+          >
+            {demoFilling ? "Filling…" : "Demo fill"}
+          </button>
+        }
+      />
 
-      {demoFilling ? (
-        <p className="demo-fill-banner" role="status">
-          Filling claim for <strong>{selectedPolicy?.product_title}</strong>…
-        </p>
-      ) : null}
+      <CustomerTabs
+        value={tab}
+        onChange={setTab}
+        options={[
+          { value: "new", label: "Start claim" },
+          { value: "track", label: "Track claims" },
+        ]}
+      />
 
-      {policies.length === 0 ? (
-        <p className="manage-notice" role="status">
-          No policies yet — get a quote from the marketplace first, then return here to
-          start a claim.
-        </p>
-      ) : (
-        <div className="claim-policy-picker">
-          <label>
-            Your policy
-            <select
-              value={selectedQuoteId}
-              onChange={(e) => {
-                const policy = policies.find((p) => p.quote_id === e.target.value);
-                if (policy) applyPolicy(policy);
-              }}
-              aria-label="Select policy to claim on"
-              disabled={demoFilling}
-            >
-              {policies.map((p) => (
-                <option key={p.quote_id} value={p.quote_id}>
-                  {p.product_title} · {p.policy_ref}
-                  {p.paid ? " · Paid" : ""}
-                </option>
-              ))}
-            </select>
-          </label>
-        </div>
+      {tab === "new" && (
+        <CustomerPanel title="Claims centre" description="Submit a claim against your saved policies">
+          {demoFilling ? (
+            <p className="demo-fill-banner" role="status">
+              Filling claim for <strong>{selectedPolicy?.product_title}</strong>…
+            </p>
+          ) : null}
+
+          {policies.length === 0 ? (
+            <p className="manage-notice" role="status">
+              No policies yet — get a quote from the marketplace first, then return here to
+              start a claim.
+            </p>
+          ) : (
+            <div className="claim-policy-picker">
+              <label>
+                Your policy
+                <select
+                  value={selectedQuoteId}
+                  onChange={(e) => {
+                    const policy = policies.find((p) => p.quote_id === e.target.value);
+                    if (policy) applyPolicy(policy);
+                  }}
+                  aria-label="Select policy to claim on"
+                  disabled={demoFilling}
+                >
+                  {policies.map((p) => (
+                    <option key={p.quote_id} value={p.quote_id}>
+                      {p.product_title} · {p.policy_ref}
+                      {p.paid ? " · Paid" : ""}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
+          )}
+
+          <div className="claim-form">
+            <label>
+              Policy reference
+              <input
+                value={policyRef}
+                onChange={(e) => setPolicyRef(e.target.value)}
+                aria-label="Policy reference"
+                disabled={demoFilling}
+                placeholder={selectedPolicy?.policy_ref ?? "POL-…"}
+              />
+            </label>
+            <label>
+              Category
+              <select
+                value={category}
+                onChange={(e) => setCategory(e.target.value)}
+                aria-label="Claim category"
+                disabled={demoFilling}
+              >
+                <option>Property</option>
+                <option>Vehicle</option>
+                <option>Health</option>
+                <option>Pet</option>
+                <option>Travel</option>
+                <option>Life</option>
+                <option>Parametric</option>
+                <option>Home</option>
+              </select>
+            </label>
+            <label>
+              Amount claimed (£)
+              <input
+                type="number"
+                min="0"
+                step="1"
+                value={amount}
+                onChange={(e) => setAmount(e.target.value)}
+                aria-label="Amount claimed"
+                disabled={demoFilling}
+              />
+            </label>
+            <label>
+              What happened
+              <textarea
+                rows={3}
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                placeholder="Brief description of the incident"
+                aria-label="Claim description"
+                disabled={demoFilling}
+              />
+            </label>
+          </div>
+
+          {submitError ? (
+            <p className="error" role="alert">
+              {submitError}
+            </p>
+          ) : null}
+          {notice ? (
+            <p className="manage-notice" role="status">
+              {notice}
+            </p>
+          ) : null}
+
+          <button
+            className="btn-primary"
+            type="button"
+            style={{ marginTop: 12 }}
+            disabled={submitting || demoFilling}
+            onClick={() => void startClaim()}
+          >
+            {submitting ? "Submitting…" : "Start a claim"}
+          </button>
+        </CustomerPanel>
       )}
 
-      <div className="claim-form">
-        <label>
-          Policy reference
-          <input
-            value={policyRef}
-            onChange={(e) => setPolicyRef(e.target.value)}
-            aria-label="Policy reference"
-            disabled={demoFilling}
-            placeholder={selectedPolicy?.policy_ref ?? "POL-…"}
-          />
-        </label>
-        <label>
-          Category
-          <select
-            value={category}
-            onChange={(e) => setCategory(e.target.value)}
-            aria-label="Claim category"
-            disabled={demoFilling}
-          >
-            <option>Property</option>
-            <option>Vehicle</option>
-            <option>Health</option>
-            <option>Pet</option>
-            <option>Travel</option>
-            <option>Life</option>
-            <option>Parametric</option>
-            <option>Home</option>
-          </select>
-        </label>
-        <label>
-          Amount claimed (£)
-          <input
-            type="number"
-            min="0"
-            step="1"
-            value={amount}
-            onChange={(e) => setAmount(e.target.value)}
-            aria-label="Amount claimed"
-            disabled={demoFilling}
-          />
-        </label>
-        <label>
-          What happened
-          <textarea
-            rows={3}
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            placeholder="Brief description of the incident"
-            aria-label="Claim description"
-            disabled={demoFilling}
-          />
-        </label>
-      </div>
-
-      {submitError ? (
-        <p className="error" role="alert">
-          {submitError}
-        </p>
-      ) : null}
-      {notice ? (
-        <p className="manage-notice" role="status">
-          {notice}
-        </p>
-      ) : null}
-
-      <button
-        className="btn-primary"
-        type="button"
-        disabled={submitting || demoFilling}
-        onClick={() => void startClaim()}
-      >
-        {submitting ? "Submitting…" : "Start a claim"}
-      </button>
-
-      <h3 className="section-title" style={{ marginTop: 16 }}>
-        Your claims
-      </h3>
-      {loadError ? (
-        <p className="error" role="alert">
-          {loadError}
-        </p>
-      ) : null}
-      {loading ? <p className="muted">Loading…</p> : null}
-      {!loading && visibleClaims.length === 0 ? (
-        <p className="muted">No claims yet for your policies.</p>
-      ) : null}
-      <div className="claim-list">
-        {visibleClaims.map((claim) => (
-          <article className="quote-card" key={claim.id}>
-            <strong>{claim.id}</strong>
-            <p className="muted" style={{ margin: "4px 0 0" }}>
-              {claim.category} · {claim.status} · £
-              {Number(claim.amount_claimed).toFixed(2)}
+      {tab === "track" && (
+        <CustomerPanel title="Your claims" description="Status and details for claims on your policies">
+          {loadError ? (
+            <p className="error" role="alert">
+              {loadError}
             </p>
-            <p className="muted" style={{ margin: "4px 0 0" }}>
-              {claim.policy_ref}
-              {claim.description ? ` · ${claim.description}` : ""}
-            </p>
-          </article>
-        ))}
-      </div>
+          ) : null}
+          {loading ? <p className="muted">Loading…</p> : null}
+          {!loading && visibleClaims.length === 0 ? (
+            <p className="muted">No claims yet for your policies.</p>
+          ) : null}
+          <div className="claim-list">
+            {visibleClaims.map((claim) => (
+              <article className="quote-card" key={claim.id}>
+                <strong>{claim.id}</strong>
+                <p className="muted" style={{ margin: "4px 0 0" }}>
+                  {claim.category} · {claim.status} · £
+                  {Number(claim.amount_claimed).toFixed(2)}
+                </p>
+                <p className="muted" style={{ margin: "4px 0 0" }}>
+                  {claim.policy_ref}
+                  {claim.description ? ` · ${claim.description}` : ""}
+                </p>
+              </article>
+            ))}
+          </div>
+        </CustomerPanel>
+      )}
 
       <AssistantBar screen="marketplace" />
       <BottomNav active="claims" />
@@ -486,6 +535,7 @@ function formatKyc(status: string) {
 export function ProfilePage() {
   const navigate = useNavigate();
   const { token, user, updateUser, clear } = useSession();
+  const [tab, setTab] = useState<"account" | "wallet">("account");
   const [profile, setProfile] = useState<AuthUser | null>(user);
   const [loading, setLoading] = useState(!user);
   const [error, setError] = useState<string | null>(null);
@@ -533,8 +583,36 @@ export function ProfilePage() {
       .join("") || "?";
 
   return (
-    <div className="screen has-nav">
-      <StepHeader title="Profile" />
+    <div className="screen has-nav screen-customer">
+      <CustomerPageHeader
+        title={profile?.full_name ?? "Profile"}
+        subtitle={profile?.email ?? "Your account and preferences"}
+        icon={
+          profile ? (
+            <span className="customer-avatar-lg">{initials}</span>
+          ) : (
+            <HeaderIconProfile />
+          )
+        }
+        accent="slate"
+        metrics={
+          profile
+            ? [
+                { label: "KYC", value: formatKyc(profile.kyc_status), tone: "success" },
+                { label: "Wallet", value: profile.wallet ? "Linked" : "None" },
+              ]
+            : undefined
+        }
+      />
+
+      <CustomerTabs
+        value={tab}
+        onChange={setTab}
+        options={[
+          { value: "account", label: "Account" },
+          { value: "wallet", label: "Wallet" },
+        ]}
+      />
 
       {loading && !profile ? (
         <p className="muted">Loading your profile…</p>
@@ -548,67 +626,61 @@ export function ProfilePage() {
 
       {profile ? (
         <>
-          <div className="profile-hero">
-            <div className="profile-avatar" aria-hidden>
-              {initials}
-            </div>
-            <div>
-              <h2 className="profile-name">{profile.full_name}</h2>
-              <p className="profile-kyc">
-                KYC: {formatKyc(profile.kyc_status)}
-              </p>
-            </div>
-          </div>
-
-          <div className="profile-card">
-            <h3>Account details</h3>
-            <dl className="profile-dl">
-              <div>
-                <dt>Full name</dt>
-                <dd>{profile.full_name}</dd>
-              </div>
-              <div>
-                <dt>Email</dt>
-                <dd>{profile.email}</dd>
-              </div>
-              <div>
-                <dt>Mobile</dt>
-                <dd>{profile.mobile_number}</dd>
-              </div>
-              <div>
-                <dt>Customer ID</dt>
-                <dd className="mono">{profile.id}</dd>
-              </div>
-            </dl>
-          </div>
-
-          <div className="profile-card">
-            <h3>Digital wallet</h3>
-            {profile.wallet ? (
+          {tab === "account" && (
+            <CustomerPanel title="Account details" description="Personal information linked to your cover">
               <dl className="profile-dl">
                 <div>
-                  <dt>Status</dt>
-                  <dd>{formatKyc(profile.wallet.status)}</dd>
+                  <dt>Full name</dt>
+                  <dd>{profile.full_name}</dd>
                 </div>
                 <div>
-                  <dt>Address</dt>
-                  <dd className="mono">{profile.wallet.address}</dd>
+                  <dt>Email</dt>
+                  <dd>{profile.email}</dd>
+                </div>
+                <div>
+                  <dt>Mobile</dt>
+                  <dd>{profile.mobile_number}</dd>
+                </div>
+                <div>
+                  <dt>Customer ID</dt>
+                  <dd className="mono">{profile.id}</dd>
                 </div>
               </dl>
-            ) : (
-              <p className="muted" style={{ margin: 0 }}>
-                No wallet connected yet.
-              </p>
-            )}
-            <button
-              type="button"
-              className="btn-secondary"
-              style={{ marginTop: 12 }}
-              onClick={() => navigate("/wallet")}
-            >
-              Open wallet
-            </button>
-          </div>
+            </CustomerPanel>
+          )}
+
+          {tab === "wallet" && (
+            <CustomerPanel title="Digital wallet" description="Policy tokens and payout destination">
+              {profile.wallet ? (
+                <dl className="profile-dl">
+                  <div>
+                    <dt>Status</dt>
+                    <dd>
+                      <span className={`customer-status-pill${profile.wallet.status === "connected" ? " connected" : ""}`}>
+                        {formatKyc(profile.wallet.status)}
+                      </span>
+                    </dd>
+                  </div>
+                  <div>
+                    <dt>Address</dt>
+                    <dd className="mono">{profile.wallet.address}</dd>
+                  </div>
+                </dl>
+              ) : (
+                <p className="muted" style={{ margin: 0 }}>
+                  No wallet connected yet.
+                </p>
+              )}
+              <button
+                type="button"
+                className="btn-secondary"
+                style={{ marginTop: 12 }}
+                onClick={() => navigate("/wallet")}
+              >
+                Open wallet setup
+              </button>
+            </CustomerPanel>
+          )}
 
           <button className="btn-primary" type="button" onClick={logout}>
             Log out

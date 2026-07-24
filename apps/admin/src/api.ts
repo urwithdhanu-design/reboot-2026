@@ -194,6 +194,57 @@ export type AdminProduct = {
   icon: string;
 };
 
+export type ChainObservabilityResponse = {
+  generated_at: string;
+  network: InsuranceChainResponse['network'];
+  validation: InsuranceChainResponse['validation'];
+  dashboard: {
+    block_height: number;
+    total_transactions: number;
+    transactions_24h: number;
+    mempool_pending: number;
+    fraud_flags: number;
+    chain_valid: boolean;
+    ledgers_active: number;
+  };
+  performance: {
+    avg_block_time_seconds: number;
+    avg_tx_per_block: number;
+    avg_confirmation_ms: number;
+    mempool_size: number;
+    validator_id: string;
+  };
+  security_alerts: Array<{
+    severity: string;
+    code: string;
+    title: string;
+    detail: string;
+    at: string;
+  }>;
+  transaction_traces: Array<{
+    trace_id: string;
+    tx_hash: string;
+    type: string;
+    ledger: string;
+    status: string;
+    block_height: number | null;
+    actor_id?: string | null;
+    actor_role?: string | null;
+    fraud_score?: number | null;
+    created_at: string;
+    payload_preview: string;
+  }>;
+  smart_contracts: Array<{
+    name: string;
+    standard: string;
+    status: string;
+    description: string;
+    invocations: number;
+    network: string;
+  }>;
+  throughput_24h: Array<{ hour: string; count: number }>;
+};
+
 export const adminApi = {
   adminLogin: (identifier: string, password: string) =>
     request<AdminAuthResponse>('/api/auth/admin/login', {
@@ -309,6 +360,8 @@ export const adminApi = {
 
   insuranceChainCapabilities: () =>
     request<{ capabilities: Record<string, unknown> }>('/api/blockchain/chain/capabilities'),
+
+  chainObservability: () => request<ChainObservabilityResponse>('/api/blockchain/observability'),
 
   listVendors: (status?: string) => {
     const qs = status ? `?status=${encodeURIComponent(status)}` : '';

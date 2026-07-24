@@ -1,12 +1,21 @@
 import { AdminLayout } from '../components/layout/AdminLayout';
-import { Card, PageHeader, DataTable, Badge, StatCard } from '../components/ui';
+import { PageHeader, ContentPanel, Badge, StatCard, PaginatedTable } from '../components/ui';
 import { walletTransactions, formatGBP, dashboardStats } from '../data/adminMockData';
 import { Wallet, ArrowDownLeft, ArrowUpRight, Link2 } from 'lucide-react';
 
 export function WalletOpsPage() {
   return (
     <AdminLayout>
-      <PageHeader title="Wallet Operations" subtitle="Monitor blockchain wallet transactions and treasury" />
+      <PageHeader
+        icon={Wallet}
+        title="Wallet operations"
+        subtitle="Monitor blockchain wallet transactions and treasury flows"
+        metrics={[
+          { label: 'Volume', value: formatGBP(dashboardStats.walletVolume) },
+          { label: 'Pending deposits', value: '3', tone: 'warning' },
+          { label: 'Claim payouts', value: formatGBP(dashboardStats.claimPayouts), tone: 'success' },
+        ]}
+      />
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
         <StatCard label="Total Wallet Volume" value={formatGBP(dashboardStats.walletVolume)} change="+12% this quarter" icon={Wallet} trend="up" />
@@ -14,12 +23,28 @@ export function WalletOpsPage() {
         <StatCard label="Claim Payouts (MTD)" value={formatGBP(dashboardStats.claimPayouts)} icon={ArrowUpRight} trend="down" />
       </div>
 
-      <Card padding={false}>
-        <div className="p-4 border-b border-lbg-gray-100">
-          <h3 className="font-bold">Recent Transactions</h3>
-        </div>
-        <DataTable headers={['ID', 'Customer', 'Type', 'Amount', 'Method', 'Status', 'Blockchain', 'Date']}>
-          {walletTransactions.map((tx) => (
+      <ContentPanel title="Recent transactions" description="On-chain and ledger movements">
+        <PaginatedTable
+          columns={[
+            { key: 'id', label: 'ID', sortable: true },
+            { key: 'customerName', label: 'Customer', sortable: true },
+            { key: 'type', label: 'Type', sortable: true },
+            { key: 'amount', label: 'Amount', sortable: true },
+            { key: 'method', label: 'Method', sortable: true },
+            { key: 'status', label: 'Status', sortable: true },
+            { key: 'blockchainTx', label: 'Blockchain', sortable: true },
+            { key: 'date', label: 'Date', sortable: true },
+          ]}
+          rows={walletTransactions}
+          rowKey={(tx) => tx.id}
+          defaultSortKey="date"
+          defaultSortDir="desc"
+          getSortValue={(row, key) => {
+            if (key === 'amount') return row.amount;
+            if (key === 'blockchainTx') return row.blockchainTx ?? '';
+            return (row as unknown as Record<string, string | number>)[key];
+          }}
+          renderRow={(tx) => (
             <tr key={tx.id} className="hover:bg-lbg-gray-50">
               <td className="py-3 px-4 font-mono text-sm">{tx.id}</td>
               <td className="py-3 px-4 font-semibold">{tx.customerName}</td>
@@ -38,9 +63,9 @@ export function WalletOpsPage() {
               </td>
               <td className="py-3 px-4 text-lbg-gray-400">{tx.date}</td>
             </tr>
-          ))}
-        </DataTable>
-      </Card>
+          )}
+        />
+      </ContentPanel>
     </AdminLayout>
   );
 }

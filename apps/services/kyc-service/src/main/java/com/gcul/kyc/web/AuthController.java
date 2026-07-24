@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
 
+import com.gcul.kyc.admin.AdminCustomerService;
 import com.gcul.kyc.dto.ForgotPasswordRequest;
 import com.gcul.kyc.dto.LoginRequest;
 import com.gcul.kyc.dto.RegisterRequest;
@@ -41,6 +42,7 @@ public class AuthController {
 	private final MailService mail;
 	private final PasswordResetService passwordReset;
 	private final CustomerEventPublisher customerEvents;
+	private final AdminCustomerService adminCustomers;
 
 	public AuthController(
 			UserStore store,
@@ -48,13 +50,15 @@ public class AuthController {
 			JwtService jwt,
 			MailService mail,
 			PasswordResetService passwordReset,
-			CustomerEventPublisher customerEvents) {
+			CustomerEventPublisher customerEvents,
+			AdminCustomerService adminCustomers) {
 		this.store = store;
 		this.passwords = passwords;
 		this.jwt = jwt;
 		this.mail = mail;
 		this.passwordReset = passwordReset;
 		this.customerEvents = customerEvents;
+		this.adminCustomers = adminCustomers;
 	}
 
 	@PostMapping("/register")
@@ -81,6 +85,7 @@ public class AuthController {
 
 		mail.sendWelcome(user.getEmail(), user.getFullName());
 		customerEvents.customerRegistered(user);
+		adminCustomers.refreshAdminViewCaches();
 
 		return UserMapper.authResponse(jwt.createToken(user), user);
 	}

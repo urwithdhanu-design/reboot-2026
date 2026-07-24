@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { api, type Product } from "../api";
 import { loadMarketplaceFromFirestore } from "../firestore/catalogCache";
-import { AssistantBar, BottomNav, StepHeader } from "../components";
+import { AssistantBar, BottomNav, CustomerPageHeader, CustomerPanel, HeaderIconHome } from "../components";
 import { IconSearch, productIcon } from "../icons";
 
 const DEFAULT_CATEGORIES = [
@@ -82,10 +82,18 @@ export function MarketplacePage() {
   const openQuote = (productId: string) => navigate(`/quote/${productId}`);
 
   return (
-    <div className="screen has-nav">
-      <StepHeader title="Product Marketplace" />
+    <div className="screen has-nav screen-customer">
+      <CustomerPageHeader
+        title="Home"
+        subtitle="Browse cover, compare quotes, and protect what matters most"
+        icon={<HeaderIconHome />}
+        metrics={[
+          { label: "Products", value: products.length },
+          { label: "Category", value: category === "All" ? "All" : category, tone: "success" },
+        ]}
+      />
 
-      <div className="search-shell">
+      <div className="search-shell customer-search-float">
         <IconSearch />
         <input
           value={query}
@@ -95,14 +103,14 @@ export function MarketplacePage() {
         />
       </div>
 
-      <div className="chips" role="tablist" aria-label="Categories">
+      <div className="customer-chip-row" role="tablist" aria-label="Categories">
         {categories.map((item) => (
           <button
             key={item}
             type="button"
             role="tab"
             aria-selected={category === item}
-            className={`chip${category === item ? " active" : ""}`}
+            className={`customer-chip${category === item ? " active" : ""}`}
             onClick={() => setCategory(item)}
           >
             {item}
@@ -110,19 +118,16 @@ export function MarketplacePage() {
         ))}
       </div>
 
-      <div className="muted" style={{ fontSize: "0.85rem" }}>
-        {heading}
-      </div>
+      <CustomerPanel title={heading} description="Tap a product to get a quote in minutes">
+        {error ? (
+          <p className="error" role="alert">
+            {error}
+          </p>
+        ) : null}
 
-      {error ? (
-        <p className="error" role="alert">
-          {error}
-        </p>
-      ) : null}
-
-      <aside className="gaps-banner" aria-label="Protection gaps">
-        <h3>Any gaps in your protection?</h3>
-        <p>We have help for you within our app.</p>
+        <aside className="gaps-banner" aria-label="Protection gaps" style={{ marginBottom: 14 }}>
+          <h3>Any gaps in your protection?</h3>
+          <p>We have help for you within our app.</p>
         <ul>
           <li>Understand the cover you already have with us.</li>
           <li>Find out how to protect yourself and your loved ones.</li>
@@ -134,9 +139,9 @@ export function MarketplacePage() {
         >
           Compare policies &amp; quotes
         </button>
-      </aside>
+        </aside>
 
-      <div className="product-list promo-list">
+        <div className="product-list promo-list">
         {products.map((product) => {
           const tagline = product.tagline || product.description;
           const bullets = product.bullets ?? [];
@@ -165,7 +170,8 @@ export function MarketplacePage() {
             </article>
           );
         })}
-      </div>
+        </div>
+      </CustomerPanel>
 
       <AssistantBar screen="marketplace" />
       <BottomNav active="home" />

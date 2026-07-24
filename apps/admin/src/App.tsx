@@ -12,6 +12,7 @@ import { WalletOpsPage } from './pages/WalletOpsPage';
 import { ProductsPage } from './pages/ProductsPage';
 import { ReportsPage } from './pages/ReportsPage';
 import { TokenizationPage } from './pages/TokenizationPage';
+import { ChainObservabilityPage } from './pages/ChainObservabilityPage';
 import { BlockchainLedgerPage } from './pages/BlockchainLedgerPage';
 import { SmartContractsPage } from './pages/SmartContractsPage';
 import { SettingsPage } from './pages/SettingsPage';
@@ -47,6 +48,7 @@ export default function App() {
           <Route path="/workflows" element={<ProtectedRoute><WorkflowsPage /></ProtectedRoute>} />
           <Route path="/services" element={<ProtectedRoute><PlatformServicesPage /></ProtectedRoute>} />
           <Route path="/tokenization" element={<ProtectedRoute><TokenizationPage /></ProtectedRoute>} />
+          <Route path="/observability" element={<ProtectedRoute><ChainObservabilityPage /></ProtectedRoute>} />
           <Route path="/blockchain" element={<ProtectedRoute><BlockchainLedgerPage /></ProtectedRoute>} />
           <Route path="/contracts" element={<ProtectedRoute><SmartContractsPage /></ProtectedRoute>} />
           <Route path="/wallet" element={<ProtectedRoute><WalletOpsPage /></ProtectedRoute>} />

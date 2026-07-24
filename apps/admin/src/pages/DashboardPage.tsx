@@ -35,8 +35,15 @@ export function DashboardPage() {
   return (
     <AdminLayout>
       <PageHeader
-        title="Operations Dashboard"
+        icon={LayoutDashboard}
+        title="Operations dashboard"
         subtitle="Real-time overview of Reboot 2026 enterprise operations"
+        metrics={[
+          { label: 'Customers', value: formatNumber(stats.totalCustomers) },
+          { label: 'Active policies', value: formatNumber(stats.activePolicies), tone: 'success' },
+          { label: 'Open claims', value: String(stats.openClaims), tone: 'warning' },
+          { label: 'Premium (MTD)', value: formatGBP(stats.monthlyPremium) },
+        ]}
         actions={<Badge variant="success">Live · Updated just now</Badge>}
       />
 

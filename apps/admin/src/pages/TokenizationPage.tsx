@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Coins, Plus, Flame, Snowflake, ArrowRightLeft, Check, X, ExternalLink } from 'lucide-react';
 import { AdminLayout } from '../components/layout/AdminLayout';
-import { Card, PageHeader, Badge, Button, DataTable, StatCard } from '../components/ui';
+import { Card, PageHeader, Badge, Button, PaginatedTable, StatCard, TablePagination, usePaginatedList } from '../components/ui';
 import {
   tokenizedAssets, tokenMintQueue, tokenTypeConfigs, blockchainStats, formatGBP, formatNumber,
 } from '../data/adminMockData';
@@ -17,15 +17,26 @@ const typeBadge = {
 
 export function TokenizationPage() {
   const [tab, setTab] = useState<'registry' | 'mint-queue' | 'standards'>('registry');
+  const mintQueue = usePaginatedList(tokenMintQueue, {
+    defaultSortKey: 'requestedAt',
+    defaultSortDir: 'desc',
+    pageSize: 5,
+  });
 
   return (
     <AdminLayout>
       <PageHeader
+        icon={Coins}
         title="Tokenization"
         subtitle="Mint, manage and lifecycle-control blockchain insurance tokens"
+        metrics={[
+          { label: 'Policy NFTs', value: formatNumber(blockchainStats.policyNFTs) },
+          { label: 'Pending mints', value: String(blockchainStats.pendingMints), tone: 'warning' },
+          { label: 'Circulating', value: formatNumber(blockchainStats.premiumTokensCirculating), tone: 'success' },
+        ]}
         actions={
           <>
-            <Button variant="outline" size="sm"><ArrowRightLeft className="w-4 h-4" /> Transfer</Button>
+            <Button variant="hero" size="sm"><ArrowRightLeft className="w-4 h-4" /> Transfer</Button>
             <Button size="sm"><Plus className="w-4 h-4" /> Mint Policy Token</Button>
           </>
         }
@@ -71,8 +82,28 @@ export function TokenizationPage() {
 
       {tab === 'registry' && (
         <Card padding={false}>
-          <DataTable headers={['Token ID', 'Name', 'Standard', 'Type', 'Owner', 'Value', 'Status', 'Contract', 'Actions']}>
-            {tokenizedAssets.map((t) => (
+          <PaginatedTable
+            columns={[
+              { key: 'tokenId', label: 'Token ID', sortable: true },
+              { key: 'name', label: 'Name', sortable: true },
+              { key: 'standard', label: 'Standard', sortable: true },
+              { key: 'type', label: 'Type', sortable: true },
+              { key: 'owner', label: 'Owner', sortable: true },
+              { key: 'value', label: 'Value', sortable: true },
+              { key: 'status', label: 'Status', sortable: true },
+              { key: 'contractAddress', label: 'Contract', sortable: true },
+              { key: '_actions', label: 'Actions', sortable: false },
+            ]}
+            rows={tokenizedAssets}
+            rowKey={(t) => t.id}
+            defaultSortKey="tokenId"
+            defaultSortDir="asc"
+            getSortValue={(row, key) => {
+              if (key === 'value') return row.value;
+              if (key === '_actions') return '';
+              return (row as unknown as Record<string, string | number>)[key];
+            }}
+            renderRow={(t) => (
               <tr key={t.id} className="hover:bg-lbg-gray-50">
                 <td className="py-3 px-4 font-mono text-sm font-semibold">{t.tokenId}</td>
                 <td className="py-3 px-4">
@@ -103,14 +134,14 @@ export function TokenizationPage() {
                   </div>
                 </td>
               </tr>
-            ))}
-          </DataTable>
+            )}
+          />
         </Card>
       )}
 
       {tab === 'mint-queue' && (
         <div className="space-y-3">
-          {tokenMintQueue.map((m) => (
+          {mintQueue.pageItems.map((m) => (
             <Card key={m.id} className="flex flex-col sm:flex-row sm:items-center gap-4">
               <div className="flex-1">
                 <div className="flex items-center gap-2 flex-wrap">
@@ -130,6 +161,15 @@ export function TokenizationPage() {
               {m.status === 'minting' && <Badge variant="info">Minting on-chain...</Badge>}
             </Card>
           ))}
+          <TablePagination
+            page={mintQueue.page}
+            pageSize={mintQueue.pageSize}
+            totalItems={mintQueue.totalItems}
+            totalPages={mintQueue.totalPages}
+            onPageChange={mintQueue.setPage}
+            onPageSizeChange={mintQueue.setPageSize}
+            pageSizeOptions={[5, 10, 20]}
+          />
         </div>
       )}
 
