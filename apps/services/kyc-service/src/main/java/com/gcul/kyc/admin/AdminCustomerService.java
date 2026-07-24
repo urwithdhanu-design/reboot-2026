@@ -10,7 +10,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+import com.gcul.kyc.cache.AdminViewCache;
 import com.gcul.kyc.dto.UserMapper;
+import com.gcul.kyc.kyc.KycApprovalModes;
 import com.gcul.kyc.messaging.CustomerEventPublisher;
 import com.gcul.kyc.model.UserAccount;
 import com.gcul.kyc.repository.UserAccountRepository;
@@ -20,24 +22,36 @@ public class AdminCustomerService {
 
 	private final UserAccountRepository repository;
 	private final CustomerEventPublisher customerEvents;
+	private final AdminViewCache adminCache;
 
-	public AdminCustomerService(UserAccountRepository repository, CustomerEventPublisher customerEvents) {
+	public AdminCustomerService(
+			UserAccountRepository repository,
+			CustomerEventPublisher customerEvents,
+			AdminViewCache adminCache) {
 		this.repository = repository;
 		this.customerEvents = customerEvents;
+		this.adminCache = adminCache;
 	}
 
 	@Transactional(readOnly = true)
 	public Map<String, Object> listCustomers(String search, String kycStatus) {
 		List<UserAccount> users = repository.searchAdmin(normalize(search), normalizeKyc(kycStatus));
 		List<Map<String, Object>> items = users.stream().map(this::toAdminRow).toList();
-		return Map.of("customers", items, "count", items.size());
+		Map<String, Object> result = Map.of("customers", items, "count", items.size());
+		if (normalize(search) == null && normalizeKyc(kycStatus) == null) {
+			adminCache.store(AdminViewCache.DOC_CUSTOMERS, result);
+		}
+		return result;
 	}
 
 	@Transactional(readOnly = true)
 	public Map<String, Object> kycQueue() {
-		List<UserAccount> users = repository.findByKycStatusOrderByKycSubmittedAtDesc("in_progress");
+		List<UserAccount> users = repository.findKycSubmissionHistory();
+		long pending = users.stream().filter(u -> "in_progress".equals(u.getKycStatus())).count();
 		List<Map<String, Object>> items = users.stream().map(this::toKycQueueItem).toList();
-		return Map.of("queue", items, "count", items.size());
+		Map<String, Object> result = Map.of("queue", items, "count", items.size(), "pending_count", pending);
+		adminCache.store(AdminViewCache.DOC_KYC_QUEUE, result);
+		return result;
 	}
 
 	@Transactional(readOnly = true)
@@ -64,11 +78,28 @@ public class AdminCustomerService {
 		UserAccount user = repository.findById(userId)
 				.orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Customer not found"));
 		user.setKycStatus(normalized);
+		if ("verified".equals(normalized)) {
+			user.setKycApprovalMode(KycApprovalModes.MANUAL_ADMIN);
+		}
+		else if ("in_progress".equals(normalized) || "not_started".equals(normalized)) {
+			user.setKycApprovalMode(null);
+		}
 		repository.save(user);
 		if ("verified".equals(normalized)) {
 			customerEvents.customerVerified(user);
 		}
+		refreshAdminCaches();
 		return toAdminRow(user);
+	}
+
+	private void refreshAdminCaches() {
+		refreshAdminViewCaches();
+	}
+
+	@Transactional(readOnly = true)
+	public void refreshAdminViewCaches() {
+		listCustomers(null, null);
+		kycQueue();
 	}
 
 	private Map<String, Object> toAdminRow(UserAccount user) {
@@ -88,6 +119,7 @@ public class AdminCustomerService {
 		map.put("email", user.getEmail());
 		map.put("mobile_number", user.getMobileNumber());
 		map.put("status", user.getKycStatus());
+		map.put("approval_mode", user.getKycApprovalMode() == null ? "" : user.getKycApprovalMode());
 		map.put("document_type", user.getKycDocumentType() == null ? "" : user.getKycDocumentType());
 		map.put("submitted_at", user.getKycSubmittedAt() == null ? user.getCreatedAt() : user.getKycSubmittedAt());
 		map.put("progress", UserMapper.fromJsonMap(user.getKycProgressJson()));

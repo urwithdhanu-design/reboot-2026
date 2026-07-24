@@ -8,7 +8,7 @@ import org.springframework.stereotype.Component;
 public class MailProperties {
 
 	private boolean enabled = true;
-	private String fromName = "Reboot 2026 Insurance platform";
+	private String fromName = "Reboot 2026 Insurance";
 	private String fromAddress = "";
 
 	public boolean isEnabled() {

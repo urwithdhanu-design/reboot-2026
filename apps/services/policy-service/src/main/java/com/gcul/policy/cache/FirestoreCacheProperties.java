@@ -11,6 +11,8 @@ public class FirestoreCacheProperties {
 	private String marketplaceDocument = "policy_marketplace";
 	/** Max age of cached catalog before refresh from SQL (seconds). */
 	private long marketplaceTtlSeconds = 3600;
+	/** Max age of admin view cache documents (seconds). */
+	private long adminTtlSeconds = 600;
 
 	public boolean isEnabled() {
 		return enabled;
@@ -50,5 +52,13 @@ public class FirestoreCacheProperties {
 
 	public void setMarketplaceTtlSeconds(long marketplaceTtlSeconds) {
 		this.marketplaceTtlSeconds = marketplaceTtlSeconds;
+	}
+
+	public long getAdminTtlSeconds() {
+		return adminTtlSeconds;
+	}
+
+	public void setAdminTtlSeconds(long adminTtlSeconds) {
+		this.adminTtlSeconds = adminTtlSeconds;
 	}
 }

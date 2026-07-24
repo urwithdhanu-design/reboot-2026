@@ -74,14 +74,7 @@ function AppShell() {
               </RequireAuth>
             }
           />
-          <Route
-            path="/quote/:productId"
-            element={
-              <RequireAuth>
-                <QuoteBuilderPage />
-              </RequireAuth>
-            }
-          />
+          <Route path="/quote/:productId" element={<QuoteBuilderPage />} />
           <Route
             path="/payment/success"
             element={
@@ -131,7 +124,7 @@ function AppShell() {
             }
           />
         </Routes>
-        <ChatbotWidget autoOpen />
+        <ChatbotWidget />
       </div>
     </div>
   );

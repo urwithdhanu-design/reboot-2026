@@ -1,9 +1,9 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Public read-only cache documents written by gcul-policy (Admin SDK).
+    // Public read-only cache documents written by GCUL services (Admin SDK).
     match /gcul_cache/{docId} {
-      allow read: if docId == 'policy_marketplace';
+      allow read: if docId == 'policy_marketplace' || docId.matches('admin_.*');
       allow write: if false;
     }
   }

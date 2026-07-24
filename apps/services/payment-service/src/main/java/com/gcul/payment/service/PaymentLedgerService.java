@@ -11,6 +11,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
+import com.gcul.payment.cache.AdminViewCache;
 import com.gcul.payment.model.PaymentRecord;
 import com.gcul.payment.repository.PaymentRecordRepository;
 
@@ -18,9 +19,11 @@ import com.gcul.payment.repository.PaymentRecordRepository;
 public class PaymentLedgerService {
 
 	private final PaymentRecordRepository repo;
+	private final AdminViewCache adminCache;
 
-	public PaymentLedgerService(PaymentRecordRepository repo) {
+	public PaymentLedgerService(PaymentRecordRepository repo, AdminViewCache adminCache) {
 		this.repo = repo;
+		this.adminCache = adminCache;
 	}
 
 	public Map<String, Object> create(Map<String, Object> body) {
@@ -46,7 +49,11 @@ public class PaymentLedgerService {
 		List<PaymentRecord> rows = quoteId == null || quoteId.isBlank()
 				? repo.findAllByOrderByCreatedAtDesc()
 				: repo.findByQuoteIdOrderByCreatedAtDesc(quoteId);
-		return rows.stream().map(this::toMap).toList();
+		List<Map<String, Object>> items = rows.stream().map(this::toMap).toList();
+		if (quoteId == null || quoteId.isBlank()) {
+			adminCache.store(AdminViewCache.DOC_PAYMENTS, Map.of("payments", items, "count", items.size()));
+		}
+		return items;
 	}
 
 	public Map<String, Object> get(String id) {

@@ -48,8 +48,10 @@ function buildApiProxy(s: Record<string, string>, admin = false): Record<string,
     '/api/assistant': proxyEntry(kycTarget),
     '/api/admin/customers': proxyEntry(kycTarget),
     '/api/admin/kyc-queue': proxyEntry(kycTarget),
+    '/api/admin/kyc-settings': proxyEntry(kycTarget),
     '/api/admin/customer-stats': proxyEntry(kycTarget),
     '/api/admin/policies': proxyEntry(policyTarget),
+    '/api/admin/products': proxyEntry(policyTarget),
     '/api/admin/policy-stats': proxyEntry(policyTarget),
     '/api/products': proxyEntry(policyTarget),
     '/api/policies': proxyEntry(policyTarget),
@@ -107,5 +109,8 @@ export default defineConfig(({ mode }) => {
   return {
     plugins: [react(), tailwindcss()],
     server: { port: 5175, proxy },
+    optimizeDeps: {
+      include: ['firebase/app', 'firebase/firestore'],
+    },
   }
 })

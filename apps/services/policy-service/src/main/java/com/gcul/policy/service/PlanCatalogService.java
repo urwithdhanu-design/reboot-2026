@@ -52,13 +52,18 @@ public class PlanCatalogService {
 		if (cached.isPresent()) {
 			return cached.get();
 		}
-		List<InsurancePlan> plans = repository.findAll(Sort.by("category", "title"));
-		catalogCache.storePlans(plans);
+		List<InsurancePlan> plans = loadAllPlansFromDatabase();
+		catalogCache.storePlans(plans, CATEGORIES);
 		return plans;
 	}
 
+	@Transactional(readOnly = true)
+	public List<InsurancePlan> loadAllPlansFromDatabase() {
+		return repository.findAll(Sort.by("category", "title"));
+	}
+
 	public void refreshCache() {
-		catalogCache.storePlans(repository.findAll(Sort.by("category", "title")));
+		catalogCache.storePlans(loadAllPlansFromDatabase(), CATEGORIES);
 	}
 
 	private static boolean matchesCategory(InsurancePlan plan, String category) {

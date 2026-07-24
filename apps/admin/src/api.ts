@@ -86,6 +86,7 @@ export type KycQueueItem = {
   email: string;
   mobile_number: string;
   status: string;
+  approval_mode?: string;
   document_type: string;
   submitted_at: string;
   progress: Record<string, string>;
@@ -163,6 +164,23 @@ export type InsuranceChainResponse = {
   blocks: InsuranceChainBlock[];
 };
 
+export type AdminProduct = {
+  id: string;
+  title: string;
+  description: string;
+  tagline?: string;
+  bullets?: string[];
+  cta_label?: string;
+  category: string;
+  price_from: number;
+  price_unit: string;
+  currency: string;
+  rating: number;
+  review_count: number;
+  best_seller: boolean;
+  icon: string;
+};
+
 export const adminApi = {
   adminLogin: (identifier: string, password: string) =>
     request<AdminAuthResponse>('/api/auth/admin/login', {
@@ -171,7 +189,20 @@ export const adminApi = {
     }),
 
   listProducts: () =>
-    request<{ categories: string[]; products: unknown[] }>('/api/products'),
+    adminRequest<{ categories: string[]; products: AdminProduct[]; count: number }>(
+      '/api/admin/products',
+    ),
+
+  updateProduct: (productId: string, body: Partial<AdminProduct>) =>
+    adminRequest<AdminProduct>(`/api/admin/products/${encodeURIComponent(productId)}`, {
+      method: 'PUT',
+      body: JSON.stringify(body),
+    }),
+
+  refreshProductCache: () =>
+    adminRequest<{ ok: boolean; message: string }>('/api/admin/products/refresh-cache', {
+      method: 'POST',
+    }),
 
   listCustomers: (q?: string, kycStatus?: string) => {
     const params = new URLSearchParams();
@@ -184,7 +215,21 @@ export const adminApi = {
   },
 
   listKycQueue: () =>
-    adminRequest<{ queue: KycQueueItem[]; count: number }>('/api/admin/kyc-queue'),
+    adminRequest<{ queue: KycQueueItem[]; count: number; pending_count: number }>(
+      '/api/admin/kyc-queue',
+    ),
+
+  getKycSettings: () =>
+    adminRequest<{ auto_approve_agent: boolean }>('/api/admin/kyc-settings'),
+
+  updateKycSettings: (autoApproveAgent: boolean) =>
+    adminRequest<{ auto_approve_agent: boolean; queue_auto_approved?: number }>(
+      '/api/admin/kyc-settings',
+      {
+        method: 'PATCH',
+        body: JSON.stringify({ auto_approve_agent: autoApproveAgent }),
+      },
+    ),
 
   updateCustomerKyc: (userId: string, status: string) =>
     adminRequest<AdminCustomer>(`/api/admin/customers/${encodeURIComponent(userId)}/kyc`, {

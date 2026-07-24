@@ -69,16 +69,21 @@ public class MarketplaceCatalogCache {
 	}
 
 	public void storePlans(List<InsurancePlan> plans) {
+		storePlans(plans, List.of());
+	}
+
+	public void storePlans(List<InsurancePlan> plans, List<String> categories) {
 		if (!isActive()) {
 			return;
 		}
 		try {
 			String json = objectMapper.writeValueAsString(plans);
-			Map<String, Object> data = Map.of(
-					"plansJson", json,
-					"cachedAtEpochSeconds", Instant.now().getEpochSecond(),
-					"planCount", plans.size(),
-					"source", "gcul-policy");
+			Map<String, Object> data = new java.util.LinkedHashMap<>();
+			data.put("plansJson", json);
+			data.put("categoriesJson", objectMapper.writeValueAsString(categories));
+			data.put("cachedAtEpochSeconds", Instant.now().getEpochSecond());
+			data.put("planCount", plans.size());
+			data.put("source", "gcul-policy");
 			docRef().set(data).get();
 			log.info("Wrote {} plans to Firestore cache ({}/{})",
 					plans.size(), props.getCollection(), props.getMarketplaceDocument());

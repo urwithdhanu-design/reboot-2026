@@ -3,6 +3,7 @@ import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { api } from "../api";
 import { BottomNav, StepHeader } from "../components";
 import { clearStashedQuote, readStashedQuote } from "../components/PayQuoteButton";
+import { markQuotePaid } from "../customerPolicies";
 
 export function PaymentSuccessPage() {
   const [params] = useSearchParams();
@@ -28,6 +29,7 @@ export function PaymentSuccessPage() {
         setPaid(res.paid);
         setAmount(res.amount_total);
         setQuoteId(res.quote_id);
+        if (res.paid && res.quote_id) markQuotePaid(res.quote_id);
       })
       .catch((err) => {
         if (!alive) return;

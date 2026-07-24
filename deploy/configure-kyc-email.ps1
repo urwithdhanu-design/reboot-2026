@@ -14,7 +14,8 @@
 param(
   [string] $ProjectId = $(if ($env:GCP_PROJECT) { $env:GCP_PROJECT } else { "community-hub-6fb1b" }),
   [string] $Region = $(if ($env:GCP_REGION) { $env:GCP_REGION } else { "us-central1" }),
-  [string] $KindredEnvPath = "C:\projects\kindred-circle-crm\email-api\.env"
+  [string] $KindredEnvPath = "C:\projects\kindred-circle-crm\email-api\.env",
+  [string] $FromName = $(if ($env:EMAIL_FROM_NAME) { $env:EMAIL_FROM_NAME } else { "Reboot 2026 Insurance" })
 )
 
 $ErrorActionPreference = "Stop"
@@ -38,8 +39,9 @@ function Read-DotEnv([string] $path) {
 $fromFile = Read-DotEnv $KindredEnvPath
 $emailUser = if ($env:EMAIL_USER) { $env:EMAIL_USER } else { $fromFile["EMAIL_USER"] }
 $emailPass = if ($env:EMAIL_PASS) { ($env:EMAIL_PASS -replace "\s", "") } else { $fromFile["EMAIL_PASS"] }
-$fromName = if ($env:EMAIL_FROM_NAME) { $env:EMAIL_FROM_NAME } else { $fromFile["EMAIL_FROM_NAME"] }
-if (-not $fromName) { $fromName = "Reboot 2026 Insurance platform" }
+# Branding is GCUL-specific — never inherit Kindred EMAIL_FROM_NAME (e.g. SalesDesk Pro).
+$fromName = $FromName
+if (-not $fromName) { $fromName = "Reboot 2026 Insurance" }
 
 if (-not $emailUser -or -not $emailPass) {
   throw "Set EMAIL_USER and EMAIL_PASS (or provide Kindred .env at $KindredEnvPath)"
@@ -82,4 +84,12 @@ gcloud run services update gcul-notification `
   --update-secrets "EMAIL_PASS=${secretPass}:latest" `
   --quiet
 
-Write-Host "Done. Forgot-password emails will send from $emailUser when users exist in KYC DB."
+Write-Host "Updating gcul-policy with same Gmail SMTP (quote / payment emails) ..."
+gcloud run services update gcul-policy `
+  --region $Region `
+  --project $ProjectId `
+  --update-env-vars $envVars `
+  --update-secrets "EMAIL_PASS=${secretPass}:latest" `
+  --quiet
+
+Write-Host "Done. Emails send as '$fromName' from $emailUser"

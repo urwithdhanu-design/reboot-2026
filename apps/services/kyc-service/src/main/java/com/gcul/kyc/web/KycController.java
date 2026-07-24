@@ -1,6 +1,5 @@
 package com.gcul.kyc.web;
 
-import java.time.Instant;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
@@ -14,8 +13,8 @@ import org.springframework.web.server.ResponseStatusException;
 
 import com.gcul.kyc.dto.KycSubmitRequest;
 import com.gcul.kyc.dto.UserMapper;
-import com.gcul.kyc.messaging.CustomerEventPublisher;
 import com.gcul.kyc.model.UserAccount;
+import com.gcul.kyc.service.KycSubmissionService;
 import com.gcul.kyc.store.UserStore;
 
 import jakarta.servlet.http.HttpServletRequest;
@@ -26,37 +25,17 @@ import jakarta.validation.Valid;
 public class KycController {
 
 	private final UserStore store;
-	private final CustomerEventPublisher customerEvents;
+	private final KycSubmissionService submissions;
 
-	public KycController(UserStore store, CustomerEventPublisher customerEvents) {
+	public KycController(UserStore store, KycSubmissionService submissions) {
 		this.store = store;
-		this.customerEvents = customerEvents;
+		this.submissions = submissions;
 	}
 
 	@PostMapping("/submit")
 	public Map<String, Object> submit(@Valid @RequestBody KycSubmitRequest body, HttpServletRequest request) {
 		UserAccount user = requireUser(request);
-
-		Map<String, String> progress = new LinkedHashMap<>();
-		progress.put("identity", "done");
-		progress.put("verify", body.isDocumentUploaded() ? "done" : "pending");
-		progress.put("liveness", body.isSelfieCaptured() ? "done" : "pending");
-		progress.put("complete",
-				body.isDocumentUploaded() && body.isSelfieCaptured() ? "done" : "pending");
-
-		String status = "done".equals(progress.get("complete")) ? "verified" : "in_progress";
-
-		user.setKycStatus(status);
-		user.setKycDocumentType(body.getDocumentType());
-		user.setKycProgressJson(UserMapper.toJson(progress));
-		user.setKycSubmittedAt(Instant.now().toString());
-		store.save(user);
-
-		if ("verified".equals(status)) {
-			customerEvents.customerVerified(user);
-		}
-
-		return Map.of("status", status, "progress", progress);
+		return submissions.submit(user, body);
 	}
 
 	@GetMapping("/status")

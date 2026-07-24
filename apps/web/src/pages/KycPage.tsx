@@ -43,7 +43,7 @@ export function KycPage() {
       if (user) {
         updateUser({ ...user, kyc_status: res.status });
       }
-      navigate("/wallet");
+      navigate("/wallet", { state: { kycPendingReview: true } });
     } catch (err) {
       setError(err instanceof Error ? err.message : "KYC failed");
     } finally {

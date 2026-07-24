@@ -14,6 +14,7 @@ import org.springframework.transaction.annotation.Transactional;
 import com.gcul.policy.cache.MarketplaceCatalogCache;
 import com.gcul.policy.model.InsurancePlan;
 import com.gcul.policy.repository.InsurancePlanRepository;
+import com.gcul.policy.service.PlanCatalogService;
 
 @Component
 @Order(2)
@@ -32,14 +33,19 @@ public class PlanDataSeeder implements ApplicationRunner {
 	@Override
 	@Transactional
 	public void run(ApplicationArguments args) {
+		if (repository.count() > 0) {
+			log.info("Insurance plans already present ({}), refreshing Firestore cache only", repository.count());
+			refreshCache();
+			return;
+		}
 		List<InsurancePlan> seed = catalog();
 		repository.saveAll(seed);
-		log.info("Upserted {} insurance product cards", seed.size());
+		log.info("Seeded {} insurance product cards", seed.size());
 		refreshCache();
 	}
 
 	public void refreshCache() {
-		catalogCache.storePlans(repository.findAll(Sort.by("category", "title")));
+		catalogCache.storePlans(repository.findAll(Sort.by("category", "title")), PlanCatalogService.CATEGORIES);
 	}
 
 	private static String bullets(String... items) {

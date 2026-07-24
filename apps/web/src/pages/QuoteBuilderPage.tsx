@@ -8,14 +8,21 @@ import {
   type QuoteSchema,
 } from "../api";
 import { saveQuoteToCompare } from "../compareBasket";
+import {
+  buildHealthDemoAnswers,
+  healthDemoAnswersThroughStep,
+  sleep,
+} from "../healthDemoFill";
 import { AssistantBar, BottomNav, StepHeader } from "../components";
 import { PayQuoteButton } from "../components/PayQuoteButton";
 import { productIcon } from "../icons";
+import { useSession } from "../session";
 import { HOME_DEMO_ADDRESS, HomeQuoteWizard } from "./HomeQuoteWizard";
 
 export function QuoteBuilderPage() {
   const { productId = "" } = useParams();
   const navigate = useNavigate();
+  const { user } = useSession();
   const [product, setProduct] = useState<Product | null>(null);
   const [schema, setSchema] = useState<QuoteSchema | null>(null);
   const [answers, setAnswers] = useState<Record<string, string>>({});
@@ -26,6 +33,8 @@ export function QuoteBuilderPage() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [postcodeThanks, setPostcodeThanks] = useState(false);
+  const [demoFilling, setDemoFilling] = useState(false);
+  const [demoFlash, setDemoFlash] = useState(false);
 
   useEffect(() => {
     let alive = true;
@@ -105,22 +114,53 @@ export function QuoteBuilderPage() {
   const totalSteps = schema?.total_steps ?? 2;
   const firstName = answers.first_name?.trim() || "there";
 
-  async function submitQuote() {
-    if (!product) return;
+  async function submitQuote(payload?: Record<string, string>, redirectToPolicies = false) {
+    if (!product) return null;
+    const body = payload ?? answers;
     setSubmitting(true);
     setError(null);
     try {
       const estimated = await api.estimateQuote({
         product_id: product.id,
-        answers,
+        answers: body,
       });
       saveQuoteToCompare(estimated);
       setQuote(estimated);
+      if (redirectToPolicies) {
+        navigate("/policies", { state: { quote: estimated, demoSubmitted: true } });
+        return estimated;
+      }
       setShowQuote(true);
+      return estimated;
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not estimate quote");
+      return null;
     } finally {
       setSubmitting(false);
+    }
+  }
+
+  async function runHealthDemoFill() {
+    if (!user || !product || demoFilling || submitting) return;
+    setDemoFilling(true);
+    setDemoFlash(true);
+    setError(null);
+    setShowQuote(false);
+    const full = buildHealthDemoAnswers(user);
+
+    try {
+      for (let step = 1; step <= totalSteps; step++) {
+        setWizardStep(step);
+        const partial = healthDemoAnswersThroughStep(step, full);
+        setAnswers((prev) => ({ ...prev, ...partial }));
+        if (step === 2) setPostcodeThanks(true);
+        await sleep(step === totalSteps ? 900 : 750);
+      }
+      await submitQuote(full, true);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Demo fill failed");
+      setDemoFilling(false);
+      setDemoFlash(false);
     }
   }
 
@@ -319,14 +359,30 @@ export function QuoteBuilderPage() {
     return (
       <div className="screen has-nav vitality-screen">
         <div className="vitality-top">
-          <button type="button" className="back-link" onClick={onBack}>
+          <button type="button" className="back-link" onClick={onBack} disabled={demoFilling}>
             ← Back
           </button>
-          <div className="partner-logos">
-            <span className="lloyds-mark">REBOOT 2026</span>
-            <span className="vitality-mark">Vitality</span>
+          <div className="vitality-top-actions">
+            <button
+              type="button"
+              className="demo-fill-btn"
+              disabled={demoFilling || submitting || !user}
+              onClick={() => void runHealthDemoFill()}
+            >
+              {demoFilling ? "Filling…" : "Demo fill"}
+            </button>
+            <div className="partner-logos">
+              <span className="lloyds-mark">REBOOT 2026</span>
+              <span className="vitality-mark">Vitality</span>
+            </div>
           </div>
         </div>
+
+        {demoFilling ? (
+          <p className="demo-fill-banner" role="status">
+            Auto-filling your details as <strong>{user?.full_name}</strong>…
+          </p>
+        ) : null}
 
         <div className="progress-rail">
           <div
@@ -339,19 +395,22 @@ export function QuoteBuilderPage() {
         </p>
 
         <h1 className="vitality-heading">{heading}</h1>
-        {currentStep.subtitle && wizardStep !== 2 ? (
+        {wizardStep === 1 ? (
+          <p className="vitality-sub">{product.title} · from £{product.price_from.toFixed(0)}/{product.price_unit}</p>
+        ) : null}
+        {currentStep.subtitle && wizardStep !== 2 && wizardStep !== 1 ? (
           <p className="vitality-sub">{currentStep.subtitle}</p>
         ) : null}
 
-        <form className="stack vitality-form" onSubmit={onNextStep}>
+        <form className={`stack vitality-form${demoFlash ? " demo-flash-active" : ""}`} onSubmit={onNextStep}>
           {wizardStep === 1 ? (
-            <HealthStepOne answers={answers} setAnswers={setAnswers} />
+            <HealthStepOne answers={answers} setAnswers={setAnswers} demoFlash={demoFlash} />
           ) : null}
 
           {wizardStep === 2 ? (
             <div className="field">
               <label htmlFor="postcode">Postcode</label>
-              <div className={`input-shell${postcodeThanks ? " valid" : ""}`}>
+              <div className={`input-shell${postcodeThanks ? " valid" : ""}${demoFlash && answers.postcode ? " demo-field-flash" : ""}`}>
                 <input
                   id="postcode"
                   value={answers.postcode ?? ""}
@@ -375,7 +434,7 @@ export function QuoteBuilderPage() {
                 <button
                   key={opt}
                   type="button"
-                  className={`radio-card${answers.cover_who === opt ? " selected" : ""}`}
+                  className={`radio-card${answers.cover_who === opt ? " selected" : ""}${demoFlash && answers.cover_who === opt ? " demo-field-flash" : ""}`}
                   onClick={() => setAnswers((prev) => ({ ...prev, cover_who: opt }))}
                 >
                   <span className="radio-dot" />
@@ -447,9 +506,13 @@ export function QuoteBuilderPage() {
           <button
             className="btn-primary btn-dark"
             type="submit"
-            disabled={submitting || (wizardStep === 5 && (!answers.email || !answers.phone))}
+            disabled={
+              submitting ||
+              demoFilling ||
+              (wizardStep === 5 && (!answers.email || !answers.phone))
+            }
           >
-            {submitting
+            {submitting || demoFilling
               ? "Calculating…"
               : wizardStep === 5
                 ? "Show my quote"
@@ -530,15 +593,18 @@ export function QuoteBuilderPage() {
 function HealthStepOne({
   answers,
   setAnswers,
+  demoFlash = false,
 }: {
   answers: Record<string, string>;
   setAnswers: Dispatch<SetStateAction<Record<string, string>>>;
+  demoFlash?: boolean;
 }) {
+  const flash = demoFlash ? " demo-field-flash" : "";
   return (
     <>
       <div className="field">
         <label htmlFor="title">Title</label>
-        <div className="input-shell">
+        <div className={`input-shell${flash}`}>
           <select
             id="title"
             value={answers.title ?? "Mr"}
@@ -554,7 +620,7 @@ function HealthStepOne({
       </div>
       <div className="field">
         <label htmlFor="first_name">First name</label>
-        <div className="input-shell">
+        <div className={`input-shell${flash}`}>
           <input
             id="first_name"
             value={answers.first_name ?? ""}
@@ -567,7 +633,7 @@ function HealthStepOne({
       </div>
       <div className="field">
         <label htmlFor="last_name">Last name</label>
-        <div className="input-shell">
+        <div className={`input-shell${flash}`}>
           <input
             id="last_name"
             value={answers.last_name ?? ""}
@@ -582,7 +648,7 @@ function HealthStepOne({
         <label>Date of birth</label>
         <p className="section-sub">To buy a plan, you must be between 18 and 79 years old</p>
         <div className="dob-row">
-          <div className="input-shell">
+          <div className={`input-shell${flash}`}>
             <input
               aria-label="Day"
               placeholder="Day"
@@ -595,7 +661,7 @@ function HealthStepOne({
               required
             />
           </div>
-          <div className="input-shell">
+          <div className={`input-shell${flash}`}>
             <input
               aria-label="Month"
               placeholder="Month"
@@ -608,7 +674,7 @@ function HealthStepOne({
               required
             />
           </div>
-          <div className="input-shell">
+          <div className={`input-shell${flash}`}>
             <input
               aria-label="Year"
               placeholder="Year"

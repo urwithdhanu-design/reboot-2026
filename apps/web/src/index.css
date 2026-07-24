@@ -737,6 +737,41 @@ a.link-quiet:hover {
   gap: 10px;
 }
 
+.claims-header-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.claims-header-row .section-title {
+  margin-bottom: 4px;
+}
+
+.claim-policy-picker {
+  margin-bottom: 12px;
+}
+
+.claim-policy-picker label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--muted);
+}
+
+.claim-policy-picker select {
+  font: inherit;
+  font-weight: 500;
+  color: var(--ink);
+  border: 1.5px solid var(--line);
+  border-radius: 10px;
+  padding: 10px 12px;
+  background: #fff;
+}
+
 .claim-form label {
   display: flex;
   flex-direction: column;
@@ -1494,9 +1529,64 @@ a.link-quiet:hover {
 }
 
 .vitality-top {
-  display: grid;
-  grid-template-columns: 64px 1fr 64px;
-  align-items: center;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.vitality-top-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+  flex: 1;
+}
+
+.demo-fill-btn {
+  border: 1px solid var(--green);
+  background: #fff;
+  color: var(--green);
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 6px 10px;
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.demo-fill-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.demo-fill-banner {
+  margin: 8px 0 0;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: #e8f5ef;
+  color: #1a4d3a;
+  font-size: 0.85rem;
+}
+
+@keyframes demoFieldFlash {
+  0% {
+    box-shadow: 0 0 0 0 rgba(0, 120, 80, 0.45);
+    background: #f0faf5;
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(0, 120, 80, 0);
+    background: #fff;
+  }
+}
+
+.demo-field-flash {
+  animation: demoFieldFlash 0.85s ease-out;
+}
+
+.radio-card.demo-field-flash {
+  animation: demoFieldFlash 0.85s ease-out;
 }
 
 .back-link {

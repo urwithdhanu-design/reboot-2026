@@ -1,7 +1,10 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { RefreshCw } from 'lucide-react';
 import { AdminLayout } from '../components/layout/AdminLayout';
 import { Card, PageHeader, DataTable, Badge, Button, SearchInput } from '../components/ui';
-import { adminApi, enrichPoliciesWithPayments, policyCountByEmail, type AdminCustomer } from '../api';
+import { enrichPoliciesWithPayments, policyCountByEmail, type AdminCustomer } from '../api';
+import { formatCacheAge } from '../firestore/adminCache';
+import { cachedAdminApi, filterCustomers } from '../firestore/cachedAdminApi';
 
 const statusBadge: Record<string, 'success' | 'warning' | 'error' | 'neutral'> = {
   active: 'success',
@@ -33,42 +36,59 @@ export function CustomersPage() {
   const [policies, setPolicies] = useState<ReturnType<typeof enrichPoliciesWithPayments>>([]);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [fromCache, setFromCache] = useState(false);
+  const [cachedAt, setCachedAt] = useState<number | undefined>();
 
-  useEffect(() => {
-    let alive = true;
+  const load = useCallback((force = false) => {
     setLoading(true);
-    const kycParam = filter === 'all' ? undefined : filter;
     Promise.all([
-      adminApi.listCustomers(search || undefined, kycParam),
-      adminApi.listPolicies(),
-      adminApi.listPayments(),
+      cachedAdminApi.listCustomers(force),
+      cachedAdminApi.listPolicies(force),
+      cachedAdminApi.listPayments(force),
     ])
       .then(([custRes, polRes, payRes]) => {
-        if (!alive) return;
-        setCustomers(custRes.customers);
-        setPolicies(enrichPoliciesWithPayments(polRes.policies, payRes.payments));
+        setCustomers(custRes.data.customers);
+        setPolicies(enrichPoliciesWithPayments(polRes.data.policies, payRes.data.payments));
+        setFromCache(custRes.fromCache && polRes.fromCache && payRes.fromCache);
+        setCachedAt(custRes.cachedAt ?? polRes.cachedAt ?? payRes.cachedAt);
         setError(null);
       })
       .catch((err) => {
-        if (!alive) return;
         setError(err instanceof Error ? err.message : 'Failed to load customers');
       })
-      .finally(() => {
-        if (alive) setLoading(false);
-      });
-    return () => {
-      alive = false;
-    };
-  }, [search, filter]);
+      .finally(() => setLoading(false));
+  }, []);
 
-  const rows = useMemo(() => customers, [customers]);
+  useEffect(() => {
+    load(false);
+  }, [load]);
+
+  const rows = useMemo(
+    () => filterCustomers(customers, search, filter),
+    [customers, search, filter],
+  );
+
+  const cacheLabel = fromCache ? formatCacheAge(cachedAt) : null;
 
   return (
     <AdminLayout>
       <PageHeader
         title="Customer Management"
-        subtitle="Registered customers from KYC service (live)"
-        actions={<Button size="sm" variant="outline" disabled>Export CSV</Button>}
+        subtitle="Registered customers — Firestore cache (10 min) with live refresh"
+        actions={
+          <div className="flex items-center gap-2">
+            {cacheLabel ? (
+              <Badge variant="info">Cached · {cacheLabel}</Badge>
+            ) : null}
+            <Button size="sm" variant="outline" onClick={() => load(true)} disabled={loading}>
+              <RefreshCw className={`w-4 h-4 mr-1 ${loading ? 'animate-spin' : ''}`} />
+              Refresh
+            </Button>
+            <Button size="sm" variant="outline" disabled>
+              Export CSV
+            </Button>
+          </div>
+        }
       />
 
       {error ? (

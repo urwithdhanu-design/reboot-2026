@@ -7,15 +7,18 @@ import java.util.Map;
 
 import org.springframework.stereotype.Service;
 
+import com.gcul.policy.cache.AdminViewCache;
 import com.gcul.policy.quote.QuoteService;
 
 @Service
 public class AdminPolicyService {
 
 	private final QuoteService quoteService;
+	private final AdminViewCache adminCache;
 
-	public AdminPolicyService(QuoteService quoteService) {
+	public AdminPolicyService(QuoteService quoteService, AdminViewCache adminCache) {
 		this.quoteService = quoteService;
+		this.adminCache = adminCache;
 	}
 
 	public Map<String, Object> listPolicies() {
@@ -23,7 +26,9 @@ public class AdminPolicyService {
 		for (Map<String, Object> quote : quoteService.listQuotes()) {
 			policies.add(toPolicyRow(quote));
 		}
-		return Map.of("policies", policies, "count", policies.size());
+		Map<String, Object> result = Map.of("policies", policies, "count", policies.size());
+		adminCache.store(AdminViewCache.DOC_POLICIES, result);
+		return result;
 	}
 
 	public Map<String, Object> stats() {

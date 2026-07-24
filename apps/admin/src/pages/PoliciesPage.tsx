@@ -1,7 +1,10 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
+import { RefreshCw } from 'lucide-react';
 import { AdminLayout } from '../components/layout/AdminLayout';
-import { Card, PageHeader, DataTable, Badge } from '../components/ui';
-import { adminApi, enrichPoliciesWithPayments, type AdminPolicyRow } from '../api';
+import { Card, PageHeader, DataTable, Badge, Button } from '../components/ui';
+import { enrichPoliciesWithPayments, type AdminPolicyRow } from '../api';
+import { formatCacheAge } from '../firestore/adminCache';
+import { cachedAdminApi } from '../firestore/cachedAdminApi';
 
 const statusBadge: Record<string, 'success' | 'warning' | 'error' | 'neutral' | 'info'> = {
   active: 'success',
@@ -31,34 +34,46 @@ export function PoliciesPage() {
   const [policies, setPolicies] = useState<AdminPolicyRow[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [fromCache, setFromCache] = useState(false);
+  const [cachedAt, setCachedAt] = useState<number | undefined>();
 
-  useEffect(() => {
-    let alive = true;
-    Promise.all([adminApi.listPolicies(), adminApi.listPayments()])
+  const load = useCallback((force = false) => {
+    setLoading(true);
+    Promise.all([cachedAdminApi.listPolicies(force), cachedAdminApi.listPayments(force)])
       .then(([polRes, payRes]) => {
-        if (!alive) return;
-        setPolicies(enrichPoliciesWithPayments(polRes.policies, payRes.payments));
+        setPolicies(enrichPoliciesWithPayments(polRes.data.policies, payRes.data.payments));
+        setFromCache(polRes.fromCache && payRes.fromCache);
+        setCachedAt(polRes.cachedAt ?? payRes.cachedAt);
         setError(null);
       })
       .catch((err) => {
-        if (!alive) return;
         setError(err instanceof Error ? err.message : 'Failed to load policies');
       })
-      .finally(() => {
-        if (alive) setLoading(false);
-      });
-    return () => {
-      alive = false;
-    };
+      .finally(() => setLoading(false));
   }, []);
+
+  useEffect(() => {
+    load(false);
+  }, [load]);
+
+  const cacheLabel = fromCache ? formatCacheAge(cachedAt) : null;
 
   return (
     <AdminLayout>
       <PageHeader
         title="Policy Management"
-        subtitle="Quotes and bound policies from policy + payment services"
+        subtitle="Quotes and bound policies — Firestore cache (10 min) with live refresh"
         actions={
-          <Badge variant="info">{policies.length} applications</Badge>
+          <div className="flex items-center gap-2">
+            {cacheLabel ? (
+              <Badge variant="info">Cached · {cacheLabel}</Badge>
+            ) : null}
+            <Button size="sm" variant="outline" onClick={() => load(true)} disabled={loading}>
+              <RefreshCw className={`w-4 h-4 mr-1 ${loading ? 'animate-spin' : ''}`} />
+              Refresh
+            </Button>
+            <Badge variant="info">{policies.length} applications</Badge>
+          </div>
         }
       />
 

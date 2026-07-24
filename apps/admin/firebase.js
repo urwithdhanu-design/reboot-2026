@@ -1,17 +1,17 @@
-// Import the functions you need from the SDKs you need
-import { initializeApp } from "firebase/app";
-// TODO: Add SDKs for Firebase products that you want to use
-// https://firebase.google.com/docs/web/setup#available-libraries
+import { getApps, initializeApp } from 'firebase/app';
+import { firebaseConfig } from '../firebaseCredentials.js';
 
-// Your web app's Firebase configuration
-const firebaseConfig = {
-  apiKey: "AIzaSyAe_Mns9QWCtTszP0p5cBo4Wpg64UvG6gE",
-  authDomain: "insure360-83a36.firebaseapp.com",
-  projectId: "insure360-83a36",
-  storageBucket: "insure360-83a36.firebasestorage.app",
-  messagingSenderId: "690935448909",
-  appId: "1:690935448909:web:d7bbf4b583758e11fde304"
-};
+export { firebaseConfig };
 
-// Initialize Firebase
-const app = initializeApp(firebaseConfig);
+let app;
+
+export function getFirebaseApp() {
+  if (app) return app;
+  const existing = getApps();
+  if (existing.length > 0) {
+    app = existing[0];
+    return app;
+  }
+  app = initializeApp(firebaseConfig);
+  return app;
+}

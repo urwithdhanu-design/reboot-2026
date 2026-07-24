@@ -13,7 +13,7 @@ public class OpsDlProperties {
 
 	private String dlEmails =
 			"beingfazal@gmail.com,dollanitri@gmail.com,vineesha.mekala@gmail.com,urwithdhanu@gmail.com";
-	private String fromName = "Reboot 2026 Insurance platform";
+	private String fromName = "Reboot 2026 Insurance";
 	private String fromAddress = "";
 
 	public List<String> recipients() {

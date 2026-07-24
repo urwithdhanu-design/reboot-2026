@@ -23,6 +23,13 @@ public interface UserAccountRepository extends JpaRepository<UserAccount, String
 
 	@Query("""
 			select u from UserAccount u
+			where u.kycSubmittedAt is not null
+			order by u.kycSubmittedAt desc
+			""")
+	List<UserAccount> findKycSubmissionHistory();
+
+	@Query("""
+			select u from UserAccount u
 			where (:q is null or :q = ''
 			  or lower(u.fullName) like lower(concat('%', :q, '%'))
 			  or lower(u.email) like lower(concat('%', :q, '%'))

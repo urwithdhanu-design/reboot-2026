@@ -45,6 +45,10 @@ public class UserAccount {
 	@Column(name = "kyc_submitted_at", length = 40)
 	private String kycSubmittedAt;
 
+	/** auto_agent | manual_admin — how KYC was approved (null if pending / not submitted). */
+	@Column(name = "kyc_approval_mode", length = 32)
+	private String kycApprovalMode;
+
 	@Column(name = "wallet_address", length = 64)
 	private String walletAddress;
 
@@ -161,6 +165,14 @@ public class UserAccount {
 
 	public void setKycSubmittedAt(String kycSubmittedAt) {
 		this.kycSubmittedAt = kycSubmittedAt;
+	}
+
+	public String getKycApprovalMode() {
+		return kycApprovalMode;
+	}
+
+	public void setKycApprovalMode(String kycApprovalMode) {
+		this.kycApprovalMode = kycApprovalMode;
 	}
 
 	public String getWalletAddress() {
