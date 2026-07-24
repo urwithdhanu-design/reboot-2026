@@ -1,1 +1,0 @@
-{"categories":["All","Health","Vehicle","Pet","Property","Life","Travel"],"products":[]}

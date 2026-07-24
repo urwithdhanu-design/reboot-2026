@@ -1,1 +1,0 @@
-{"detail":"No static resource api/assistant/marketplace for request '/api/assistant/marketplace'."}

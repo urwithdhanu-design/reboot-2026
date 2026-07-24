@@ -18,8 +18,12 @@ keys/
 # Local dev scripts (logs)
 .local-dev/
 
+# Ad-hoc local debug dumps (use .local-dev/logs instead)
+/tmp-*
+kyc-tmp.zip
+apps/services/kyc-forgot-compile.txt
+
 # Local service databases / runtime
 **/data/
 *.mv.db
 *.trace.db
-kyc-tmp.zip
