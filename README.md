@@ -29,13 +29,13 @@ See [`packages/gcul-sdk/README.md`](packages/gcul-sdk/README.md).
 
 ## Run insurance apps
 
-**Local dev (start all APIs + local vs Cloud Run flag):** [`apps/services/LOCAL-DEV.md`](apps/services/LOCAL-DEV.md)
+**Local dev:** run `local-dev.cmd setup` then `local-dev.cmd start` from repo root.  
+**Full Windows guide:** [`scripts/local/README.md`](scripts/local/README.md) · Short reference: [`apps/services/LOCAL-DEV.md`](apps/services/LOCAL-DEV.md)
 
 ```cmd
 cd C:\projects\gcul
-scripts\start-local-apis.cmd
-scripts\set-api-target.cmd cloud
-cd apps\web && npm run dev
+local-dev.cmd setup
+local-dev.cmd start
 ```
 
 See also [`apps/README.md`](apps/README.md) and [`scripts/README.md`](scripts/README.md).

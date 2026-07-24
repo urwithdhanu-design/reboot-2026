@@ -1,3 +1,3 @@
 @echo off
-REM Show local API ports + H2 vs Cloud SQL (same as scripts\status-local-apis.cmd).
+REM [legacy] Show status — prefer: local-dev.cmd status
 call "%~dp0status-local-apis.cmd" %*

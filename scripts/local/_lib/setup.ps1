@@ -1,0 +1,55 @@
+#Requires -Version 5.1
+param(
+  [switch] $MessagingOnly
+)
+
+$ErrorActionPreference = "Stop"
+. (Join-Path $PSScriptRoot "common.ps1")
+Ensure-LocalDevDirs
+
+Write-Host "GCUL local setup ($RepoRoot)"
+Write-Host ""
+
+# 1. gcul-messaging into local Maven repo
+$mvnw = Join-Path $RepoRoot "apps\services\kyc-service\mvnw.cmd"
+$messagingPom = Join-Path $RepoRoot "apps\libs\gcul-messaging\pom.xml"
+if (-not (Test-Path $mvnw)) {
+  throw "Missing $mvnw — clone the full repo first."
+}
+Write-Host "[1/3] Installing gcul-messaging into local Maven ..."
+& $mvnw -q -f $messagingPom install -DskipTests
+if ($LASTEXITCODE -ne 0) { throw "gcul-messaging install failed (exit $LASTEXITCODE)" }
+
+if ($MessagingOnly) {
+  Write-Host "Done (messaging only)."
+  exit 0
+}
+
+# 2. npm install for UIs
+foreach ($app in $UiApps) {
+  $appDir = Join-Path $RepoRoot $app.dir
+  Write-Host "[2/3] npm install in $($app.dir) ..."
+  Push-Location $appDir
+  try {
+    npm install --no-fund --no-audit
+    if ($LASTEXITCODE -ne 0) { throw "npm install failed in $($app.dir)" }
+  } finally {
+    Pop-Location
+  }
+}
+
+# 3. Default API target for local full-stack
+if (-not (Test-Path $ApiTargetFile)) {
+  Write-Host "[3/3] Creating $ApiTargetFile (VITE_API_TARGET=local) ..."
+  @(
+    "# Shared dev API target (used by apps/web and apps/admin Vite)"
+    "VITE_API_TARGET=local"
+  ) | Set-Content -Path $ApiTargetFile -Encoding utf8
+} else {
+  Write-Host "[3/3] Keeping existing $ApiTargetFile (target=$(Get-ApiTarget))"
+}
+
+Write-Host ""
+Write-Host "Setup complete. Next:"
+Write-Host "  local-dev.cmd start     Full local stack"
+Write-Host "  local-dev.cmd cloud     UI against Cloud Run APIs"

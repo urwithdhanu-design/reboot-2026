@@ -2,7 +2,7 @@
 
 **Local dev:** [`LOCAL-DEV.md`](LOCAL-DEV.md) · **Scripts:** [`../../scripts/README.md`](../../scripts/README.md)
 
-**Start all Java APIs:** `scripts\start-local-apis.cmd` from repo root.
+**Start all Java APIs:** `local-dev.cmd apis` from repo root (or `local-dev.cmd start` for APIs + UI).
 
 | Service | Port | Responsibility |
 |---------|------|----------------|

@@ -4,38 +4,22 @@ Mobile-first Lloyds-style (LBG green) onboarding + marketplace.
 
 ## Local development (recommended)
 
-**Full guide:** [`services/LOCAL-DEV.md`](services/LOCAL-DEV.md)
-
-### 1. Start all backend APIs
-
 ```cmd
 cd C:\projects\gcul
-scripts\start-local-apis.cmd
-scripts\status-local-apis.cmd
+local-dev.cmd setup
+local-dev.cmd start
 ```
 
-### 2. Choose where the UI sends `/api/*`
+| App | URL |
+|-----|-----|
+| Customer | http://localhost:5174 |
+| Admin | http://localhost:5175 |
 
-| Target | Command / file |
-|--------|----------------|
-| **Cloud Run** on GCP (default) | `scripts\set-api-target.cmd cloud` or `.local-dev\api-target.env` → `VITE_API_TARGET=cloud` |
-| **Local** Java on your PC | `scripts\set-api-target.cmd local` or `VITE_API_TARGET=local` |
+**Cloud demo** (UI only, APIs on GCP): `local-dev.cmd cloud`
 
-Restart Vite after changing the flag.
-
-### 3. Run the apps
-
-```cmd
-cd apps\web
-npm run dev
-```
-
-- Customer: http://localhost:5173  
-- Admin: `cd apps\admin` → `npm run dev` → http://localhost:5174  
+Full guide: [`../scripts/local/README.md`](../scripts/local/README.md) · Scripts index: [`../scripts/README.md`](../scripts/README.md)
 
 Demo password after register: **`ChangeMe123!`**
-
-Script reference: [`../scripts/README.md`](../scripts/README.md)
 
 ---
 
@@ -54,8 +38,8 @@ Script reference: [`../scripts/README.md`](../scripts/README.md)
 | `blockchain-orchestrator-service` | 8088 | Blockchain orchestration |
 | `chatbot-assistance-service` | 8090 | RAG chatbot (optional) |
 | `gcul-sidecar` | 8091 | GCUL SDK bridge (optional) |
-| `apps/web` | 5173 | Customer React UI |
-| `apps/admin` | 5174 | Admin console |
+| `apps/web` | 5174 | Customer React UI |
+| `apps/admin` | 5175 | Admin console |
 
 Details: [`services/README.md`](services/README.md)
 
