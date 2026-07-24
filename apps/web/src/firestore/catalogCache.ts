@@ -1,5 +1,6 @@
 import { getFirestore, doc, getDoc, type Firestore } from "firebase/firestore";
 import type { Product } from "../api";
+import { FIRESTORE_CACHE_COLLECTION } from "../../../firebaseCredentials.js";
 import { getFirebaseApp } from "../../firebase.js";
 
 const DEFAULT_CATEGORIES = [
@@ -68,7 +69,7 @@ export async function loadMarketplaceFromFirestore(): Promise<{
   const fs = firestore();
   if (!fs) return null;
   try {
-    const snap = await getDoc(doc(fs, "gcul_cache", "policy_marketplace"));
+    const snap = await getDoc(doc(fs, FIRESTORE_CACHE_COLLECTION, "policy_marketplace"));
     if (!snap.exists()) return null;
     const data = snap.data() as CatalogDoc;
     if (!data.plansJson) return null;

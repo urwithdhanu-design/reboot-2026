@@ -210,7 +210,8 @@ export function ClaimsPage() {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [demoFilling, setDemoFilling] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [submitError, setSubmitError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
 
   const selectedPolicy = useMemo(
@@ -250,9 +251,9 @@ export function ClaimsPage() {
     try {
       const res = await api.listClaims();
       setClaims(res.claims);
-      setError(null);
+      setLoadError(null);
     } catch (err) {
-      setError(
+      setLoadError(
         err instanceof Error
           ? err.message
           : "Claims service unavailable. Start claims-service on port 8085.",
@@ -269,7 +270,7 @@ export function ClaimsPage() {
   async function runDemoFill() {
     if (!user || demoFilling || !selectedPolicy) return;
     setDemoFilling(true);
-    setError(null);
+    setSubmitError(null);
     setNotice(null);
     const demo = buildClaimDemoForPolicy(selectedPolicy, user);
     try {
@@ -284,7 +285,7 @@ export function ClaimsPage() {
         `Demo claim filled for ${selectedPolicy.product_title} (${selectedPolicy.policy_ref}).`,
       );
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Demo fill failed");
+      setSubmitError(err instanceof Error ? err.message : "Demo fill failed");
     } finally {
       setDemoFilling(false);
     }
@@ -292,7 +293,7 @@ export function ClaimsPage() {
 
   async function startClaim() {
     setSubmitting(true);
-    setError(null);
+    setSubmitError(null);
     setNotice(null);
     try {
       const claim = await api.createClaim({
@@ -306,7 +307,7 @@ export function ClaimsPage() {
       setDescription("");
       await loadClaims();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not submit claim");
+      setSubmitError(err instanceof Error ? err.message : "Could not submit claim");
     } finally {
       setSubmitting(false);
     }
@@ -421,9 +422,9 @@ export function ClaimsPage() {
         </label>
       </div>
 
-      {error ? (
+      {submitError ? (
         <p className="error" role="alert">
-          {error}
+          {submitError}
         </p>
       ) : null}
       {notice ? (
@@ -444,6 +445,11 @@ export function ClaimsPage() {
       <h3 className="section-title" style={{ marginTop: 16 }}>
         Your claims
       </h3>
+      {loadError ? (
+        <p className="error" role="alert">
+          {loadError}
+        </p>
+      ) : null}
       {loading ? <p className="muted">Loading…</p> : null}
       {!loading && visibleClaims.length === 0 ? (
         <p className="muted">No claims yet for your policies.</p>

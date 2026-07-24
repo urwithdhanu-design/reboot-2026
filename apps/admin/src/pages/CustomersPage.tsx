@@ -3,7 +3,7 @@ import { RefreshCw } from 'lucide-react';
 import { AdminLayout } from '../components/layout/AdminLayout';
 import { Card, PageHeader, DataTable, Badge, Button, SearchInput } from '../components/ui';
 import { enrichPoliciesWithPayments, policyCountByEmail, type AdminCustomer } from '../api';
-import { formatCacheAge } from '../firestore/adminCache';
+import { formatCacheAge, FIRESTORE_CACHE_PROJECT } from '../firestore/adminCache';
 import { cachedAdminApi, filterCustomers } from '../firestore/cachedAdminApi';
 
 const statusBadge: Record<string, 'success' | 'warning' | 'error' | 'neutral'> = {
@@ -74,11 +74,13 @@ export function CustomersPage() {
     <AdminLayout>
       <PageHeader
         title="Customer Management"
-        subtitle="Registered customers — Firestore cache (10 min) with live refresh"
+        subtitle={`Live customers · Firestore cache in ${FIRESTORE_CACHE_PROJECT}/gcul_cache (10 min)`}
         actions={
           <div className="flex items-center gap-2">
             {cacheLabel ? (
               <Badge variant="info">Cached · {cacheLabel}</Badge>
+            ) : !loading ? (
+              <Badge variant="neutral">Live API</Badge>
             ) : null}
             <Button size="sm" variant="outline" onClick={() => load(true)} disabled={loading}>
               <RefreshCw className={`w-4 h-4 mr-1 ${loading ? 'animate-spin' : ''}`} />

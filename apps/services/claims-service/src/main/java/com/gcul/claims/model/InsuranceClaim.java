@@ -5,7 +5,6 @@ import java.time.Instant;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
-import jakarta.persistence.Lob;
 import jakarta.persistence.Table;
 
 @Entity
@@ -30,7 +29,7 @@ public class InsuranceClaim {
 	@Column(nullable = false)
 	private double amountClaimed;
 
-	@Lob
+	@Column(columnDefinition = "TEXT")
 	private String description;
 
 	@Column(nullable = false)

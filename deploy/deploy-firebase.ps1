@@ -8,12 +8,19 @@
   .\deploy\deploy-firebase.ps1
 #>
 param(
-  [string] $ProjectId = $(if ($env:GCP_PROJECT) { $env:GCP_PROJECT } else { "community-hub-6fb1b" }),
-  [string] $Region = $(if ($env:GCP_REGION) { $env:GCP_REGION } else { "us-central1" })
+  [string] $ProjectId = $(if ($env:GCUL_FIREBASE_PROJECT) { $env:GCUL_FIREBASE_PROJECT } else {
+    (Get-Content (Join-Path $PSScriptRoot "firebase-project.json") -Raw | ConvertFrom-Json).projectId
+  }),
+  [string] $CloudRunProject = $(if ($env:GCP_PROJECT) { $env:GCP_PROJECT } else { "community-hub-6fb1b" }),
+  [string] $Region = $(if ($env:GCP_REGION) { $env:GCP_REGION } else { "us-central1" }),
+  [switch] $HostingOnly
 )
 
 $ErrorActionPreference = "Stop"
 $Root = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
+$FbCfg = Get-Content (Join-Path $PSScriptRoot "firebase-project.json") -Raw | ConvertFrom-Json
+$CustomerSite = $FbCfg.customerHostingSite
+$AdminSite = $FbCfg.adminHostingSite
 $RewritesPath = Join-Path $PSScriptRoot "api-rewrites.json"
 $ApiRewrites = Get-Content $RewritesPath -Raw | ConvertFrom-Json
 
@@ -80,23 +87,26 @@ $firebasePath = Join-Path $Root "firebase.json"
 $firebaseJson | ConvertTo-Json -Depth 10 | Set-Content -Encoding utf8 $firebasePath
 
 Write-Host "Applying Firebase hosting targets ..."
-$customerSite = $ProjectId
-firebase target:apply hosting customer $customerSite --project $ProjectId
-firebase target:apply hosting admin gcul-admin --project $ProjectId
+firebase target:apply hosting customer $CustomerSite --project $ProjectId
+firebase target:apply hosting admin $AdminSite --project $ProjectId
 
-Write-Host "Deploying Firebase Hosting (customer + admin) + Firestore rules ..."
+$deployOnly = if ($HostingOnly) { "hosting" } else { "hosting,firestore:rules" }
+Write-Host "Deploying Firebase ($deployOnly) ..."
 Push-Location $Root
-firebase deploy --only hosting,firestore:rules --project $ProjectId
+firebase deploy --only $deployOnly --project $ProjectId
 Pop-Location
 
-$customerUrl = "https://${ProjectId}.web.app"
-Write-Host "Setting KYC WEB_BASE_URL to $customerUrl ..."
+$customerUrl = $FbCfg.customerUrl
+if (-not $customerUrl) { $customerUrl = "https://${CustomerSite}.web.app" }
+$adminUrl = $FbCfg.adminUrl
+if (-not $adminUrl) { $adminUrl = "https://${AdminSite}.web.app" }
+Write-Host "Setting KYC WEB_BASE_URL to $customerUrl (Cloud Run project: $CloudRunProject) ..."
 gcloud run services update gcul-kyc `
   --region $Region `
-  --project $ProjectId `
+  --project $CloudRunProject `
   --update-env-vars "WEB_BASE_URL=$customerUrl" `
   --quiet
 
-Write-Host "Done. Customer and admin sites use same-origin /api/* rewrites to Cloud Run."
+Write-Host "Done. Customer and admin sites deployed to Firebase Hosting."
 Write-Host "  Customer: $customerUrl"
-Write-Host "  Admin:    https://gcul-admin.web.app"
+Write-Host "  Admin:    $adminUrl"

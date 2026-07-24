@@ -11,7 +11,8 @@ Other ids in the repo:
 
 | Project ID | Role |
 |------------|------|
-| `insure360-83a36` | Firebase default in `.firebaserc` / customer app `firebase.js` |
+| `insure360-83a36` | **Firebase** — Hosting, Firestore (`gcul_cache/*`), client `firebaseCredentials.js` |
+| `community-hub-6fb1b` | **Cloud Run + Cloud SQL** — all `gcul-*` backends (Firestore writes target `insure360-83a36` via `GCUL_FIRESTORE_PROJECT`) |
 
 ## Console links (Cloud Run)
 

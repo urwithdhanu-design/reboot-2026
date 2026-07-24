@@ -9,17 +9,7 @@
           "insure360-83a36"
         ],
         "admin": [
-          "gcul-admin"
-        ]
-      }
-    },
-    "community-hub-6fb1b": {
-      "hosting": {
-        "customer": [
-          "community-hub-6fb1b"
-        ],
-        "admin": [
-          "gcul-admin"
+          "insure360-83a36-admin"
         ]
       }
     }

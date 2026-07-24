@@ -130,10 +130,13 @@ foreach ($svc in $serviceList) {
       "GCUL_ADMIN_PASSWORD=$adminPass"
     )
   }
-  if ($id -eq "gcul-policy") {
+  if ($id -in @('gcul-policy', 'gcul-kyc', 'gcul-payment')) {
+    $firebaseProject = if ($env:GCUL_FIREBASE_PROJECT) { $env:GCUL_FIREBASE_PROJECT } else {
+      (Get-Content (Join-Path $PSScriptRoot "firebase-project.json") -Raw | ConvertFrom-Json).projectId
+    }
     $envPairs += @(
       "GCUL_FIRESTORE_ENABLED=true",
-      "GCUL_FIRESTORE_PROJECT=$ProjectId"
+      "GCUL_FIRESTORE_PROJECT=$firebaseProject"
     )
   }
   if ($id -eq "gcul-wallet" -and $deployedUrls.ContainsKey("gcul-kyc")) {

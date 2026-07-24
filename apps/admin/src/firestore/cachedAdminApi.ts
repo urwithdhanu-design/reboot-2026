@@ -7,34 +7,54 @@ import {
 } from '../api';
 import { ADMIN_CACHE_DOCS, loadWithAdminCache } from './adminCache';
 
+async function syncKycCache(force: boolean) {
+  if (force) await adminApi.refreshKycAdminCache();
+}
+
+async function syncPolicyCache(force: boolean) {
+  if (force) await adminApi.refreshPolicyAdminCache();
+}
+
+async function syncPaymentsCache(force: boolean) {
+  if (force) await adminApi.refreshPaymentsAdminCache();
+}
+
 export const cachedAdminApi = {
-  listCustomers: (force?: boolean) =>
-    loadWithAdminCache<{ customers: AdminCustomer[]; count: number }>(
+  listCustomers: async (force?: boolean) => {
+    await syncKycCache(Boolean(force));
+    return loadWithAdminCache<{ customers: AdminCustomer[]; count: number }>(
       ADMIN_CACHE_DOCS.customers,
       () => adminApi.listCustomers(),
       { force },
-    ),
+    );
+  },
 
-  listKycQueue: (force?: boolean) =>
-    loadWithAdminCache<{ queue: KycQueueItem[]; count: number; pending_count: number }>(
+  listKycQueue: async (force?: boolean) => {
+    await syncKycCache(Boolean(force));
+    return loadWithAdminCache<{ queue: KycQueueItem[]; count: number; pending_count: number }>(
       ADMIN_CACHE_DOCS.kycQueue,
       () => adminApi.listKycQueue(),
       { force },
-    ),
+    );
+  },
 
-  listPolicies: (force?: boolean) =>
-    loadWithAdminCache<{ policies: AdminPolicyRow[]; count: number }>(
+  listPolicies: async (force?: boolean) => {
+    await syncPolicyCache(Boolean(force));
+    return loadWithAdminCache<{ policies: AdminPolicyRow[]; count: number }>(
       ADMIN_CACHE_DOCS.policies,
       () => adminApi.listPolicies(),
       { force },
-    ),
+    );
+  },
 
-  listPayments: (force?: boolean) =>
-    loadWithAdminCache<{ payments: PaymentLedgerRow[]; count: number }>(
+  listPayments: async (force?: boolean) => {
+    await syncPaymentsCache(Boolean(force));
+    return loadWithAdminCache<{ payments: PaymentLedgerRow[]; count: number }>(
       ADMIN_CACHE_DOCS.payments,
       () => adminApi.listPayments(),
       { force },
-    ),
+    );
+  },
 };
 
 export function filterCustomers(

@@ -122,6 +122,19 @@ export type PaymentLedgerRow = {
   created_at?: string;
 };
 
+export type AdminClaimRow = {
+  id: string;
+  policy_ref: string;
+  customer_name: string;
+  category: string;
+  status: string;
+  amount_claimed: number;
+  description?: string;
+  source?: string;
+  created_at?: string;
+  updated_at?: string;
+};
+
 export type InsuranceChainTx = {
   id: string;
   block_height: number | null;
@@ -253,6 +266,44 @@ export const adminApi = {
 
   listPayments: () =>
     adminRequest<{ payments: PaymentLedgerRow[]; count: number }>('/api/payment-ledger'),
+
+  refreshKycAdminCache: () =>
+    adminRequest<{
+      ok: boolean;
+      firestore_active: boolean;
+      project_id: string;
+      collection: string;
+      documents: string[];
+    }>('/api/admin/refresh-cache', { method: 'POST' }),
+
+  refreshPolicyAdminCache: () =>
+    adminRequest<{
+      ok: boolean;
+      firestore_active: boolean;
+      project_id: string;
+      collection: string;
+      documents: string[];
+    }>('/api/admin/policies/refresh-cache', { method: 'POST' }),
+
+  refreshPaymentsAdminCache: () =>
+    adminRequest<{
+      ok: boolean;
+      firestore_active: boolean;
+      project_id: string;
+      collection: string;
+      document: string;
+    }>('/api/payment-ledger/refresh-cache', { method: 'POST' }),
+
+  listClaims: (status?: string) => {
+    const qs = status ? `?status=${encodeURIComponent(status)}` : '';
+    return adminRequest<{ claims: AdminClaimRow[]; count: number }>(`/api/claims${qs}`);
+  },
+
+  updateClaimStatus: (claimId: string, status: string) =>
+    adminRequest<AdminClaimRow>(`/api/claims/${encodeURIComponent(claimId)}/status`, {
+      method: 'PATCH',
+      body: JSON.stringify({ status }),
+    }),
 
   insuranceChain: () => request<InsuranceChainResponse>('/api/blockchain/chain'),
 

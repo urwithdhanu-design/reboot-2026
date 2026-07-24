@@ -1,7 +1,9 @@
 import { getFirestore, doc, getDoc, type Firestore } from 'firebase/firestore';
+import { firebaseConfig, FIRESTORE_CACHE_COLLECTION } from '../../../firebaseCredentials.js';
 import { getFirebaseApp } from '../../firebase.js';
 
 export const ADMIN_CACHE_TTL_SECONDS = 600;
+export const FIRESTORE_CACHE_PROJECT = firebaseConfig.projectId;
 
 export const ADMIN_CACHE_DOCS = {
   customers: 'admin_customers',
@@ -41,7 +43,7 @@ export async function readAdminCache<T>(
   const fs = firestore();
   if (!fs) return null;
   try {
-    const snap = await getDoc(doc(fs, 'gcul_cache', docId));
+    const snap = await getDoc(doc(fs, FIRESTORE_CACHE_COLLECTION, docId));
     if (!snap.exists()) return null;
     const raw = snap.data() as CacheDoc;
     const cachedAt = raw.cachedAtEpochSeconds;

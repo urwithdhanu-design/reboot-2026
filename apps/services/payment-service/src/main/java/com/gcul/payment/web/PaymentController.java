@@ -11,6 +11,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.gcul.payment.cache.AdminViewCache;
+import com.gcul.payment.cache.FirestoreCacheProperties;
 import com.gcul.payment.service.PaymentLedgerService;
 
 @RestController
@@ -18,15 +20,33 @@ import com.gcul.payment.service.PaymentLedgerService;
 public class PaymentController {
 
 	private final PaymentLedgerService payments;
+	private final AdminViewCache adminCache;
+	private final FirestoreCacheProperties firestoreProps;
 
-	public PaymentController(PaymentLedgerService payments) {
+	public PaymentController(
+			PaymentLedgerService payments,
+			AdminViewCache adminCache,
+			FirestoreCacheProperties firestoreProps) {
 		this.payments = payments;
+		this.adminCache = adminCache;
+		this.firestoreProps = firestoreProps;
 	}
 
 	@GetMapping
 	public Map<String, Object> list(@RequestParam(required = false) String quote_id) {
 		List<Map<String, Object>> items = payments.list(quote_id);
 		return Map.of("payments", items, "count", items.size());
+	}
+
+	@PostMapping("/refresh-cache")
+	public Map<String, Object> refreshCache() {
+		payments.list(null);
+		return Map.of(
+				"ok", true,
+				"firestore_active", adminCache.isActive(),
+				"project_id", firestoreProps.getProjectId(),
+				"collection", firestoreProps.getCollection(),
+				"document", AdminViewCache.DOC_PAYMENTS);
 	}
 
 	@PostMapping

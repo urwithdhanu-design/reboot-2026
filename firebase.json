@@ -1,4 +1,7 @@
 ﻿{
+    "firestore":  {
+                      "rules":  "deploy/firestore.rules"
+                  },
     "hosting":  [
                     {
                         "ignore":  [
@@ -91,6 +94,20 @@
                                                          "region":  "us-central1",
                                                          "serviceId":  "gcul-kyc"
                                                      },
+                                             "source":  "/api/admin/kyc-settings"
+                                         },
+                                         {
+                                             "run":  {
+                                                         "region":  "us-central1",
+                                                         "serviceId":  "gcul-kyc"
+                                                     },
+                                             "source":  "/api/admin/refresh-cache"
+                                         },
+                                         {
+                                             "run":  {
+                                                         "region":  "us-central1",
+                                                         "serviceId":  "gcul-kyc"
+                                                     },
                                              "source":  "/api/admin/customer-stats"
                                          },
                                          {
@@ -99,6 +116,27 @@
                                                          "serviceId":  "gcul-policy"
                                                      },
                                              "source":  "/api/admin/policies"
+                                         },
+                                         {
+                                             "run":  {
+                                                         "region":  "us-central1",
+                                                         "serviceId":  "gcul-policy"
+                                                     },
+                                             "source":  "/api/admin/policies/**"
+                                         },
+                                         {
+                                             "run":  {
+                                                         "region":  "us-central1",
+                                                         "serviceId":  "gcul-policy"
+                                                     },
+                                             "source":  "/api/admin/products"
+                                         },
+                                         {
+                                             "run":  {
+                                                         "region":  "us-central1",
+                                                         "serviceId":  "gcul-policy"
+                                                     },
+                                             "source":  "/api/admin/products/**"
                                          },
                                          {
                                              "run":  {
@@ -386,6 +424,20 @@
                                                          "region":  "us-central1",
                                                          "serviceId":  "gcul-kyc"
                                                      },
+                                             "source":  "/api/admin/kyc-settings"
+                                         },
+                                         {
+                                             "run":  {
+                                                         "region":  "us-central1",
+                                                         "serviceId":  "gcul-kyc"
+                                                     },
+                                             "source":  "/api/admin/refresh-cache"
+                                         },
+                                         {
+                                             "run":  {
+                                                         "region":  "us-central1",
+                                                         "serviceId":  "gcul-kyc"
+                                                     },
                                              "source":  "/api/admin/customer-stats"
                                          },
                                          {
@@ -394,6 +446,27 @@
                                                          "serviceId":  "gcul-policy"
                                                      },
                                              "source":  "/api/admin/policies"
+                                         },
+                                         {
+                                             "run":  {
+                                                         "region":  "us-central1",
+                                                         "serviceId":  "gcul-policy"
+                                                     },
+                                             "source":  "/api/admin/policies/**"
+                                         },
+                                         {
+                                             "run":  {
+                                                         "region":  "us-central1",
+                                                         "serviceId":  "gcul-policy"
+                                                     },
+                                             "source":  "/api/admin/products"
+                                         },
+                                         {
+                                             "run":  {
+                                                         "region":  "us-central1",
+                                                         "serviceId":  "gcul-policy"
+                                                     },
+                                             "source":  "/api/admin/products/**"
                                          },
                                          {
                                              "run":  {
