@@ -8,6 +8,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.util.StringUtils;
 
+import org.web3j.crypto.Credentials;
 import org.web3j.protocol.Web3j;
 import org.web3j.protocol.http.HttpService;
 
@@ -25,5 +26,17 @@ public class EthereumConfig {
 		}
 		log.info("Ethereum web3j client enabled (chainId={})", props.getChainId());
 		return Web3j.build(new HttpService(props.getRpcUrl()));
+	}
+
+	@Bean
+	@ConditionalOnProperty(name = "gcul.ethereum.enabled", havingValue = "true")
+	Credentials insurerCredentials(EthereumProperties props) {
+		if (!StringUtils.hasText(props.getInsurerPrivateKey())) {
+			throw new IllegalStateException(
+					"gcul.ethereum.enabled=true requires gcul.ethereum.insurer-private-key (INSURER_MINT_PRIVATE_KEY)");
+		}
+		String key = props.getInsurerPrivateKey().trim();
+		log.info("Insurer mint wallet loaded: {}", Credentials.create(key).getAddress());
+		return Credentials.create(key);
 	}
 }

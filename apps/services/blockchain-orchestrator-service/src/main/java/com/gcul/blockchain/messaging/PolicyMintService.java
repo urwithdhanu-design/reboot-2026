@@ -3,17 +3,21 @@ package com.gcul.blockchain.messaging;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Set;
-import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
 
 import com.gcul.blockchain.chain.ChainLedger;
 import com.gcul.blockchain.chain.ChainTransactionType;
 import com.gcul.blockchain.chain.InsuranceChainService;
 import com.gcul.blockchain.chain.InsuranceChainService.RecordTxRequest;
+import com.gcul.blockchain.ethereum.EthereumAddressValidator;
+import com.gcul.blockchain.ethereum.PolicyNftMintResult;
+import com.gcul.blockchain.ethereum.PolicyNftMintService;
+import com.gcul.blockchain.ethereum.PolicyNftMintService.MintRequest;
 import com.gcul.messaging.EventTopics;
 import com.gcul.messaging.GculEventPublisher;
 
@@ -25,10 +29,15 @@ public class PolicyMintService {
 	private final GculEventPublisher publisher;
 	private final Set<String> mintedPolicies = ConcurrentHashMap.newKeySet();
 	private final InsuranceChainService insuranceChain;
+	private final PolicyNftMintService policyNftMintService;
 
-	public PolicyMintService(GculEventPublisher publisher, InsuranceChainService insuranceChain) {
+	public PolicyMintService(
+			GculEventPublisher publisher,
+			InsuranceChainService insuranceChain,
+			PolicyNftMintService policyNftMintService) {
 		this.publisher = publisher;
 		this.insuranceChain = insuranceChain;
+		this.policyNftMintService = policyNftMintService;
 	}
 
 	public boolean handle(String eventType, Map<String, Object> payload) {
@@ -43,47 +52,132 @@ public class PolicyMintService {
 		if (policyId.isBlank() || !mintedPolicies.add(policyId)) {
 			return true;
 		}
-		String tokenId = "NFT-" + policyId.replace("POL-", "");
-		String txHash = "0x" + UUID.randomUUID().toString().replace("-", "");
 
+		String walletAddress = str(payload.get("walletAddress"));
+		if (!EthereumAddressValidator.isValid(walletAddress)) {
+			log.error("Policy mint skipped — invalid or missing wallet address for policy {}", policyId);
+			mintedPolicies.remove(policyId);
+			return true;
+		}
+
+		try {
+			PolicyNftMintResult result = policyNftMintService.mintPolicyNft(new MintRequest(
+					policyId,
+					str(payload.get("policyNumber")),
+					str(payload.get("customerId")),
+					walletAddress,
+					Map.of("source", "pubsub")));
+
+			publishMintedEvent(payload, result);
+			recordOnInsuranceChain(payload, result);
+			log.info("Mint completed policyId={} tokenId={} mode={}", policyId, result.tokenId(), result.mode());
+		}
+		catch (Exception ex) {
+			mintedPolicies.remove(policyId);
+			log.error("Policy mint failed for {}: {}", policyId, ex.getMessage(), ex);
+		}
+		return true;
+	}
+
+	public PolicyNftMintResult mintFromApi(Map<String, Object> payload) {
+		String policyId = str(payload.get("policyId"));
+		if (policyId.isBlank()) {
+			throw new IllegalArgumentException("policyId is required");
+		}
+		if (!mintedPolicies.add(policyId)) {
+			return policyNftMintService.findByPolicyId(policyId)
+					.map(record -> new PolicyNftMintResult(
+							record.getPolicyId(),
+							record.getTokenId(),
+							record.getTransactionHash(),
+							record.getWalletAddress(),
+							record.getContractAddress(),
+							record.getChainId(),
+							record.getNetwork(),
+							record.getTokenUri(),
+							record.getMintMode(),
+							record.getStatus()))
+					.orElseThrow(() -> new IllegalStateException("Policy already minted: " + policyId));
+		}
+
+		try {
+			PolicyNftMintResult result = policyNftMintService.mintPolicyNft(new MintRequest(
+					policyId,
+					str(payload.get("policyNumber")),
+					str(payload.get("customerId")),
+					str(payload.get("walletAddress")),
+					payload));
+
+			publishMintedEvent(payload, result);
+			recordOnInsuranceChain(payload, result);
+			return result;
+		}
+		catch (Exception ex) {
+			mintedPolicies.remove(policyId);
+			throw ex;
+		}
+	}
+
+	private void publishMintedEvent(Map<String, Object> payload, PolicyNftMintResult result) {
 		Map<String, Object> minted = new LinkedHashMap<>();
 		minted.put("eventType", "PolicyMinted");
-		minted.put("policyId", policyId);
-		minted.put("policyNumber", payload.get("policyNumber"));
-		minted.put("customerId", payload.get("customerId"));
-		minted.put("tokenId", tokenId);
-		minted.put("transactionHash", txHash);
-		minted.put("network", "Ethereum Sepolia");
-		minted.put("status", "MINTED");
+		minted.put("policyId", result.policyId());
+		minted.put("policyNumber", firstNonBlank(str(payload.get("policyNumber")), result.policyId()));
+		minted.put("customerId", str(payload.get("customerId")));
+		minted.put("tokenId", result.tokenId());
+		minted.put("transactionHash", result.transactionHash());
+		minted.put("walletAddress", result.walletAddress());
+		minted.put("contractAddress", result.contractAddress());
+		minted.put("chainId", result.chainId());
+		minted.put("network", result.network());
+		minted.put("mode", result.mode());
+		minted.put("status", result.status());
 		publisher.publish(EventTopics.BLOCKCHAIN, minted);
+	}
 
+	private void recordOnInsuranceChain(Map<String, Object> payload, PolicyNftMintResult result) {
+		String policyId = result.policyId();
 		insuranceChain.recordTransaction(new RecordTxRequest(
 				ChainTransactionType.WORKFLOW_STEP,
 				ChainLedger.POLICY,
 				Map.of(
 						"policyId", policyId,
-						"policyNumber", str(payload.get("policyNumber")),
-						"tokenId", tokenId,
-						"transactionHash", txHash,
-						"workflow", "policy_mint"),
+						"policyNumber", firstNonBlank(str(payload.get("policyNumber")), policyId),
+						"tokenId", result.tokenId(),
+						"transactionHash", result.transactionHash(),
+						"walletAddress", result.walletAddress(),
+						"workflow", "policy_mint",
+						"mode", result.mode()),
 				str(payload.get("customerId")),
 				"policy_service",
-				null,
+				result.transactionHash(),
 				null));
 		insuranceChain.recordTransaction(new RecordTxRequest(
 				ChainTransactionType.POLICY_ISSUED,
 				ChainLedger.POLICY,
-				minted,
+				Map.of(
+						"policyId", policyId,
+						"tokenId", result.tokenId(),
+						"transactionHash", result.transactionHash(),
+						"walletAddress", result.walletAddress(),
+						"contractAddress", result.contractAddress(),
+						"network", result.network()),
 				str(payload.get("customerId")),
 				"blockchain_orchestrator",
-				txHash,
+				result.transactionHash(),
 				null));
-
-		log.info("Mint completed policyId={} tokenId={}", policyId, tokenId);
-		return true;
 	}
 
 	private static String str(Object value) {
 		return value == null ? "" : String.valueOf(value).trim();
+	}
+
+	private static String firstNonBlank(String... values) {
+		for (String value : values) {
+			if (StringUtils.hasText(value)) {
+				return value.trim();
+			}
+		}
+		return "";
 	}
 }

@@ -162,9 +162,9 @@ public class WalletService {
 	}
 
 	private String generateAddress(String userId, String email) {
-		String seed = userId + ":" + (email == null ? "" : email) + ":" + HexFormat.of().formatHex(randomBytes(4));
+		String seed = userId + ":" + (email == null ? "" : email) + ":" + HexFormat.of().formatHex(randomBytes(16));
 		String digest = sha256(seed);
-		return "0x" + digest.substring(0, 4) + "..." + digest.substring(digest.length() - 6);
+		return "0x" + digest.substring(0, 40);
 	}
 
 	private Map<String, Object> toResponse(CustomerWallet wallet) {

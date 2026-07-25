@@ -11,6 +11,8 @@ import org.springframework.stereotype.Service;
 
 import com.gcul.messaging.EventTopics;
 import com.gcul.messaging.GculEventPublisher;
+import com.gcul.policy.client.BlockchainMintClient;
+import com.gcul.policy.client.WalletLookupClient;
 import com.gcul.policy.quote.QuoteService;
 
 @Service
@@ -20,12 +22,21 @@ public class PolicyIssuanceService {
 
 	private final QuoteService quotes;
 	private final GculEventPublisher publisher;
+	private final BlockchainMintClient blockchainMintClient;
+	private final WalletLookupClient walletLookupClient;
 	private final ConcurrentHashMap<String, Map<String, Object>> policies = new ConcurrentHashMap<>();
 	private final ConcurrentHashMap<String, String> quoteToPolicy = new ConcurrentHashMap<>();
+	private final ConcurrentHashMap<String, String> customerWallets = new ConcurrentHashMap<>();
 
-	public PolicyIssuanceService(QuoteService quotes, GculEventPublisher publisher) {
+	public PolicyIssuanceService(
+			QuoteService quotes,
+			GculEventPublisher publisher,
+			BlockchainMintClient blockchainMintClient,
+			WalletLookupClient walletLookupClient) {
 		this.quotes = quotes;
 		this.publisher = publisher;
+		this.blockchainMintClient = blockchainMintClient;
+		this.walletLookupClient = walletLookupClient;
 	}
 
 	public void onPremiumPaid(Map<String, Object> payload) {
@@ -77,10 +88,46 @@ public class PolicyIssuanceService {
 		mintRequest.put("policyId", policyId);
 		mintRequest.put("policyNumber", policyNumber);
 		mintRequest.put("customerId", customerId);
-		mintRequest.put("walletAddress", payload.get("walletAddress"));
+		String walletAddress = resolveWalletAddress(customerId, payload.get("walletAddress"));
+		mintRequest.put("walletAddress", walletAddress);
 		publisher.publish(EventTopics.POLICY, mintRequest);
 
+		triggerBlockchainMint(policyId, policyNumber, customerId, walletAddress,
+				String.valueOf(quote.getOrDefault("product_title", "Insurance")));
+
 		log.info("Issued policy {} for quote {}", policyId, quoteId);
+	}
+
+	private void triggerBlockchainMint(
+			String policyId,
+			String policyNumber,
+			String customerId,
+			String walletAddress,
+			String productTitle) {
+		if (walletAddress == null || walletAddress.isBlank()) {
+			log.warn("Skipping blockchain mint for {} — no verified wallet address", policyId);
+			return;
+		}
+		try {
+			Map<String, Object> mintResult = blockchainMintClient.mintPolicyNft(
+					blockchainMintClient.buildMintRequest(
+							policyId, policyNumber, customerId, walletAddress, productTitle));
+			onPolicyMinted(mintResult);
+		}
+		catch (Exception ex) {
+			log.error("Direct blockchain mint failed for {}: {}", policyId, ex.getMessage());
+		}
+	}
+
+	private String resolveWalletAddress(String customerId, Object eventWallet) {
+		if (eventWallet != null && !String.valueOf(eventWallet).isBlank()) {
+			return String.valueOf(eventWallet).trim();
+		}
+		String cached = customerWallets.getOrDefault(customerId, "");
+		if (!cached.isBlank()) {
+			return cached;
+		}
+		return walletLookupClient.lookupWalletAddress(customerId);
 	}
 
 	public void onPolicyMinted(Map<String, Object> payload) {
@@ -108,7 +155,13 @@ public class PolicyIssuanceService {
 	}
 
 	public void onWalletLinked(Map<String, Object> payload) {
-		log.info("Wallet linked for customer {} — ready for policy mint", payload.get("customerId"));
+		String customerId = str(payload.get("customerId"));
+		String walletAddress = str(payload.get("walletAddress"));
+		if (!customerId.isBlank() && !walletAddress.isBlank()) {
+			customerWallets.put(customerId, walletAddress);
+		}
+		log.info("Wallet linked for customer {} address {} — ready for policy mint",
+				payload.get("customerId"), walletAddress);
 	}
 
 	public Map<String, Object> getPolicy(String policyId) {
