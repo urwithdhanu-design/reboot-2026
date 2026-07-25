@@ -6,6 +6,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
+import org.springframework.util.StringUtils;
 import org.springframework.web.client.RestClient;
 
 @Component
@@ -22,27 +23,44 @@ public class WalletLookupClient {
 	}
 
 	@SuppressWarnings("unchecked")
-	public String lookupWalletAddress(String customerId) {
-		if (customerId == null || customerId.isBlank()) {
-			return "";
+	public WalletLookup lookupByCustomerId(String customerId) {
+		if (!StringUtils.hasText(customerId)) {
+			return WalletLookup.empty();
 		}
+		return lookup("/api/internal/wallet", "customerId", customerId.trim());
+	}
+
+	@SuppressWarnings("unchecked")
+	public WalletLookup lookupByEmail(String email) {
+		if (!StringUtils.hasText(email)) {
+			return WalletLookup.empty();
+		}
+		return lookup("/api/internal/wallet", "email", email.trim().toLowerCase());
+	}
+
+	@SuppressWarnings("unchecked")
+	private WalletLookup lookup(String path, String param, String value) {
 		try {
 			Map<String, Object> wallet = restClient.get()
-					.uri(uriBuilder -> uriBuilder
-							.path("/api/internal/wallet")
-							.queryParam("customerId", customerId)
-							.build())
+					.uri(uriBuilder -> uriBuilder.path(path).queryParam(param, value).build())
 					.retrieve()
 					.body(Map.class);
 			if (wallet == null || !"connected".equals(wallet.get("status"))) {
-				return "";
+				return WalletLookup.empty();
 			}
-			Object address = wallet.get("address");
-			return address == null ? "" : String.valueOf(address).trim();
+			String address = wallet.get("address") == null ? "" : String.valueOf(wallet.get("address")).trim();
+			String userId = wallet.get("userId") == null ? "" : String.valueOf(wallet.get("userId")).trim();
+			return new WalletLookup(userId, address, true);
 		}
 		catch (Exception ex) {
-			log.debug("Wallet lookup failed for {}: {}", customerId, ex.getMessage());
-			return "";
+			log.debug("Wallet lookup failed for {}={}: {}", param, value, ex.getMessage());
+			return WalletLookup.empty();
+		}
+	}
+
+	public record WalletLookup(String userId, String address, boolean connected) {
+		public static WalletLookup empty() {
+			return new WalletLookup("", "", false);
 		}
 	}
 }

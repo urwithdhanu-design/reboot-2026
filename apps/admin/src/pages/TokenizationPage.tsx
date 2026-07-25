@@ -1,24 +1,72 @@
-import { useState } from 'react';
-import { Coins, Plus, Flame, Snowflake, ArrowRightLeft, Check, X, ExternalLink } from 'lucide-react';
+import { useCallback, useEffect, useState } from 'react';
+import { Coins, Plus, Flame, Snowflake, Check, X, ExternalLink, RefreshCw } from 'lucide-react';
 import { AdminLayout } from '../components/layout/AdminLayout';
-import { Card, PageHeader, Badge, Button, PaginatedTable, StatCard, TablePagination, usePaginatedList } from '../components/ui';
-import {
-  tokenizedAssets, tokenMintQueue, tokenTypeConfigs, blockchainStats, formatGBP, formatNumber,
-} from '../data/adminMockData';
+import { Card, PageHeader, Badge, Button, PaginatedTable, StatCard, TablePagination, usePaginatedList, AlertBanner } from '../components/ui';
+import { adminApi, type TokenizationView } from '../api';
+import { formatNumber } from '../data/adminMockData';
+
+const REFRESH_MS = 15_000;
 
 const statusBadge = {
   active: 'success', minting: 'info', transferred: 'purple', burned: 'neutral', frozen: 'warning', redeemed: 'success',
-  pending: 'warning', approved: 'info', completed: 'success', rejected: 'error',
+  pending: 'warning', pending_wallet: 'warning', approved: 'info', completed: 'success', rejected: 'error', failed: 'error',
 } as const;
 
 const typeBadge = {
   policy_nft: 'success', premium_credit: 'info', claim_voucher: 'warning', coverage_certificate: 'purple',
 } as const;
 
+function formatWhen(iso?: string) {
+  if (!iso) return '—';
+  try {
+    return new Date(iso).toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short' });
+  } catch {
+    return iso;
+  }
+}
+
+function queueLabel(status: string) {
+  if (status === 'pending_wallet') return 'Awaiting wallet';
+  if (status === 'failed') return 'Mint failed';
+  return 'Pending mint';
+}
+
 export function TokenizationPage() {
   const [tab, setTab] = useState<'registry' | 'mint-queue' | 'standards'>('registry');
-  const mintQueue = usePaginatedList(tokenMintQueue, {
-    defaultSortKey: 'requestedAt',
+  const [data, setData] = useState<TokenizationView | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const load = useCallback((silent = false) => {
+    if (!silent) setLoading(true);
+    adminApi
+      .tokenizationView()
+      .then((res) => {
+        setData(res);
+        setError(null);
+      })
+      .catch((err) => {
+        setError(err instanceof Error ? err.message : 'Failed to load tokenization data');
+      })
+      .finally(() => {
+        if (!silent) setLoading(false);
+      });
+  }, []);
+
+  useEffect(() => {
+    load(false);
+    const timer = window.setInterval(() => load(true), REFRESH_MS);
+    return () => window.clearInterval(timer);
+  }, [load]);
+
+  const registry = data?.registry ?? [];
+  const mintQueueItems = data?.mint_queue ?? [];
+  const stats = data?.stats;
+  const blockchain = data?.blockchain;
+  const standards = data?.standards ?? [];
+
+  const mintQueue = usePaginatedList(mintQueueItems, {
+    defaultSortKey: 'requested_at',
     defaultSortDir: 'desc',
     pageSize: 5,
   });
@@ -28,33 +76,44 @@ export function TokenizationPage() {
       <PageHeader
         icon={Coins}
         title="Tokenization"
-        subtitle="Mint, manage and lifecycle-control blockchain insurance tokens"
+        subtitle="Live policy NFT registry and mint queue from policy-service and blockchain orchestrator"
         metrics={[
-          { label: 'Policy NFTs', value: formatNumber(blockchainStats.policyNFTs) },
-          { label: 'Pending mints', value: String(blockchainStats.pendingMints), tone: 'warning' },
-          { label: 'Circulating', value: formatNumber(blockchainStats.premiumTokensCirculating), tone: 'success' },
+          { label: 'Policy NFTs', value: formatNumber(stats?.policy_nfts ?? 0) },
+          { label: 'Pending mints', value: String(stats?.pending_mints ?? 0), tone: 'warning' },
+          { label: 'Network', value: blockchain?.live ? 'Sepolia live' : 'Simulated', tone: blockchain?.live ? 'success' : 'default' },
         ]}
         actions={
           <>
-            <Button variant="hero" size="sm"><ArrowRightLeft className="w-4 h-4" /> Transfer</Button>
-            <Button size="sm"><Plus className="w-4 h-4" /> Mint Policy Token</Button>
+            <Button variant="hero" size="sm" onClick={() => load(false)} disabled={loading}>
+              <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+              Refresh
+            </Button>
+            <Button size="sm" disabled><Plus className="w-4 h-4" /> Mint Policy Token</Button>
           </>
         }
       />
 
+      {error ? <AlertBanner>{error}</AlertBanner> : null}
+
       <Card className="mb-6 bg-gradient-to-r from-lbg-green to-lbg-sidebar text-white border-0">
         <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
           <div>
-            <p className="text-sm text-white/80 font-medium">{blockchainStats.networkName} · Chain ID {blockchainStats.chainId}</p>
-            <p className="text-2xl font-bold mt-1">Block #{formatNumber(blockchainStats.blockHeight)}</p>
-            <p className="text-xs text-white/70 mt-1">Network health {blockchainStats.networkHealth}% · Avg confirmation {blockchainStats.avgConfirmationTime}</p>
+            <p className="text-sm text-white/80 font-medium">
+              {blockchain?.network_name ?? 'Ethereum Sepolia'} · Chain ID {blockchain?.chain_id ?? 11155111}
+            </p>
+            <p className="text-2xl font-bold mt-1">
+              {blockchain?.mode === 'ethereum' ? 'Live Sepolia minting' : 'Simulated minting'}
+            </p>
+            <p className="text-xs text-white/70 mt-1">
+              Contract {blockchain?.contract_address || 'not configured'} · Auto-refresh every {REFRESH_MS / 1000}s
+            </p>
           </div>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             {[
-              { l: 'Policy NFTs', v: formatNumber(blockchainStats.policyNFTs) },
-              { l: 'Premium Tokens', v: formatNumber(blockchainStats.premiumTokensCirculating) },
-              { l: 'Claim Vouchers', v: String(blockchainStats.claimVouchersActive) },
-              { l: 'Pending Mints', v: String(blockchainStats.pendingMints) },
+              { l: 'Policy NFTs', v: formatNumber(stats?.policy_nfts ?? 0) },
+              { l: 'Pending', v: String(stats?.pending_mints ?? 0) },
+              { l: 'Awaiting wallet', v: String(stats?.pending_wallet ?? 0) },
+              { l: 'Failed', v: String(stats?.failed_mints ?? 0) },
             ].map(({ l, v }) => (
               <div key={l} className="bg-white/10 rounded-lg p-3 text-center">
                 <p className="text-lg font-bold">{v}</p>
@@ -66,67 +125,83 @@ export function TokenizationPage() {
       </Card>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-6">
-        <StatCard label="Total Tokens Minted" value={formatNumber(blockchainStats.totalTokensMinted)} change="+2,847 this month" icon={Coins} trend="up" />
-        <StatCard label="On-Chain Policies" value={formatNumber(blockchainStats.policyNFTs)} change="95.8% tokenized" icon={Coins} trend="up" />
-        <StatCard label="Daily On-Chain Tx" value={formatNumber(blockchainStats.dailyOnChainTx)} change={`Gas: ${blockchainStats.gasSpentToday}`} icon={Coins} trend="neutral" />
-        <StatCard label="Mint Queue" value={String(blockchainStats.pendingMints)} change="Awaiting approval" icon={Coins} trend="neutral" />
+        <StatCard label="Minted policy NFTs" value={formatNumber(stats?.policy_nfts ?? 0)} change="ERC-721 on Sepolia" icon={Coins} trend="up" />
+        <StatCard label="Issued policies" value={formatNumber(stats?.total_issued ?? 0)} change="All issuance records" icon={Coins} trend="neutral" />
+        <StatCard label="Mint queue" value={String(stats?.pending_mints ?? 0)} change="Pending insurer mint" icon={Coins} trend="neutral" />
+        <StatCard label="Failed mints" value={String(stats?.failed_mints ?? 0)} change="Needs investigation" icon={Coins} trend={stats?.failed_mints ? 'down' : 'neutral'} />
       </div>
 
       <div className="flex gap-2 mb-6 flex-wrap">
         {(['registry', 'mint-queue', 'standards'] as const).map((t) => (
           <Button key={t} variant={tab === t ? 'primary' : 'outline'} size="sm" onClick={() => setTab(t)}>
-            {t === 'registry' ? 'Token Registry' : t === 'mint-queue' ? `Mint Queue (${tokenMintQueue.length})` : 'Token Standards'}
+            {t === 'registry' ? `Token Registry (${registry.length})` : t === 'mint-queue' ? `Mint Queue (${mintQueueItems.length})` : 'Token Standards'}
           </Button>
         ))}
       </div>
+
+      {loading && !data ? (
+        <Card><p className="p-6 text-sm text-lbg-gray-500">Loading live tokenization data…</p></Card>
+      ) : null}
 
       {tab === 'registry' && (
         <Card padding={false}>
           <PaginatedTable
             columns={[
-              { key: 'tokenId', label: 'Token ID', sortable: true },
+              { key: 'token_id', label: 'Token ID', sortable: true },
               { key: 'name', label: 'Name', sortable: true },
               { key: 'standard', label: 'Standard', sortable: true },
               { key: 'type', label: 'Type', sortable: true },
               { key: 'owner', label: 'Owner', sortable: true },
-              { key: 'value', label: 'Value', sortable: true },
+              { key: 'wallet_address', label: 'Wallet', sortable: true },
               { key: 'status', label: 'Status', sortable: true },
-              { key: 'contractAddress', label: 'Contract', sortable: true },
+              { key: 'contract_address', label: 'Contract', sortable: true },
               { key: '_actions', label: 'Actions', sortable: false },
             ]}
-            rows={tokenizedAssets}
+            rows={registry}
             rowKey={(t) => t.id}
-            defaultSortKey="tokenId"
-            defaultSortDir="asc"
+            defaultSortKey="token_id"
+            defaultSortDir="desc"
+            emptyMessage="No minted policy NFTs yet. Complete a customer payment with KYC and wallet linked."
             getSortValue={(row, key) => {
-              if (key === 'value') return row.value;
               if (key === '_actions') return '';
               return (row as unknown as Record<string, string | number>)[key];
             }}
             renderRow={(t) => (
               <tr key={t.id} className="hover:bg-lbg-gray-50">
-                <td className="py-3 px-4 font-mono text-sm font-semibold">{t.tokenId}</td>
+                <td className="py-3 px-4 font-mono text-sm font-semibold">{t.token_id ?? '—'}</td>
                 <td className="py-3 px-4">
                   <p className="font-medium text-sm">{t.name}</p>
-                  {t.policyNumber && <p className="text-xs text-lbg-gray-400">{t.policyNumber}</p>}
+                  <p className="text-xs text-lbg-gray-400">{t.policy_number}</p>
                 </td>
                 <td className="py-3 px-4"><Badge variant="info">{t.standard}</Badge></td>
                 <td className="py-3 px-4"><Badge variant={typeBadge[t.type]}>{t.type.replace('_', ' ')}</Badge></td>
                 <td className="py-3 px-4 text-sm">{t.owner}</td>
-                <td className="py-3 px-4 font-semibold">{t.type === 'premium_credit' ? `${formatNumber(t.value)} LBGP` : formatGBP(t.value)}</td>
+                <td className="py-3 px-4 font-mono text-xs text-lbg-gray-500">{t.wallet_address || '—'}</td>
                 <td className="py-3 px-4"><Badge variant={statusBadge[t.status]}>{t.status}</Badge></td>
-                <td className="py-3 px-4 font-mono text-xs text-lbg-gray-400">{t.contractAddress}</td>
+                <td className="py-3 px-4 font-mono text-xs text-lbg-gray-400">{t.contract_address || '—'}</td>
                 <td className="py-3 px-4">
                   <div className="flex gap-1">
-                    <Button variant="ghost" size="sm" aria-label={`View ${t.name} on explorer`}>
-                      <ExternalLink className="w-3 h-3" aria-hidden="true" />
-                    </Button>
+                    {t.explorer_url ? (
+                      <a
+                        href={t.explorer_url}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex items-center justify-center rounded-lg p-2 text-lbg-gray-500 hover:bg-lbg-gray-100 hover:text-lbg-green"
+                        aria-label={`View ${t.name} on explorer`}
+                      >
+                        <ExternalLink className="w-3 h-3" aria-hidden="true" />
+                      </a>
+                    ) : (
+                      <Button variant="ghost" size="sm" disabled aria-label="No explorer link">
+                        <ExternalLink className="w-3 h-3" aria-hidden="true" />
+                      </Button>
+                    )}
                     {t.status === 'active' && (
                       <>
-                        <Button variant="ghost" size="sm" aria-label={`Freeze ${t.name}`}>
+                        <Button variant="ghost" size="sm" disabled aria-label={`Freeze ${t.name}`}>
                           <Snowflake className="w-3 h-3" aria-hidden="true" />
                         </Button>
-                        <Button variant="ghost" size="sm" aria-label={`Burn ${t.name}`}>
+                        <Button variant="ghost" size="sm" disabled aria-label={`Burn ${t.name}`}>
                           <Flame className="w-3 h-3" aria-hidden="true" />
                         </Button>
                       </>
@@ -141,24 +216,32 @@ export function TokenizationPage() {
 
       {tab === 'mint-queue' && (
         <div className="space-y-3">
+          {mintQueue.pageItems.length === 0 ? (
+            <Card><p className="p-6 text-sm text-lbg-gray-500">No policies waiting to mint.</p></Card>
+          ) : null}
           {mintQueue.pageItems.map((m) => (
             <Card key={m.id} className="flex flex-col sm:flex-row sm:items-center gap-4">
               <div className="flex-1">
                 <div className="flex items-center gap-2 flex-wrap">
-                  <p className="font-bold">{m.policyNumber}</p>
+                  <p className="font-bold">{m.policy_number}</p>
                   <Badge variant="info">{m.standard}</Badge>
-                  <Badge variant={statusBadge[m.status]}>{m.status}</Badge>
+                  <Badge variant={statusBadge[m.status]}>{queueLabel(m.status)}</Badge>
                 </div>
-                <p className="text-sm text-lbg-gray-600 mt-1">{m.customerName} · {m.category} · Coverage {formatGBP(m.coverage)}</p>
-                <p className="text-xs text-lbg-gray-400 mt-1">Requested {m.requestedAt}</p>
+                <p className="text-sm text-lbg-gray-600 mt-1">
+                  {m.customer_name} · {m.product_title}
+                </p>
+                <p className="text-xs text-lbg-gray-400 mt-1">Issued {formatWhen(m.requested_at)}</p>
               </div>
               {m.status === 'pending' && (
                 <div className="flex gap-2 shrink-0">
-                  <Button size="sm"><Check className="w-4 h-4" /> Approve Mint</Button>
-                  <Button variant="danger" size="sm"><X className="w-4 h-4" /> Reject</Button>
+                  <Button size="sm" disabled><Check className="w-4 h-4" /> Approve Mint</Button>
+                  <Button variant="danger" size="sm" disabled><X className="w-4 h-4" /> Reject</Button>
                 </div>
               )}
-              {m.status === 'minting' && <Badge variant="info">Minting on-chain...</Badge>}
+              {m.status === 'pending_wallet' && (
+                <Badge variant="warning">Customer must link wallet</Badge>
+              )}
+              {m.status === 'failed' && <Badge variant="error">Mint failed — check policy logs</Badge>}
             </Card>
           ))}
           <TablePagination
@@ -175,7 +258,7 @@ export function TokenizationPage() {
 
       {tab === 'standards' && (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-          {tokenTypeConfigs.map((tc) => (
+          {standards.map((tc) => (
             <Card key={tc.standard}>
               <div className="flex items-start justify-between mb-3">
                 <div>
@@ -191,15 +274,15 @@ export function TokenizationPage() {
               <div className="grid grid-cols-2 gap-3 mb-3">
                 <div className="bg-lbg-gray-50 rounded-lg p-3">
                   <p className="text-[10px] text-lbg-gray-400">Total Supply</p>
-                  <p className="font-bold">{formatNumber(tc.totalSupply)}</p>
+                  <p className="font-bold">{formatNumber(tc.total_supply)}</p>
                 </div>
                 <div className="bg-lbg-gray-50 rounded-lg p-3">
                   <p className="text-[10px] text-lbg-gray-400">Circulating</p>
                   <p className="font-bold">{formatNumber(tc.circulating)}</p>
                 </div>
               </div>
-              <p className="font-mono text-xs text-lbg-gray-400">{tc.contractAddress}</p>
-              <Button variant="outline" size="sm" className="mt-3 w-full">Configure</Button>
+              <p className="font-mono text-xs text-lbg-gray-400 break-all">{tc.contract_address}</p>
+              <Button variant="outline" size="sm" className="mt-3 w-full" disabled>Configure</Button>
             </Card>
           ))}
         </div>

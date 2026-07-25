@@ -1,0 +1,200 @@
+package com.gcul.policy.model;
+
+import java.time.Instant;
+
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
+
+@Entity
+@Table(name = "issued_policies")
+public class PolicyRecord {
+
+	@Id
+	private String policyId;
+
+	@Column(nullable = false)
+	private String policyNumber;
+
+	@Column(nullable = false)
+	private String quoteId;
+
+	@Column(nullable = false)
+	private String customerId;
+
+	@Column(nullable = false)
+	private String customerEmail;
+
+	private String productTitle;
+
+	@Column(nullable = false)
+	private String status = "issued";
+
+	private String walletAddress;
+
+	@Column(nullable = false, length = 66)
+	private String policyReferenceHash;
+
+	private String metadataUri;
+
+	private String tokenId;
+
+	private String transactionHash;
+
+	private String contractAddress;
+
+	private Long blockNumber;
+
+	private String blockchainNetwork;
+
+	private String mintStatus = "PENDING";
+
+	private Instant issuedAt = Instant.now();
+
+	private Instant activatedAt;
+
+	public String getPolicyId() {
+		return policyId;
+	}
+
+	public void setPolicyId(String policyId) {
+		this.policyId = policyId;
+	}
+
+	public String getPolicyNumber() {
+		return policyNumber;
+	}
+
+	public void setPolicyNumber(String policyNumber) {
+		this.policyNumber = policyNumber;
+	}
+
+	public String getQuoteId() {
+		return quoteId;
+	}
+
+	public void setQuoteId(String quoteId) {
+		this.quoteId = quoteId;
+	}
+
+	public String getCustomerId() {
+		return customerId;
+	}
+
+	public void setCustomerId(String customerId) {
+		this.customerId = customerId;
+	}
+
+	public String getCustomerEmail() {
+		return customerEmail;
+	}
+
+	public void setCustomerEmail(String customerEmail) {
+		this.customerEmail = customerEmail;
+	}
+
+	public String getProductTitle() {
+		return productTitle;
+	}
+
+	public void setProductTitle(String productTitle) {
+		this.productTitle = productTitle;
+	}
+
+	public String getStatus() {
+		return status;
+	}
+
+	public void setStatus(String status) {
+		this.status = status;
+	}
+
+	public String getWalletAddress() {
+		return walletAddress;
+	}
+
+	public void setWalletAddress(String walletAddress) {
+		this.walletAddress = walletAddress;
+	}
+
+	public String getPolicyReferenceHash() {
+		return policyReferenceHash;
+	}
+
+	public void setPolicyReferenceHash(String policyReferenceHash) {
+		this.policyReferenceHash = policyReferenceHash;
+	}
+
+	public String getMetadataUri() {
+		return metadataUri;
+	}
+
+	public void setMetadataUri(String metadataUri) {
+		this.metadataUri = metadataUri;
+	}
+
+	public String getTokenId() {
+		return tokenId;
+	}
+
+	public void setTokenId(String tokenId) {
+		this.tokenId = tokenId;
+	}
+
+	public String getTransactionHash() {
+		return transactionHash;
+	}
+
+	public void setTransactionHash(String transactionHash) {
+		this.transactionHash = transactionHash;
+	}
+
+	public String getContractAddress() {
+		return contractAddress;
+	}
+
+	public void setContractAddress(String contractAddress) {
+		this.contractAddress = contractAddress;
+	}
+
+	public Long getBlockNumber() {
+		return blockNumber;
+	}
+
+	public void setBlockNumber(Long blockNumber) {
+		this.blockNumber = blockNumber;
+	}
+
+	public String getBlockchainNetwork() {
+		return blockchainNetwork;
+	}
+
+	public void setBlockchainNetwork(String blockchainNetwork) {
+		this.blockchainNetwork = blockchainNetwork;
+	}
+
+	public String getMintStatus() {
+		return mintStatus;
+	}
+
+	public void setMintStatus(String mintStatus) {
+		this.mintStatus = mintStatus;
+	}
+
+	public Instant getIssuedAt() {
+		return issuedAt;
+	}
+
+	public void setIssuedAt(Instant issuedAt) {
+		this.issuedAt = issuedAt;
+	}
+
+	public Instant getActivatedAt() {
+		return activatedAt;
+	}
+
+	public void setActivatedAt(Instant activatedAt) {
+		this.activatedAt = activatedAt;
+	}
+}

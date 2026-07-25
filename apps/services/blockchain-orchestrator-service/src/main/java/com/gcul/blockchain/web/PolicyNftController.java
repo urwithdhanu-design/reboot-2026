@@ -60,6 +60,10 @@ public class PolicyNftController {
 		payload.put("policyNumber", body.policyNumber());
 		payload.put("customerId", body.customerId());
 		payload.put("walletAddress", body.walletAddress());
+		payload.put("policyReferenceHash", body.policyReferenceHash());
+		payload.put("metadataURI", body.metadataURI());
+		payload.put("kycVerified", body.kycVerified());
+		payload.put("policyEligible", body.policyEligible());
 		if (body.metadata() != null) {
 			payload.putAll(body.metadata());
 		}
@@ -70,21 +74,24 @@ public class PolicyNftController {
 	private Map<String, Object> toMintResponse(PolicyNftMintResult result) {
 		Map<String, Object> map = new LinkedHashMap<>();
 		map.put("policyId", result.policyId());
+		map.put("policyReferenceHash", result.policyReferenceHash());
 		map.put("tokenId", result.tokenId());
 		map.put("transactionHash", result.transactionHash());
 		map.put("walletAddress", result.walletAddress());
 		map.put("contractAddress", result.contractAddress());
 		map.put("chainId", result.chainId());
+		map.put("blockNumber", result.blockNumber());
 		map.put("network", result.network());
-		map.put("tokenUri", result.tokenUri());
+		map.put("metadataURI", result.metadataUri());
 		map.put("mode", result.mode());
-		map.put("status", result.status());
+		map.put("mintStatus", result.mintStatus());
 		return map;
 	}
 
 	private Map<String, Object> toResponse(PolicyNftRecord record) {
 		Map<String, Object> map = new LinkedHashMap<>();
 		map.put("policyId", record.getPolicyId());
+		map.put("policyReferenceHash", record.getPolicyReferenceHash());
 		map.put("policyNumber", record.getPolicyNumber());
 		map.put("customerId", record.getCustomerId());
 		map.put("walletAddress", record.getWalletAddress());
@@ -92,10 +99,11 @@ public class PolicyNftController {
 		map.put("transactionHash", record.getTransactionHash());
 		map.put("contractAddress", record.getContractAddress());
 		map.put("chainId", record.getChainId());
+		map.put("blockNumber", record.getBlockNumber());
 		map.put("network", record.getNetwork());
-		map.put("tokenUri", record.getTokenUri());
+		map.put("metadataURI", record.getTokenUri());
 		map.put("mode", record.getMintMode());
-		map.put("status", record.getStatus());
+		map.put("mintStatus", record.getMintStatus());
 		map.put("mintedAt", record.getMintedAt().toString());
 		return map;
 	}
@@ -105,6 +113,10 @@ public class PolicyNftController {
 			String policyNumber,
 			String customerId,
 			@NotBlank String walletAddress,
+			@NotBlank String policyReferenceHash,
+			String metadataURI,
+			boolean kycVerified,
+			boolean policyEligible,
 			Map<String, Object> metadata) {
 	}
 }

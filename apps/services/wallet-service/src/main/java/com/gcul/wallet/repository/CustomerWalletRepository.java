@@ -9,4 +9,6 @@ import com.gcul.wallet.model.CustomerWallet;
 public interface CustomerWalletRepository extends JpaRepository<CustomerWallet, String> {
 
 	Optional<CustomerWallet> findByUserId(String userId);
+
+	Optional<CustomerWallet> findByUserEmailIgnoreCase(String userEmail);
 }

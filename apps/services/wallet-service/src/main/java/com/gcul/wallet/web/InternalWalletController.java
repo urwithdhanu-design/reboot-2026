@@ -22,10 +22,15 @@ public class InternalWalletController {
 	}
 
 	@GetMapping
-	public Map<String, Object> lookup(@RequestParam String customerId) {
-		if (customerId == null || customerId.isBlank()) {
-			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "customerId is required");
+	public Map<String, Object> lookup(
+			@RequestParam(required = false) String customerId,
+			@RequestParam(required = false) String email) {
+		if ((customerId == null || customerId.isBlank()) && (email == null || email.isBlank())) {
+			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "customerId or email is required");
 		}
-		return walletService.getWallet(customerId.trim());
+		if (customerId != null && !customerId.isBlank()) {
+			return walletService.getWalletWithUser(customerId.trim());
+		}
+		return walletService.getWalletByEmail(email.trim());
 	}
 }

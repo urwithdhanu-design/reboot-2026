@@ -9,6 +9,7 @@ import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import org.springframework.web.filter.CorsFilter;
 
+import com.gcul.policy.security.CustomerAuthFilter;
 import com.gcul.policy.security.JwtService;
 import com.gcul.policy.security.PlatformAdminAuthFilter;
 
@@ -33,6 +34,15 @@ public class WebConfig {
 		registration.setFilter(new PlatformAdminAuthFilter(jwtService));
 		registration.addUrlPatterns("/api/*");
 		registration.setOrder(1);
+		return registration;
+	}
+
+	@Bean
+	FilterRegistrationBean<CustomerAuthFilter> customerAuthFilter(JwtService jwtService) {
+		FilterRegistrationBean<CustomerAuthFilter> registration = new FilterRegistrationBean<>();
+		registration.setFilter(new CustomerAuthFilter(jwtService));
+		registration.addUrlPatterns("/api/policies/me");
+		registration.setOrder(2);
 		return registration;
 	}
 }

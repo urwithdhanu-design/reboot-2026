@@ -9,9 +9,10 @@ public class StripeProperties {
 
 	private String secretKey = "";
 	private String publishableKey = "";
-	private String successUrl = "http://localhost:5173/payment/success";
-	private String cancelUrl = "http://localhost:5173/payment/cancel";
+	private String successUrl = "http://localhost:5174/payment/success";
+	private String cancelUrl = "http://localhost:5174/payment/cancel";
 	private String currency = "gbp";
+	private boolean demoMode = true;
 
 	public String getSecretKey() {
 		return secretKey;
@@ -53,7 +54,19 @@ public class StripeProperties {
 		this.currency = currency;
 	}
 
+	public boolean isDemoMode() {
+		return demoMode;
+	}
+
+	public void setDemoMode(boolean demoMode) {
+		this.demoMode = demoMode;
+	}
+
 	public boolean isConfigured() {
 		return secretKey != null && !secretKey.isBlank();
+	}
+
+	public boolean useDemoPayments() {
+		return !isConfigured() && demoMode;
 	}
 }

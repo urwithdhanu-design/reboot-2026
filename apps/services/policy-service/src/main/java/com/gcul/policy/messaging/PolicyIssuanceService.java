@@ -1,18 +1,24 @@
 package com.gcul.policy.messaging;
 
-import java.time.Instant;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
 
 import com.gcul.messaging.EventTopics;
 import com.gcul.messaging.GculEventPublisher;
 import com.gcul.policy.client.BlockchainMintClient;
+import com.gcul.policy.client.BlockchainMintClient.PolicyRecordView;
+import com.gcul.policy.client.KycInternalClient;
 import com.gcul.policy.client.WalletLookupClient;
+import com.gcul.policy.client.WalletLookupClient.WalletLookup;
+import com.gcul.policy.model.PolicyRecord;
+import com.gcul.policy.policy.PolicyRecordService;
+import com.gcul.policy.policy.PolicyReferenceHasher;
 import com.gcul.policy.quote.QuoteService;
 
 @Service
@@ -24,19 +30,22 @@ public class PolicyIssuanceService {
 	private final GculEventPublisher publisher;
 	private final BlockchainMintClient blockchainMintClient;
 	private final WalletLookupClient walletLookupClient;
-	private final ConcurrentHashMap<String, Map<String, Object>> policies = new ConcurrentHashMap<>();
-	private final ConcurrentHashMap<String, String> quoteToPolicy = new ConcurrentHashMap<>();
-	private final ConcurrentHashMap<String, String> customerWallets = new ConcurrentHashMap<>();
+	private final KycInternalClient kycInternalClient;
+	private final PolicyRecordService policyRecords;
 
 	public PolicyIssuanceService(
 			QuoteService quotes,
 			GculEventPublisher publisher,
 			BlockchainMintClient blockchainMintClient,
-			WalletLookupClient walletLookupClient) {
+			WalletLookupClient walletLookupClient,
+			KycInternalClient kycInternalClient,
+			PolicyRecordService policyRecords) {
 		this.quotes = quotes;
 		this.publisher = publisher;
 		this.blockchainMintClient = blockchainMintClient;
 		this.walletLookupClient = walletLookupClient;
+		this.kycInternalClient = kycInternalClient;
+		this.policyRecords = policyRecords;
 	}
 
 	public void onPremiumPaid(Map<String, Object> payload) {
@@ -45,10 +54,11 @@ public class PolicyIssuanceService {
 			log.warn("PremiumPaid missing quoteId");
 			return;
 		}
-		if (quoteToPolicy.containsKey(quoteId)) {
+		if (policyRecords.findByQuoteId(quoteId).isPresent()) {
 			log.debug("Policy already issued for quote {}", quoteId);
 			return;
 		}
+
 		Map<String, Object> quote;
 		try {
 			quote = quotes.getQuote(quoteId);
@@ -60,18 +70,24 @@ public class PolicyIssuanceService {
 
 		String policyId = "POL-" + quoteId.replace("Q-", "");
 		String policyNumber = policyId;
-		String customerId = extractCustomerId(quote);
+		String customerEmail = extractEmail(quote).toLowerCase();
+		WalletLookup wallet = resolveWallet(customerEmail, payload.get("walletAddress"));
+		String customerId = firstNonBlank(wallet.userId(), customerEmail);
+		String walletAddress = wallet.address();
+		String productTitle = String.valueOf(quote.getOrDefault("product_title", "Insurance"));
+		String policyReferenceHash = PolicyReferenceHasher.hash(policyId, policyNumber, customerId, quoteId);
+		String metadataUri = "ipfs://gcul-policy/" + policyId;
 
-		Map<String, Object> policy = new LinkedHashMap<>();
-		policy.put("policy_id", policyId);
-		policy.put("policy_number", policyNumber);
-		policy.put("quote_id", quoteId);
-		policy.put("customer_id", customerId);
-		policy.put("product_title", quote.get("product_title"));
-		policy.put("status", "issued");
-		policy.put("issued_at", Instant.now().toString());
-		policies.put(policyId, policy);
-		quoteToPolicy.put(quoteId, policyId);
+		PolicyRecord record = policyRecords.createIssuedPolicy(
+				policyId,
+				policyNumber,
+				quoteId,
+				customerId,
+				customerEmail,
+				productTitle,
+				walletAddress,
+				policyReferenceHash,
+				metadataUri);
 
 		Map<String, Object> created = new LinkedHashMap<>();
 		created.put("eventType", "PolicyCreated");
@@ -79,55 +95,22 @@ public class PolicyIssuanceService {
 		created.put("policyNumber", policyNumber);
 		created.put("quoteId", quoteId);
 		created.put("customerId", customerId);
-		created.put("productTitle", quote.get("product_title"));
+		created.put("productTitle", productTitle);
 		created.put("status", "ISSUED");
 		publisher.publish(EventTopics.POLICY, created);
 
-		Map<String, Object> mintRequest = new LinkedHashMap<>();
-		mintRequest.put("eventType", "PolicyMintRequested");
-		mintRequest.put("policyId", policyId);
-		mintRequest.put("policyNumber", policyNumber);
-		mintRequest.put("customerId", customerId);
-		String walletAddress = resolveWalletAddress(customerId, payload.get("walletAddress"));
-		mintRequest.put("walletAddress", walletAddress);
-		publisher.publish(EventTopics.POLICY, mintRequest);
-
-		triggerBlockchainMint(policyId, policyNumber, customerId, walletAddress,
-				String.valueOf(quote.getOrDefault("product_title", "Insurance")));
-
-		log.info("Issued policy {} for quote {}", policyId, quoteId);
-	}
-
-	private void triggerBlockchainMint(
-			String policyId,
-			String policyNumber,
-			String customerId,
-			String walletAddress,
-			String productTitle) {
-		if (walletAddress == null || walletAddress.isBlank()) {
-			log.warn("Skipping blockchain mint for {} — no verified wallet address", policyId);
+		if (!wallet.connected() || walletAddress.isBlank()) {
+			log.warn("Policy {} issued off-chain — awaiting verified wallet before mint", policyId);
 			return;
 		}
-		try {
-			Map<String, Object> mintResult = blockchainMintClient.mintPolicyNft(
-					blockchainMintClient.buildMintRequest(
-							policyId, policyNumber, customerId, walletAddress, productTitle));
-			onPolicyMinted(mintResult);
-		}
-		catch (Exception ex) {
-			log.error("Direct blockchain mint failed for {}: {}", policyId, ex.getMessage());
-		}
-	}
 
-	private String resolveWalletAddress(String customerId, Object eventWallet) {
-		if (eventWallet != null && !String.valueOf(eventWallet).isBlank()) {
-			return String.valueOf(eventWallet).trim();
+		if (!kycInternalClient.isVerified(customerId)) {
+			log.warn("Policy {} mint deferred — customer {} not KYC verified", policyId, customerId);
+			return;
 		}
-		String cached = customerWallets.getOrDefault(customerId, "");
-		if (!cached.isBlank()) {
-			return cached;
-		}
-		return walletLookupClient.lookupWalletAddress(customerId);
+
+		requestBlockchainMint(record, true);
+		log.info("Issued policy {} for quote {}", policyId, quoteId);
 	}
 
 	public void onPolicyMinted(Map<String, Object> payload) {
@@ -135,45 +118,95 @@ public class PolicyIssuanceService {
 		if (policyId.isBlank()) {
 			return;
 		}
-		Map<String, Object> policy = policies.get(policyId);
-		if (policy == null) {
-			policy = new LinkedHashMap<>();
-			policy.put("policy_id", policyId);
-			policies.put(policyId, policy);
-		}
-		policy.put("token_id", payload.get("tokenId"));
-		policy.put("tx_hash", payload.get("transactionHash"));
-		policy.put("status", "active");
-		policy.put("activated_at", Instant.now().toString());
-
-		Map<String, Object> activated = new LinkedHashMap<>();
-		activated.put("eventType", "PolicyActivated");
-		activated.put("policyId", policyId);
-		activated.put("tokenId", payload.get("tokenId"));
-		activated.put("status", "ACTIVE");
-		publisher.publish(EventTopics.POLICY, activated);
+		policyRecords.findByPolicyId(policyId).ifPresent(record -> {
+			policyRecords.applyMintResult(policyId, payload);
+			Map<String, Object> activated = new LinkedHashMap<>();
+			activated.put("eventType", "PolicyActivated");
+			activated.put("policyId", policyId);
+			activated.put("tokenId", payload.get("tokenId"));
+			activated.put("status", "ACTIVE");
+			publisher.publish(EventTopics.POLICY, activated);
+		});
 	}
 
 	public void onWalletLinked(Map<String, Object> payload) {
 		String customerId = str(payload.get("customerId"));
 		String walletAddress = str(payload.get("walletAddress"));
-		if (!customerId.isBlank() && !walletAddress.isBlank()) {
-			customerWallets.put(customerId, walletAddress);
+		log.info("Wallet linked for customer {} address {} — checking pending policy mints",
+				customerId, walletAddress);
+
+		if (customerId.isBlank() || walletAddress.isBlank()) {
+			return;
 		}
-		log.info("Wallet linked for customer {} address {} — ready for policy mint",
-				payload.get("customerId"), walletAddress);
+		if (!kycInternalClient.isVerified(customerId)) {
+			return;
+		}
+
+		for (PolicyRecord pending : policyRecords.listPendingMint()) {
+			if (!customerId.equals(pending.getCustomerId())
+					&& !customerId.equalsIgnoreCase(pending.getCustomerEmail())) {
+				continue;
+			}
+			policyRecords.attachWallet(pending.getPolicyId(), walletAddress);
+			requestBlockchainMint(pending, true);
+		}
 	}
 
 	public Map<String, Object> getPolicy(String policyId) {
-		return policies.get(policyId);
+		return policyRecords.findByPolicyId(policyId)
+				.map(policyRecords::toResponse)
+				.orElse(null);
 	}
 
-	private static String extractCustomerId(Map<String, Object> quote) {
+	public List<Map<String, Object>> listCustomerPolicies(String customerId, String email) {
+		return policyRecords.listForCustomer(customerId, email).stream()
+				.map(policyRecords::toResponse)
+				.toList();
+	}
+
+	private void requestBlockchainMint(PolicyRecord record, boolean kycVerified) {
+		try {
+			Map<String, Object> mintResult = blockchainMintClient.mintPolicyNft(
+					blockchainMintClient.buildMintRequest(toView(record), kycVerified));
+			onPolicyMinted(mintResult);
+		}
+		catch (Exception ex) {
+			policyRecords.markMintFailed(record.getPolicyId(), ex.getMessage());
+			log.error("Blockchain mint failed for {}: {}", record.getPolicyId(), ex.getMessage());
+		}
+	}
+
+	private PolicyRecordView toView(PolicyRecord record) {
+		return new PolicyRecordView(
+				record.getPolicyId(),
+				record.getPolicyNumber(),
+				record.getQuoteId(),
+				record.getCustomerId(),
+				record.getWalletAddress(),
+				record.getPolicyReferenceHash(),
+				record.getMetadataUri(),
+				record.getProductTitle());
+	}
+
+	private WalletLookup resolveWallet(String customerEmail, Object eventWallet) {
+		if (eventWallet != null && !String.valueOf(eventWallet).isBlank()) {
+			String address = String.valueOf(eventWallet).trim();
+			WalletLookup byEmail = walletLookupClient.lookupByEmail(customerEmail);
+			return new WalletLookup(byEmail.userId(), address, true);
+		}
+		WalletLookup byEmail = walletLookupClient.lookupByEmail(customerEmail);
+		if (byEmail.connected()) {
+			return byEmail;
+		}
+		return WalletLookup.empty();
+	}
+
+	private static String extractEmail(Map<String, Object> quote) {
 		Object answersObj = quote.get("answers");
 		if (answersObj instanceof Map<?, ?> answers) {
 			Object email = answers.get("email");
 			if (email != null && !String.valueOf(email).isBlank()) {
-				return String.valueOf(email).trim().toLowerCase();
+				return String.valueOf(email).trim();
 			}
 		}
 		return "unknown";
@@ -185,8 +218,8 @@ public class PolicyIssuanceService {
 
 	private static String firstNonBlank(String... values) {
 		for (String value : values) {
-			if (value != null && !value.isBlank()) {
-				return value;
+			if (StringUtils.hasText(value)) {
+				return value.trim();
 			}
 		}
 		return "";

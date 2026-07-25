@@ -61,13 +61,7 @@ public class PolicyMintService {
 		}
 
 		try {
-			PolicyNftMintResult result = policyNftMintService.mintPolicyNft(new MintRequest(
-					policyId,
-					str(payload.get("policyNumber")),
-					str(payload.get("customerId")),
-					walletAddress,
-					Map.of("source", "pubsub")));
-
+			PolicyNftMintResult result = policyNftMintService.mintPolicyNft(toMintRequest(payload));
 			publishMintedEvent(payload, result);
 			recordOnInsuranceChain(payload, result);
 			log.info("Mint completed policyId={} tokenId={} mode={}", policyId, result.tokenId(), result.mode());
@@ -86,28 +80,12 @@ public class PolicyMintService {
 		}
 		if (!mintedPolicies.add(policyId)) {
 			return policyNftMintService.findByPolicyId(policyId)
-					.map(record -> new PolicyNftMintResult(
-							record.getPolicyId(),
-							record.getTokenId(),
-							record.getTransactionHash(),
-							record.getWalletAddress(),
-							record.getContractAddress(),
-							record.getChainId(),
-							record.getNetwork(),
-							record.getTokenUri(),
-							record.getMintMode(),
-							record.getStatus()))
+					.map(this::fromRecord)
 					.orElseThrow(() -> new IllegalStateException("Policy already minted: " + policyId));
 		}
 
 		try {
-			PolicyNftMintResult result = policyNftMintService.mintPolicyNft(new MintRequest(
-					policyId,
-					str(payload.get("policyNumber")),
-					str(payload.get("customerId")),
-					str(payload.get("walletAddress")),
-					payload));
-
+			PolicyNftMintResult result = policyNftMintService.mintPolicyNft(toMintRequest(payload));
 			publishMintedEvent(payload, result);
 			recordOnInsuranceChain(payload, result);
 			return result;
@@ -118,10 +96,40 @@ public class PolicyMintService {
 		}
 	}
 
+	private MintRequest toMintRequest(Map<String, Object> payload) {
+		return new MintRequest(
+				str(payload.get("policyId")),
+				str(payload.get("policyNumber")),
+				str(payload.get("customerId")),
+				str(payload.get("walletAddress")),
+				str(payload.get("policyReferenceHash")),
+				str(payload.get("metadataURI")),
+				bool(payload.get("kycVerified")),
+				bool(payload.getOrDefault("policyEligible", true)),
+				payload);
+	}
+
+	private PolicyNftMintResult fromRecord(com.gcul.blockchain.model.PolicyNftRecord record) {
+		return new PolicyNftMintResult(
+				record.getPolicyId(),
+				record.getPolicyReferenceHash(),
+				record.getTokenId(),
+				record.getTransactionHash(),
+				record.getWalletAddress(),
+				record.getContractAddress(),
+				record.getChainId(),
+				record.getBlockNumber(),
+				record.getNetwork(),
+				record.getTokenUri(),
+				record.getMintMode(),
+				record.getMintStatus());
+	}
+
 	private void publishMintedEvent(Map<String, Object> payload, PolicyNftMintResult result) {
 		Map<String, Object> minted = new LinkedHashMap<>();
 		minted.put("eventType", "PolicyMinted");
 		minted.put("policyId", result.policyId());
+		minted.put("policyReferenceHash", result.policyReferenceHash());
 		minted.put("policyNumber", firstNonBlank(str(payload.get("policyNumber")), result.policyId()));
 		minted.put("customerId", str(payload.get("customerId")));
 		minted.put("tokenId", result.tokenId());
@@ -129,9 +137,11 @@ public class PolicyMintService {
 		minted.put("walletAddress", result.walletAddress());
 		minted.put("contractAddress", result.contractAddress());
 		minted.put("chainId", result.chainId());
+		minted.put("blockNumber", result.blockNumber());
 		minted.put("network", result.network());
+		minted.put("metadataURI", result.metadataUri());
 		minted.put("mode", result.mode());
-		minted.put("status", result.status());
+		minted.put("mintStatus", result.mintStatus());
 		publisher.publish(EventTopics.BLOCKCHAIN, minted);
 	}
 
@@ -142,10 +152,11 @@ public class PolicyMintService {
 				ChainLedger.POLICY,
 				Map.of(
 						"policyId", policyId,
-						"policyNumber", firstNonBlank(str(payload.get("policyNumber")), policyId),
+						"policyReferenceHash", result.policyReferenceHash(),
 						"tokenId", result.tokenId(),
 						"transactionHash", result.transactionHash(),
 						"walletAddress", result.walletAddress(),
+						"blockNumber", result.blockNumber(),
 						"workflow", "policy_mint",
 						"mode", result.mode()),
 				str(payload.get("customerId")),
@@ -157,15 +168,24 @@ public class PolicyMintService {
 				ChainLedger.POLICY,
 				Map.of(
 						"policyId", policyId,
+						"policyReferenceHash", result.policyReferenceHash(),
 						"tokenId", result.tokenId(),
 						"transactionHash", result.transactionHash(),
 						"walletAddress", result.walletAddress(),
 						"contractAddress", result.contractAddress(),
+						"blockNumber", result.blockNumber(),
 						"network", result.network()),
 				str(payload.get("customerId")),
 				"blockchain_orchestrator",
 				result.transactionHash(),
 				null));
+	}
+
+	private static boolean bool(Object value) {
+		if (value instanceof Boolean b) {
+			return b;
+		}
+		return value != null && Boolean.parseBoolean(String.valueOf(value));
 	}
 
 	private static String str(Object value) {

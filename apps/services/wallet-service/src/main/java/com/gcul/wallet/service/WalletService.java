@@ -49,14 +49,60 @@ public class WalletService {
 	public Map<String, Object> getWallet(String userId) {
 		return repository.findByUserId(userId)
 				.map(this::toResponse)
-				.orElseGet(() -> {
-					Map<String, Object> disconnected = new LinkedHashMap<>();
-					disconnected.put("status", "disconnected");
-					disconnected.put("address", null);
-					disconnected.put("balance_gbp", 0.0);
-					disconnected.put("currency", "GBP");
-					return disconnected;
-				});
+				.orElseGet(this::disconnectedWallet);
+	}
+
+	public Map<String, Object> getWalletWithUser(String userId) {
+		return repository.findByUserId(userId)
+				.map(wallet -> {
+					Map<String, Object> response = toResponse(wallet);
+					response.put("userId", wallet.getUserId());
+					response.put("email", wallet.getUserEmail());
+					return response;
+				})
+				.orElseGet(this::disconnectedWallet);
+	}
+
+	public Map<String, Object> getWalletByEmail(String email) {
+		return repository.findByUserEmailIgnoreCase(email)
+				.map(wallet -> {
+					Map<String, Object> response = toResponse(wallet);
+					response.put("userId", wallet.getUserId());
+					response.put("email", wallet.getUserEmail());
+					return response;
+				})
+				.orElseGet(this::disconnectedWallet);
+	}
+
+	@Transactional
+	public Map<String, Object> linkWallet(String userId, String email, String address, String bearerToken) {
+		if (!isValidEthereumAddress(address)) {
+			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid Ethereum wallet address");
+		}
+		if (!"verified".equals(kycStatusClient.fetchKycStatus(bearerToken))) {
+			throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+					"Complete KYC verification before linking a wallet");
+		}
+
+		CustomerWallet wallet = repository.findByUserId(userId).orElseGet(CustomerWallet::new);
+		wallet.setUserId(userId);
+		wallet.setUserEmail(email);
+		wallet.setAddress(address.trim().toLowerCase());
+		wallet.setStatus("connected");
+		wallet.setProvider("ethereum");
+		wallet.setMode("linked");
+		wallet.setNote("Verified Ethereum wallet for policy NFT delivery.");
+		wallet.setCurrency("GBP");
+		if (wallet.getBalanceGbp() < 0) {
+			wallet.setBalanceGbp(0.0);
+		}
+		wallet.setUpdatedAt(Instant.now());
+		wallet = repository.saveAndFlush(wallet);
+		walletEvents.walletLinked(userId, wallet);
+
+		Map<String, Object> response = toResponse(wallet);
+		response.put("linked", true);
+		return response;
 	}
 
 	public List<Map<String, Object>> listTransactions(String userId) {
@@ -165,6 +211,19 @@ public class WalletService {
 		String seed = userId + ":" + (email == null ? "" : email) + ":" + HexFormat.of().formatHex(randomBytes(16));
 		String digest = sha256(seed);
 		return "0x" + digest.substring(0, 40);
+	}
+
+	private Map<String, Object> disconnectedWallet() {
+		Map<String, Object> disconnected = new LinkedHashMap<>();
+		disconnected.put("status", "disconnected");
+		disconnected.put("address", null);
+		disconnected.put("balance_gbp", 0.0);
+		disconnected.put("currency", "GBP");
+		return disconnected;
+	}
+
+	private static boolean isValidEthereumAddress(String address) {
+		return address != null && address.matches("^0x[0-9a-fA-F]{40}$");
 	}
 
 	private Map<String, Object> toResponse(CustomerWallet wallet) {

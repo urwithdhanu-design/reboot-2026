@@ -11,5 +11,7 @@ public interface PolicyNftRecordRepository extends JpaRepository<PolicyNftRecord
 
 	Optional<PolicyNftRecord> findByPolicyId(String policyId);
 
+	Optional<PolicyNftRecord> findByPolicyReferenceHash(String policyReferenceHash);
+
 	List<PolicyNftRecord> findTop20ByOrderByMintedAtDesc();
 }

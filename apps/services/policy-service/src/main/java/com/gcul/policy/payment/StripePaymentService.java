@@ -4,6 +4,7 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.springframework.http.HttpStatus;
@@ -25,12 +26,15 @@ import jakarta.annotation.PostConstruct;
 @Service
 public class StripePaymentService {
 
+	private static final String DEMO_SESSION_PREFIX = "demo_cs_";
+
 	private final StripeProperties properties;
 	private final QuoteService quotes;
 	private final MailService mail;
 	private final GculEventPublisher eventPublisher;
 	private final Set<String> paymentEmailsSent = ConcurrentHashMap.newKeySet();
 	private final Set<String> premiumPaidPublished = ConcurrentHashMap.newKeySet();
+	private final Map<String, DemoCheckoutSession> demoSessions = new ConcurrentHashMap<>();
 
 	public StripePaymentService(
 			StripeProperties properties,
@@ -52,15 +56,21 @@ public class StripePaymentService {
 
 	public Map<String, Object> publicConfig() {
 		Map<String, Object> map = new LinkedHashMap<>();
+		boolean demo = properties.useDemoPayments();
 		map.put("configured", properties.isConfigured());
+		map.put("demo_mode", demo);
+		map.put("mode", demo ? "demo" : (properties.isConfigured() ? "stripe" : "disabled"));
 		map.put("publishable_key", properties.getPublishableKey() == null ? "" : properties.getPublishableKey());
 		map.put("currency", properties.getCurrency());
 		return map;
 	}
 
 	public Map<String, Object> createCheckoutSession(String quoteId) {
-		ensureConfigured();
 		Map<String, Object> quote = quotes.getQuote(quoteId);
+		if (properties.useDemoPayments()) {
+			return createDemoCheckoutSession(quoteId, quote);
+		}
+		ensureStripeConfigured();
 
 		long amountPence = toMinorUnits(quote.get("estimated_premium"));
 		if (amountPence < 30) {
@@ -101,6 +111,7 @@ public class StripePaymentService {
 			response.put("quote_id", quoteId);
 			response.put("amount", amountPence / 100.0);
 			response.put("currency", currency);
+			response.put("mode", "stripe");
 			return response;
 		}
 		catch (StripeException ex) {
@@ -110,7 +121,10 @@ public class StripePaymentService {
 	}
 
 	public Map<String, Object> getSessionStatus(String sessionId) {
-		ensureConfigured();
+		if (isDemoSession(sessionId)) {
+			return getDemoSessionStatus(sessionId);
+		}
+		ensureStripeConfigured();
 		try {
 			Session session = Session.retrieve(sessionId);
 			boolean paid = "paid".equalsIgnoreCase(session.getPaymentStatus());
@@ -126,12 +140,13 @@ public class StripePaymentService {
 			map.put("amount_total", amountTotal);
 			map.put("currency", session.getCurrency());
 			map.put("paid", paid);
+			map.put("mode", "stripe");
 
 			if (paid && paymentEmailsSent.add(sessionId)) {
-				notifyPaymentEmail(session, amountTotal);
+				notifyPaymentEmail(session.getClientReferenceId(), amountTotal, session.getCurrency(), sessionId);
 			}
 			if (paid && premiumPaidPublished.add(sessionId)) {
-				publishPremiumPaid(session, amountTotal);
+				publishPremiumPaid(session.getClientReferenceId(), amountTotal, session.getCurrency(), sessionId);
 			}
 			return map;
 		}
@@ -141,9 +156,52 @@ public class StripePaymentService {
 		}
 	}
 
+	private Map<String, Object> createDemoCheckoutSession(String quoteId, Map<String, Object> quote) {
+		long amountPence = toMinorUnits(quote.get("estimated_premium"));
+		if (amountPence < 30) {
+			amountPence = 30;
+		}
+		String currency = String.valueOf(quote.getOrDefault("currency", properties.getCurrency())).toLowerCase();
+		String sessionId = DEMO_SESSION_PREFIX + UUID.randomUUID().toString().replace("-", "");
+		demoSessions.put(sessionId, new DemoCheckoutSession(quoteId, amountPence / 100.0, currency));
+
+		Map<String, Object> response = new LinkedHashMap<>();
+		response.put("session_id", sessionId);
+		response.put("url", properties.getSuccessUrl() + "?session_id=" + sessionId);
+		response.put("quote_id", quoteId);
+		response.put("amount", amountPence / 100.0);
+		response.put("currency", currency);
+		response.put("mode", "demo");
+		return response;
+	}
+
+	private Map<String, Object> getDemoSessionStatus(String sessionId) {
+		DemoCheckoutSession session = demoSessions.get(sessionId);
+		if (session == null) {
+			throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Demo payment session not found");
+		}
+
+		Map<String, Object> map = new LinkedHashMap<>();
+		map.put("session_id", sessionId);
+		map.put("status", "complete");
+		map.put("payment_status", "paid");
+		map.put("quote_id", session.quoteId());
+		map.put("amount_total", session.amount());
+		map.put("currency", session.currency());
+		map.put("paid", true);
+		map.put("mode", "demo");
+
+		if (paymentEmailsSent.add(sessionId)) {
+			notifyPaymentEmail(session.quoteId(), session.amount(), session.currency(), sessionId);
+		}
+		if (premiumPaidPublished.add(sessionId)) {
+			publishPremiumPaid(session.quoteId(), session.amount(), session.currency(), sessionId);
+		}
+		return map;
+	}
+
 	@SuppressWarnings("unchecked")
-	private void notifyPaymentEmail(Session session, double amountTotal) {
-		String quoteId = session.getClientReferenceId();
+	private void notifyPaymentEmail(String quoteId, double amountTotal, String currency, String sessionId) {
 		if (quoteId == null || quoteId.isBlank()) {
 			return;
 		}
@@ -159,33 +217,38 @@ public class StripePaymentService {
 				return;
 			}
 			String productTitle = String.valueOf(quote.getOrDefault("product_title", "Insurance"));
-			String currency = session.getCurrency() == null
+			String resolvedCurrency = currency == null || currency.isBlank()
 					? String.valueOf(quote.getOrDefault("currency", "gbp"))
-					: session.getCurrency();
-			mail.sendPaymentReceived(email, productTitle, quoteId, amountTotal, currency);
+					: currency;
+			mail.sendPaymentReceived(email, productTitle, quoteId, amountTotal, resolvedCurrency);
 		}
 		catch (Exception ignored) {
 			// Quote may have expired from in-memory store; don't fail payment status
 		}
 	}
 
-	private void publishPremiumPaid(Session session, double amountTotal) {
-		String quoteId = session.getClientReferenceId();
+	private void publishPremiumPaid(String quoteId, double amountTotal, String currency, String sessionId) {
 		Map<String, Object> payload = new LinkedHashMap<>();
 		payload.put("eventType", "PremiumPaid");
 		payload.put("quoteId", quoteId);
-		payload.put("stripeSessionId", session.getId());
+		payload.put("stripeSessionId", sessionId);
 		payload.put("amount", amountTotal);
-		payload.put("currency", session.getCurrency());
-		payload.put("paymentStatus", session.getPaymentStatus());
+		payload.put("currency", currency);
+		payload.put("paymentStatus", "paid");
 		payload.put("customerId", quoteId);
+		payload.put("mode", isDemoSession(sessionId) ? "demo" : "stripe");
 		eventPublisher.publish(EventTopics.PAYMENT, payload);
 	}
 
-	private void ensureConfigured() {
+	private static boolean isDemoSession(String sessionId) {
+		return sessionId != null && sessionId.startsWith(DEMO_SESSION_PREFIX);
+	}
+
+	private void ensureStripeConfigured() {
 		if (!properties.isConfigured()) {
 			throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE,
-					"Stripe is not configured. Set STRIPE_SECRET_KEY on policy-service.");
+					"Stripe is not configured. Set STRIPE_SECRET_KEY on policy-service "
+							+ "or enable STRIPE_DEMO_MODE=true for local testing.");
 		}
 		Stripe.apiKey = properties.getSecretKey().trim();
 	}
@@ -202,5 +265,8 @@ public class StripePaymentService {
 			value = Double.parseDouble(String.valueOf(premium));
 		}
 		return Math.round(value * 100.0);
+	}
+
+	private record DemoCheckoutSession(String quoteId, double amount, String currency) {
 	}
 }

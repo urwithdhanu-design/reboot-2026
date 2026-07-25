@@ -40,6 +40,7 @@ import org.web3j.tx.response.PollingTransactionReceiptProcessor;
 import org.web3j.utils.Numeric;
 
 import com.gcul.blockchain.config.EthereumProperties;
+import com.gcul.blockchain.ethereum.PolicyMintValidator.MintContext;
 import com.gcul.blockchain.model.PolicyNftRecord;
 import com.gcul.blockchain.repository.PolicyNftRecordRepository;
 
@@ -58,16 +59,19 @@ public class PolicyNftMintService {
 
 	private final EthereumProperties props;
 	private final PolicyNftRecordRepository repository;
+	private final PolicyMintValidator validator;
 	private final Optional<Web3j> web3j;
 	private final Optional<Credentials> insurerCredentials;
 
 	public PolicyNftMintService(
 			EthereumProperties props,
 			PolicyNftRecordRepository repository,
+			PolicyMintValidator validator,
 			Optional<Web3j> web3j,
 			Optional<Credentials> insurerCredentials) {
 		this.props = props;
 		this.repository = repository;
+		this.validator = validator;
 		this.web3j = web3j;
 		this.insurerCredentials = insurerCredentials;
 	}
@@ -95,18 +99,26 @@ public class PolicyNftMintService {
 	@Transactional
 	public PolicyNftMintResult mintPolicyNft(MintRequest request) {
 		String policyId = requireText(request.policyId(), "policyId");
-		if (repository.findByPolicyId(policyId).isPresent()) {
-			throw new ResponseStatusException(HttpStatus.CONFLICT, "Policy already minted: " + policyId);
-		}
-
+		String policyReferenceHash = requireText(request.policyReferenceHash(), "policyReferenceHash");
 		String walletAddress = EthereumAddressValidator.normalize(request.walletAddress());
+		String metadataUri = requireText(
+				StringUtils.hasText(request.metadataUri()) ? request.metadataUri() : buildMetadataUri(policyId),
+				"metadataURI");
 		String policyNumber = firstNonBlank(request.policyNumber(), policyId);
 		String customerId = firstNonBlank(request.customerId(), "unknown");
-		String tokenUri = buildTokenUri(policyId, policyNumber, request.metadata());
+
+		validator.validate(new MintContext(
+				policyId,
+				policyReferenceHash,
+				walletAddress,
+				metadataUri,
+				customerId,
+				request.kycVerified(),
+				request.policyEligible()));
 
 		PolicyNftMintResult result = isEthereumLive()
-				? mintOnChain(policyId, policyNumber, customerId, walletAddress, tokenUri)
-				: mintSimulated(policyId, policyNumber, customerId, walletAddress, tokenUri);
+				? mintOnChain(policyId, policyReferenceHash, policyNumber, customerId, walletAddress, metadataUri)
+				: mintSimulated(policyId, policyReferenceHash, policyNumber, customerId, walletAddress, metadataUri);
 
 		saveRecord(result, policyNumber, customerId);
 		return result;
@@ -122,10 +134,11 @@ public class PolicyNftMintService {
 
 	private PolicyNftMintResult mintOnChain(
 			String policyId,
+			String policyReferenceHash,
 			String policyNumber,
 			String customerId,
 			String walletAddress,
-			String tokenUri) {
+			String metadataUri) {
 		Web3j client = web3j.orElseThrow();
 		Credentials credentials = insurerCredentials.orElseThrow();
 		String contractAddress = props.getContractAddress().trim();
@@ -144,8 +157,8 @@ public class PolicyNftMintService {
 					"mintPolicy",
 					Arrays.asList(
 							new Address(walletAddress),
-							new Utf8String(policyId),
-							new Utf8String(tokenUri)),
+							new Utf8String(policyReferenceHash),
+							new Utf8String(metadataUri)),
 					mintOutputs));
 
 			BigInteger gasPrice = client.ethGasPrice().send().getGasPrice();
@@ -171,20 +184,23 @@ public class PolicyNftMintService {
 			}
 
 			String tokenId = extractTokenIdFromReceipt(receipt)
-					.orElseGet(() -> readTokenIdForPolicy(client, contractAddress, policyId));
+					.orElseGet(() -> readTokenIdForPolicyHash(client, contractAddress, policyReferenceHash));
+			long blockNumber = parseBlockNumber(receipt.getBlockNumber());
 
-			log.info("On-chain policy NFT minted policyId={} tokenId={} txHash={} wallet={}",
-					policyId, tokenId, txHash, walletAddress);
+			log.info("On-chain policy NFT minted policyId={} tokenId={} txHash={} block={} wallet={}",
+					policyId, tokenId, txHash, blockNumber, walletAddress);
 
 			return new PolicyNftMintResult(
 					policyId,
+					policyReferenceHash,
 					tokenId,
 					txHash,
 					walletAddress,
 					contractAddress,
 					props.getChainId(),
+					blockNumber,
 					NETWORK,
-					tokenUri,
+					metadataUri,
 					"ethereum",
 					"MINTED");
 		}
@@ -200,22 +216,25 @@ public class PolicyNftMintService {
 
 	private PolicyNftMintResult mintSimulated(
 			String policyId,
+			String policyReferenceHash,
 			String policyNumber,
 			String customerId,
 			String walletAddress,
-			String tokenUri) {
+			String metadataUri) {
 		String tokenId = "SIM-" + policyId.replace("POL-", "");
 		String txHash = "0xsim" + UUID.randomUUID().toString().replace("-", "");
 		log.info("Simulated policy NFT mint policyId={} tokenId={} wallet={}", policyId, tokenId, walletAddress);
 		return new PolicyNftMintResult(
 				policyId,
+				policyReferenceHash,
 				tokenId,
 				txHash,
 				walletAddress,
 				"simulated",
 				props.getChainId(),
+				0L,
 				NETWORK,
-				tokenUri,
+				metadataUri,
 				"simulated",
 				"MINTED");
 	}
@@ -223,6 +242,7 @@ public class PolicyNftMintService {
 	private void saveRecord(PolicyNftMintResult result, String policyNumber, String customerId) {
 		PolicyNftRecord record = new PolicyNftRecord();
 		record.setPolicyId(result.policyId());
+		record.setPolicyReferenceHash(result.policyReferenceHash());
 		record.setPolicyNumber(policyNumber);
 		record.setCustomerId(customerId);
 		record.setWalletAddress(result.walletAddress());
@@ -231,20 +251,18 @@ public class PolicyNftMintService {
 		record.setContractAddress(result.contractAddress());
 		record.setChainId(result.chainId());
 		record.setNetwork(result.network());
-		record.setTokenUri(result.tokenUri());
+		record.setTokenUri(result.metadataUri());
+		record.setBlockNumber(result.blockNumber());
 		record.setMintMode(result.mode());
-		record.setStatus(result.status());
+		record.setMintStatus(result.mintStatus());
 		record.setMintedAt(Instant.now());
 		repository.save(record);
 	}
 
-	private String buildTokenUri(String policyId, String policyNumber, Map<String, Object> metadata) {
+	private String buildMetadataUri(String policyId) {
 		if (StringUtils.hasText(props.getTokenUriBase())) {
 			String base = props.getTokenUriBase().trim();
-			if (base.endsWith("/")) {
-				return base + policyId;
-			}
-			return base + "/" + policyId;
+			return base.endsWith("/") ? base + policyId : base + "/" + policyId;
 		}
 		return "ipfs://gcul-policy/" + policyId;
 	}
@@ -265,14 +283,14 @@ public class PolicyNftMintService {
 		return Optional.empty();
 	}
 
-	private String readTokenIdForPolicy(Web3j client, String contractAddress, String policyId) {
+	private String readTokenIdForPolicyHash(Web3j client, String contractAddress, String policyReferenceHash) {
 		try {
 			@SuppressWarnings("unchecked")
 			List<TypeReference<?>> outputTypes = (List<TypeReference<?>>) (List<?>)
 					List.of(new TypeReference<Uint256>() {});
 			String data = FunctionEncoder.encode(new Function(
-					"getTokenIdForPolicy",
-					Collections.singletonList(new Utf8String(policyId)),
+					"getTokenIdForPolicyHash",
+					Collections.singletonList(new Utf8String(policyReferenceHash)),
 					outputTypes));
 			EthCall response = client.ethCall(
 					Transaction.createEthCallTransaction(null, contractAddress, data),
@@ -282,14 +300,22 @@ public class PolicyNftMintService {
 			}
 			@SuppressWarnings("unchecked")
 			List<TypeReference<Type>> decoderTypes = (List<TypeReference<Type>>) (List<?>) outputTypes;
-			List<Type> decoded = FunctionReturnDecoder.decode(
-					response.getValue(),
-					decoderTypes);
+			List<Type> decoded = FunctionReturnDecoder.decode(response.getValue(), decoderTypes);
 			return ((Uint256) decoded.get(0)).getValue().toString();
 		}
 		catch (Exception ex) {
-			throw new IllegalStateException("Unable to read tokenId for policy " + policyId, ex);
+			throw new IllegalStateException("Unable to read tokenId for policy hash " + policyReferenceHash, ex);
 		}
+	}
+
+	private static long parseBlockNumber(Object blockNumber) {
+		if (blockNumber == null) {
+			return 0L;
+		}
+		if (blockNumber instanceof BigInteger value) {
+			return value.longValue();
+		}
+		return Numeric.decodeQuantity(String.valueOf(blockNumber)).longValue();
 	}
 
 	private static String requireText(String value, String field) {
@@ -313,6 +339,10 @@ public class PolicyNftMintService {
 			String policyNumber,
 			String customerId,
 			String walletAddress,
+			String policyReferenceHash,
+			String metadataUri,
+			boolean kycVerified,
+			boolean policyEligible,
 			Map<String, Object> metadata) {
 	}
 }

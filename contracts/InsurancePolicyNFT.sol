@@ -9,14 +9,14 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 contract InsurancePolicyNFT is ERC721URIStorage, Ownable {
     uint256 private _nextTokenId;
 
-    mapping(string => uint256) public policyIdToTokenId;
-    mapping(uint256 => string) public tokenIdToPolicyId;
+    mapping(string => uint256) public policyHashToTokenId;
+    mapping(uint256 => string) public tokenIdToPolicyHash;
 
     event PolicyMinted(
         uint256 indexed tokenId,
         address indexed to,
-        string policyId,
-        string tokenURI
+        string policyReferenceHash,
+        string metadataURI
     );
 
     constructor() ERC721("GCUL Insurance Policy", "GCULPOL") Ownable(msg.sender) {}
@@ -24,12 +24,12 @@ contract InsurancePolicyNFT is ERC721URIStorage, Ownable {
     /// @notice Mint a policy NFT to a verified customer wallet. Only the insurer (owner) may call.
     function mintPolicy(
         address to,
-        string calldata policyId,
-        string calldata tokenURI_
+        string calldata policyReferenceHash,
+        string calldata metadataURI
     ) external onlyOwner returns (uint256 tokenId) {
         require(to != address(0), "Invalid recipient");
-        require(bytes(policyId).length > 0, "Policy ID required");
-        require(policyIdToTokenId[policyId] == 0, "Policy already minted");
+        require(bytes(policyReferenceHash).length > 0, "Policy reference hash required");
+        require(policyHashToTokenId[policyReferenceHash] == 0, "Policy already minted");
 
         tokenId = _nextTokenId;
         unchecked {
@@ -37,20 +37,20 @@ contract InsurancePolicyNFT is ERC721URIStorage, Ownable {
         }
 
         _safeMint(to, tokenId);
-        _setTokenURI(tokenId, tokenURI_);
+        _setTokenURI(tokenId, metadataURI);
 
-        policyIdToTokenId[policyId] = tokenId + 1; // store tokenId+1 so 0 means unminted
-        tokenIdToPolicyId[tokenId] = policyId;
+        policyHashToTokenId[policyReferenceHash] = tokenId + 1;
+        tokenIdToPolicyHash[tokenId] = policyReferenceHash;
 
-        emit PolicyMinted(tokenId, to, policyId, tokenURI_);
+        emit PolicyMinted(tokenId, to, policyReferenceHash, metadataURI);
     }
 
     function nextTokenId() external view returns (uint256) {
         return _nextTokenId;
     }
 
-    function getTokenIdForPolicy(string calldata policyId) external view returns (uint256) {
-        uint256 stored = policyIdToTokenId[policyId];
+    function getTokenIdForPolicyHash(string calldata policyReferenceHash) external view returns (uint256) {
+        uint256 stored = policyHashToTokenId[policyReferenceHash];
         require(stored > 0, "Policy not minted");
         return stored - 1;
     }

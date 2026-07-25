@@ -48,6 +48,7 @@ export function WalletPage() {
   const [note, setNote] = useState<string | null>(null);
   const [rechargeAmount, setRechargeAmount] = useState("50");
   const [transactions, setTransactions] = useState<WalletTransaction[]>([]);
+  const [linkAddress, setLinkAddress] = useState("");
 
   function syncSessionWallet(next: {
     address: string | null;
@@ -104,6 +105,37 @@ export function WalletPage() {
     if (!token || tab !== "recharge" || status !== "connected") return;
     void loadTransactions();
   }, [token, tab, status]);
+
+  async function linkExistingWallet() {
+    if (!token) {
+      navigate("/login");
+      return;
+    }
+    if (!/^0x[0-9a-fA-F]{40}$/.test(linkAddress.trim())) {
+      setError("Enter a valid Ethereum address (0x + 40 hex characters)");
+      return;
+    }
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await api.linkWallet(token, linkAddress.trim());
+      setAddress(res.address);
+      setStatus(res.status);
+      setBalance(res.balance_gbp ?? 0);
+      setCurrency(res.currency ?? "GBP");
+      setTab("status");
+      syncSessionWallet({
+        address: res.address,
+        status: res.status,
+        balance_gbp: res.balance_gbp ?? 0,
+        currency: res.currency ?? "GBP",
+      });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Wallet link failed");
+    } finally {
+      setLoading(false);
+    }
+  }
 
   async function createWallet() {
     if (!token) {
@@ -222,6 +254,19 @@ export function WalletPage() {
               </div>
             </div>
           </button>
+
+          <p className="options-label" style={{ marginTop: 16 }}>Or link an existing Ethereum wallet</p>
+          <div className="stack" style={{ gap: 8 }}>
+            <input
+              className="input"
+              placeholder="0x..."
+              value={linkAddress}
+              onChange={(e) => setLinkAddress(e.target.value)}
+            />
+            <button type="button" className="btn-secondary" onClick={() => void linkExistingWallet()} disabled={loading}>
+              Link wallet address
+            </button>
+          </div>
 
           <p className="options-label" style={{ marginTop: 16 }}>Other options</p>
           <div className="options-grid">

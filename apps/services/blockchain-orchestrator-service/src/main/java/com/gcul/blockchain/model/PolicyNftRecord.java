@@ -14,6 +14,9 @@ public class PolicyNftRecord {
 	@Id
 	private String policyId;
 
+	@Column(nullable = false, unique = true, length = 66)
+	private String policyReferenceHash;
+
 	@Column(nullable = false)
 	private String policyNumber;
 
@@ -42,10 +45,13 @@ public class PolicyNftRecord {
 	private String tokenUri;
 
 	@Column(nullable = false)
+	private long blockNumber;
+
+	@Column(nullable = false)
 	private String mintMode;
 
 	@Column(nullable = false)
-	private String status = "MINTED";
+	private String mintStatus = "MINTED";
 
 	@Column(nullable = false)
 	private Instant mintedAt = Instant.now();
@@ -56,6 +62,14 @@ public class PolicyNftRecord {
 
 	public void setPolicyId(String policyId) {
 		this.policyId = policyId;
+	}
+
+	public String getPolicyReferenceHash() {
+		return policyReferenceHash;
+	}
+
+	public void setPolicyReferenceHash(String policyReferenceHash) {
+		this.policyReferenceHash = policyReferenceHash;
 	}
 
 	public String getPolicyNumber() {
@@ -130,6 +144,14 @@ public class PolicyNftRecord {
 		this.tokenUri = tokenUri;
 	}
 
+	public long getBlockNumber() {
+		return blockNumber;
+	}
+
+	public void setBlockNumber(long blockNumber) {
+		this.blockNumber = blockNumber;
+	}
+
 	public String getMintMode() {
 		return mintMode;
 	}
@@ -138,12 +160,24 @@ public class PolicyNftRecord {
 		this.mintMode = mintMode;
 	}
 
-	public String getStatus() {
-		return status;
+	public String getMintStatus() {
+		return mintStatus;
 	}
 
+	public void setMintStatus(String mintStatus) {
+		this.mintStatus = mintStatus;
+	}
+
+	/** @deprecated use {@link #getMintStatus()} */
+	@Deprecated
+	public String getStatus() {
+		return mintStatus;
+	}
+
+	/** @deprecated use {@link #setMintStatus(String)} */
+	@Deprecated
 	public void setStatus(String status) {
-		this.status = status;
+		this.mintStatus = status;
 	}
 
 	public Instant getMintedAt() {

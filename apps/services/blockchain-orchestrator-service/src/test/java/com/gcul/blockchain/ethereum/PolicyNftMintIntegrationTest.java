@@ -29,31 +29,38 @@ class PolicyNftMintIntegrationTest {
 	void mintsSimulatedPolicyNftEndToEnd() {
 		assertThat(mintService.status().get("mode")).isEqualTo("simulated");
 
+		String policyId = "POL-TEST-001";
+		String policyReferenceHash = PolicyReferenceHasher.hash(
+				policyId, policyId, "test@example.com", "Q-TEST-001");
+
 		RestClient client = RestClient.create("http://127.0.0.1:" + port);
 		@SuppressWarnings("unchecked")
 		Map<String, Object> result = client.post()
 				.uri("/api/blockchain/internal/policy-nft/mint")
 				.contentType(MediaType.APPLICATION_JSON)
 				.body(Map.of(
-						"policyId", "POL-TEST-001",
-						"policyNumber", "POL-TEST-001",
+						"policyId", policyId,
+						"policyNumber", policyId,
 						"customerId", "test@example.com",
-						"walletAddress", "0x70997970c51812dc3a010c7d01b50e0d17dc79c8"))
+						"walletAddress", "0x70997970c51812dc3a010c7d01b50e0d17dc79c8",
+						"policyReferenceHash", policyReferenceHash,
+						"metadataURI", "ipfs://gcul-policy/" + policyId,
+						"kycVerified", true,
+						"policyEligible", true))
 				.retrieve()
 				.body(Map.class);
 
 		assertThat(result).isNotNull();
 		assertThat(result.get("tokenId")).isNotNull();
 		assertThat(result.get("transactionHash")).asString().startsWith("0x");
-		assertThat(result.get("walletAddress"))
-				.isEqualTo("0x70997970c51812dc3a010c7d01b50e0d17dc79c8");
-		assertThat(result.get("mode")).isEqualTo("simulated");
+		assertThat(result.get("policyReferenceHash")).isEqualTo(policyReferenceHash);
+		assertThat(result.get("mintStatus")).isEqualTo("MINTED");
 
 		@SuppressWarnings("unchecked")
 		Map<String, Object> record = client.get()
-				.uri("/api/blockchain/internal/policy-nft/POL-TEST-001")
+				.uri("/api/blockchain/internal/policy-nft/" + policyId)
 				.retrieve()
 				.body(Map.class);
-		assertThat(record.get("policyId")).isEqualTo("POL-TEST-001");
+		assertThat(record.get("policyId")).isEqualTo(policyId);
 	}
 }
