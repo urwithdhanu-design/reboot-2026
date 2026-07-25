@@ -115,6 +115,18 @@ public class PolicyIssuanceService {
 		return policies.get(policyId);
 	}
 
+	public java.util.Optional<Map<String, Object>> findPolicyByQuote(String quoteId) {
+		String policyId = quoteToPolicy.get(quoteId);
+		if (policyId == null) {
+			return java.util.Optional.empty();
+		}
+		Map<String, Object> policy = policies.get(policyId);
+		if (policy == null) {
+			return java.util.Optional.empty();
+		}
+		return java.util.Optional.of(policy);
+	}
+
 	private static String extractCustomerId(Map<String, Object> quote) {
 		Object answersObj = quote.get("answers");
 		if (answersObj instanceof Map<?, ?> answers) {

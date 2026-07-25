@@ -161,6 +161,61 @@ public class WalletService {
 		return response;
 	}
 
+	@Transactional
+	public Map<String, Object> payForPremium(String userId, String quoteId, double amount) {
+		if (quoteId == null || quoteId.isBlank()) {
+			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "quote_id is required");
+		}
+		if (amount <= 0) {
+			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Payment amount must be greater than zero");
+		}
+
+		var existing = transactions.findByReferenceAndType(quoteId, "premium");
+		if (existing.isPresent()) {
+			CustomerWallet wallet = repository.findByUserId(userId)
+					.orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "Wallet not found"));
+			Map<String, Object> response = toResponse(wallet);
+			response.put("transaction", toTransactionResponse(existing.get()));
+			response.put("reused", true);
+			return response;
+		}
+
+		CustomerWallet wallet = repository.findByUserId(userId)
+				.orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST,
+						"Create a wallet before paying"));
+		if (!wallet.isConnected()) {
+			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Create a wallet before paying");
+		}
+
+		double charge = roundMoney(amount);
+		if (wallet.getBalanceGbp() + 0.001 < charge) {
+			throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+					"Insufficient wallet balance. Recharge your wallet and try again.");
+		}
+
+		wallet.setBalanceGbp(roundMoney(wallet.getBalanceGbp() - charge));
+		wallet.setUpdatedAt(Instant.now());
+		wallet = repository.saveAndFlush(wallet);
+
+		WalletTransaction tx = new WalletTransaction();
+		tx.setId("PRM-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase(Locale.ROOT));
+		tx.setUserId(userId);
+		tx.setType("premium");
+		tx.setAmount(-charge);
+		tx.setCurrency(wallet.getCurrency() == null ? "GBP" : wallet.getCurrency());
+		tx.setStatus("completed");
+		tx.setReference(quoteId);
+		tx.setCreatedAt(Instant.now());
+		tx = transactions.saveAndFlush(tx);
+
+		walletEvents.walletPremiumPaid(userId, wallet, tx, quoteId);
+
+		Map<String, Object> response = toResponse(wallet);
+		response.put("transaction", toTransactionResponse(tx));
+		response.put("reused", false);
+		return response;
+	}
+
 	private String generateAddress(String userId, String email) {
 		String seed = userId + ":" + (email == null ? "" : email) + ":" + HexFormat.of().formatHex(randomBytes(4));
 		String digest = sha256(seed);

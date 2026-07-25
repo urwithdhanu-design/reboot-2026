@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
 
 import com.gcul.wallet.service.WalletService;
+import com.gcul.wallet.web.PayRequest;
 import com.gcul.wallet.web.RechargeRequest;
 
 import jakarta.servlet.http.HttpServletRequest;
@@ -44,6 +45,13 @@ public class WalletController {
 			HttpServletRequest request,
 			@RequestBody RechargeRequest body) {
 		return walletService.rechargeWallet(requireUserId(request), body.amount());
+	}
+
+	@PostMapping("/pay")
+	public Map<String, Object> payForPremium(
+			HttpServletRequest request,
+			@RequestBody PayRequest body) {
+		return walletService.payForPremium(requireUserId(request), body.quote_id(), body.amount());
 	}
 
 	@GetMapping("/transactions")

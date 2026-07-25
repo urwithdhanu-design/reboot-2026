@@ -142,6 +142,9 @@ foreach ($svc in $serviceList) {
   if ($id -eq "gcul-wallet" -and $deployedUrls.ContainsKey("gcul-kyc")) {
     $envPairs += "GCUL_KYC_SERVICE_URL=$($deployedUrls['gcul-kyc'])"
   }
+  if ($id -eq "gcul-policy" -and $deployedUrls.ContainsKey("gcul-wallet")) {
+    $envPairs += "GCUL_WALLET_SERVICE_URL=$($deployedUrls['gcul-wallet'])"
+  }
 
   $deployArgs = @(
     "run", "deploy", $id,
@@ -215,6 +218,15 @@ if ($ServiceIds.Count -eq 0 -and $deployedUrls.ContainsKey($orchId)) {
     $orchArgs += @("--update-secrets", "GCUL_DB_PASSWORD=${dbSecret}:latest")
   }
   gcloud @orchArgs
+}
+
+if ($deployedUrls.ContainsKey("gcul-policy") -and $deployedUrls.ContainsKey("gcul-wallet")) {
+  Write-Host "`nLinking gcul-policy to gcul-wallet ..." -ForegroundColor Cyan
+  gcloud run services update gcul-policy `
+    --region $Region `
+    --project $ProjectId `
+    --update-env-vars "GCUL_WALLET_SERVICE_URL=$($deployedUrls['gcul-wallet'])" `
+    --quiet
 }
 
 $outFile = Join-Path $PSScriptRoot "cloud-run-urls.json"

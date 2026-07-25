@@ -296,6 +296,22 @@ export const api = {
       body: JSON.stringify({ quote_id: quoteId }),
     }),
 
+  payWithWallet: (token: string, quoteId: string) =>
+    request<{
+      paid: boolean;
+      quote_id: string;
+      amount: number;
+      currency: string;
+      wallet_address: string;
+      balance_gbp: number;
+      payment_method: string;
+      policy_id?: string;
+    }>(
+      "/api/payments/wallet",
+      { method: "POST", body: JSON.stringify({ quote_id: quoteId }) },
+      token,
+    ),
+
   getPaymentSession: (sessionId: string) =>
     request<{
       session_id: string;
