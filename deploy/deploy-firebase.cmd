@@ -4,9 +4,11 @@ setlocal
 set "SCRIPT_DIR=%~dp0"
 cd /d "%SCRIPT_DIR%.."
 
+if "%GCP_PROJECT%"=="" set "GCP_PROJECT=insure360-83a36"
+
 if "%GCP_PROJECT%"=="" (
   echo ERROR: Set GCP_PROJECT first, e.g.:
-  echo   set GCP_PROJECT=community-hub-6fb1b
+  echo   set GCP_PROJECT=insure360-83a36
   exit /b 1
 )
 

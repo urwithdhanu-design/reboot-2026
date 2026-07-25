@@ -4,7 +4,7 @@
   Refresh deploy/cloud-api.targets.json from live Cloud Run URLs.
 #>
 param(
-  [string] $ProjectId = $(if ($env:GCP_PROJECT) { $env:GCP_PROJECT } else { "community-hub-6fb1b" }),
+  [string] $ProjectId = $(if ($env:GCP_PROJECT) { $env:GCP_PROJECT } else { "insure360-83a36" }),
   [string] $Region = $(if ($env:GCP_REGION) { $env:GCP_REGION } else { "us-central1" })
 )
 
@@ -29,10 +29,11 @@ foreach ($entry in $map.GetEnumerator()) {
   $url = gcloud run services describe $entry.Key --region $Region --project $ProjectId --format="value(status.url)" 2>$null
   if ($url) { $services[$entry.Value] = $url }
 }
+$fbCfg = Get-Content (Join-Path $PSScriptRoot "firebase-project.json") -Raw | ConvertFrom-Json
 $json.project = $ProjectId
 $json.region = $Region
-$json.firebaseHosting = "https://${ProjectId}.web.app"
-$json.firebaseAdminHosting = "https://gcul-admin.web.app"
+$json.firebaseHosting = if ($fbCfg.customerUrl) { $fbCfg.customerUrl } else { "https://${ProjectId}.web.app" }
+$json.firebaseAdminHosting = if ($fbCfg.adminUrl) { $fbCfg.adminUrl } else { "https://${ProjectId}-admin.web.app" }
 $json.services = $services
 $out = Join-Path $PSScriptRoot "cloud-api.targets.json"
 $jsonText = $json | ConvertTo-Json -Depth 5

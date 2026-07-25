@@ -1,5 +1,7 @@
 package com.gcul.wallet.model;
 
+import java.time.Instant;
+
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
@@ -30,6 +32,14 @@ public class CustomerWallet {
 
 	@Column(length = 255)
 	private String userEmail;
+
+	@Column(nullable = false)
+	private double balanceGbp = 0.0;
+
+	@Column(length = 8, nullable = false)
+	private String currency = "GBP";
+
+	private Instant updatedAt;
 
 	public String getUserId() {
 		return userId;
@@ -85,6 +95,30 @@ public class CustomerWallet {
 
 	public void setUserEmail(String userEmail) {
 		this.userEmail = userEmail;
+	}
+
+	public double getBalanceGbp() {
+		return balanceGbp;
+	}
+
+	public void setBalanceGbp(double balanceGbp) {
+		this.balanceGbp = balanceGbp;
+	}
+
+	public String getCurrency() {
+		return currency;
+	}
+
+	public void setCurrency(String currency) {
+		this.currency = currency;
+	}
+
+	public Instant getUpdatedAt() {
+		return updatedAt;
+	}
+
+	public void setUpdatedAt(Instant updatedAt) {
+		this.updatedAt = updatedAt;
 	}
 
 	public boolean isConnected() {

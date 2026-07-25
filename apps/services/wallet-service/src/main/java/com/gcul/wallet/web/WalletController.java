@@ -5,11 +5,13 @@ import java.util.Map;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
 
 import com.gcul.wallet.service.WalletService;
+import com.gcul.wallet.web.RechargeRequest;
 
 import jakarta.servlet.http.HttpServletRequest;
 
@@ -35,6 +37,19 @@ public class WalletController {
 				requireUserId(request),
 				(String) request.getAttribute("userEmail"),
 				token);
+	}
+
+	@PostMapping("/recharge")
+	public Map<String, Object> rechargeWallet(
+			HttpServletRequest request,
+			@RequestBody RechargeRequest body) {
+		return walletService.rechargeWallet(requireUserId(request), body.amount());
+	}
+
+	@GetMapping("/transactions")
+	public Map<String, Object> listTransactions(HttpServletRequest request) {
+		var items = walletService.listTransactions(requireUserId(request));
+		return Map.of("transactions", items, "count", items.size());
 	}
 
 	private static String requireUserId(HttpServletRequest request) {

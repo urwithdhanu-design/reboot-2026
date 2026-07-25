@@ -50,7 +50,13 @@ export function RegisterPage() {
         password,
       });
       setSession(res.access_token, res.user);
-      navigate("/kyc");
+      navigate("/kyc", {
+        state: {
+          registrationNote: res.emailed
+            ? `Welcome email sent to ${email}. Check your inbox (and spam folder).`
+            : "Account created. Welcome email could not be sent — SMTP may not be configured on the server.",
+        },
+      });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Registration failed");
     } finally {

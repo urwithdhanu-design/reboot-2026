@@ -74,7 +74,13 @@ if ($users -notcontains $appUser) {
     gcloud secrets create $secret --replication-policy="automatic" --project $ProjectId
     if ($LASTEXITCODE -ne 0) { throw "Failed to create secret $secret" }
   }
-  $appPass | gcloud secrets versions add $secret --data-file=- --project $ProjectId
+  $passFile = Join-Path $env:TEMP "gcul-db-pass-$ProjectId.txt"
+  [System.IO.File]::WriteAllText($passFile, $appPass)
+  try {
+    gcloud secrets versions add $secret --data-file=$passFile --project $ProjectId
+  } finally {
+    Remove-Item $passFile -Force -ErrorAction SilentlyContinue
+  }
   Write-Host "App DB password stored in Secret Manager: $secret"
   $projectNumber = gcloud projects describe $ProjectId --format="value(projectNumber)"
   $runSa = "$projectNumber-compute@developer.gserviceaccount.com"

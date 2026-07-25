@@ -1049,6 +1049,96 @@ a.link-quiet:hover {
   letter-spacing: 0.01em;
 }
 
+.wallet-balance-card {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 16px;
+  margin-bottom: 14px;
+  border-radius: 14px;
+  background: linear-gradient(135deg, rgba(0, 128, 128, 0.12), rgba(0, 128, 128, 0.04));
+  border: 1px solid rgba(0, 128, 128, 0.18);
+}
+
+.wallet-balance-card strong {
+  font-size: 1.6rem;
+  line-height: 1.1;
+}
+
+.wallet-balance-card.compact {
+  margin-bottom: 12px;
+}
+
+.wallet-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.recharge-presets {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.recharge-preset-btn {
+  border: 1px solid var(--line);
+  background: var(--surface);
+  border-radius: 12px;
+  padding: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.recharge-preset-btn.active {
+  border-color: var(--lbg-teal);
+  background: rgba(0, 128, 128, 0.08);
+  color: var(--lbg-teal);
+}
+
+.recharge-preset-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.wallet-tx-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.wallet-tx-list li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface);
+}
+
+.wallet-tx-list strong {
+  display: block;
+  font-size: 0.92rem;
+}
+
+.wallet-tx-amount {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+  text-align: right;
+}
+
+.wallet-tx-amount .positive {
+  color: var(--lbg-green);
+  font-weight: 700;
+}
+
 .badge-connected {
   background: var(--lbg-green-soft);
   color: var(--lbg-green);

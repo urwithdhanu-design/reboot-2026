@@ -11,7 +11,7 @@ param(
   [string] $ProjectId = $(if ($env:GCUL_FIREBASE_PROJECT) { $env:GCUL_FIREBASE_PROJECT } else {
     (Get-Content (Join-Path $PSScriptRoot "firebase-project.json") -Raw | ConvertFrom-Json).projectId
   }),
-  [string] $CloudRunProject = $(if ($env:GCP_PROJECT) { $env:GCP_PROJECT } else { "community-hub-6fb1b" })
+  [string] $CloudRunProject = $(if ($env:GCP_PROJECT) { $env:GCP_PROJECT } else { "insure360-83a36" })
 )
 
 $ErrorActionPreference = "Stop"

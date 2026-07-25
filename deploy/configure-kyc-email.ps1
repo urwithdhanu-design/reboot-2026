@@ -12,9 +12,10 @@
   .\deploy\configure-kyc-email.ps1
 #>
 param(
-  [string] $ProjectId = $(if ($env:GCP_PROJECT) { $env:GCP_PROJECT } else { "community-hub-6fb1b" }),
+  [string] $ProjectId = $(if ($env:GCP_PROJECT) { $env:GCP_PROJECT } else { "insure360-83a36" }),
   [string] $Region = $(if ($env:GCP_REGION) { $env:GCP_REGION } else { "us-central1" }),
   [string] $KindredEnvPath = "C:\projects\kindred-circle-crm\email-api\.env",
+  [string] $KycEnvPath = "apps\services\kyc-service\.env",
   [string] $FromName = $(if ($env:EMAIL_FROM_NAME) { $env:EMAIL_FROM_NAME } else { "Reboot 2026 Insurance" })
 )
 
@@ -37,6 +38,15 @@ function Read-DotEnv([string] $path) {
 }
 
 $fromFile = Read-DotEnv $KindredEnvPath
+$repoKycEnv = Join-Path (Split-Path $PSScriptRoot -Parent) $KycEnvPath
+if (Test-Path $repoKycEnv) {
+  $fromKyc = Read-DotEnv $repoKycEnv
+  foreach ($k in $fromKyc.Keys) {
+    if (-not $fromFile.ContainsKey($k) -or [string]::IsNullOrWhiteSpace($fromFile[$k])) {
+      $fromFile[$k] = $fromKyc[$k]
+    }
+  }
+}
 $emailUser = if ($env:EMAIL_USER) { $env:EMAIL_USER } else { $fromFile["EMAIL_USER"] }
 $emailPass = if ($env:EMAIL_PASS) { ($env:EMAIL_PASS -replace "\s", "") } else { $fromFile["EMAIL_PASS"] }
 # Branding is GCUL-specific — never inherit Kindred EMAIL_FROM_NAME (e.g. SalesDesk Pro).

@@ -10,9 +10,11 @@ Deploy Java/Python microservices to **Cloud Run** and the customer + admin React
 
 Default Firebase/GCP project id in this repo: **`insure360-83a36`** (see `apps/web/firebase.js` and `.firebaserc`).
 
-**Two “Community Hub” GCP projects:** see **[deploy/GCP-PROJECTS.md](GCP-PROJECTS.md)** — GCUL Cloud Run + SQL are on **`community-hub-6fb1b`**, not **`community-hub-482291`** (Console name “Community Hub”).
+**Live app URLs, admin/customer login, and Cloud Run wiring:** [`docs/HOSTING-ACCESS.md`](../docs/HOSTING-ACCESS.md)
 
-**Billing:** Cloud Run and Cloud Build require an active billing account on the GCP project. If `insure360-83a36` has no billing, use a billed project that matches Firebase (for example **`community-hub-6fb1b`**) by setting `GCP_PROJECT` before running the scripts. Firebase Hosting rewrites to Cloud Run must use services in the **same** GCP project as Hosting.
+**Two “Community Hub” GCP projects (legacy):** see **[deploy/GCP-PROJECTS.md](GCP-PROJECTS.md)** — production stack is now on **`insure360-83a36`** (Firebase + Cloud Run + SQL in one project).
+
+**Billing:** Cloud Run and Cloud Build require billing on the GCP project. Firebase Hosting rewrites to Cloud Run require services in the **same** project as Hosting (`insure360-83a36`).
 
 ## 1. Create or configure the GCP project
 
@@ -130,7 +132,7 @@ This is **not** one Cloud SQL instance per microservice. Cost layout:
 **Production today:** only **`gcul-kyc`** is confirmed on Cloud SQL. Other Java services may still use **ephemeral H2** in `/tmp` unless you deploy with `GCUL_USE_CLOUD_SQL=true` (and fix DB password via `setup-cloud-sql.ps1`).
 
 ```powershell
-$env:GCP_PROJECT = "community-hub-6fb1b"
+$env:GCP_PROJECT = "insure360-83a36"
 .\deploy\setup-cloud-sql.ps1
 $env:GCUL_USE_CLOUD_SQL = "true"
 .\deploy\deploy-cloud-run.ps1
@@ -143,7 +145,7 @@ $env:GCUL_USE_CLOUD_SQL = "true"
 Topics are defined in **`deploy/pubsub.json`** (e.g. `gcul.customer-events`, `gcul.policy-events`). Full event payloads and consumers: **[`docs/EVENT-CATALOG.md`](../docs/EVENT-CATALOG.md)**. Sample JSON: **`deploy/events/samples/`**. **Infra only** until each service publishes/subscribes in code.
 
 ```powershell
-$env:GCP_PROJECT = "community-hub-6fb1b"
+$env:GCP_PROJECT = "insure360-83a36"
 .\deploy\setup-pubsub.cmd              # topics + subs + IAM (CMD)
 .\deploy\setup-pubsub.ps1 -CreateSubscriptions   # PowerShell equivalent
 .\deploy\setup-pubsub.cmd nosubs       # topics + IAM only
@@ -167,7 +169,7 @@ $env:GCUL_USE_PUBSUB = "true"
 
 **`deploy-cloud-run.ps1` env flags:**
 
-- `GCP_PROJECT` (required) — e.g. `community-hub-6fb1b`
+- `GCP_PROJECT` (required) — e.g. `insure360-83a36`
 - `GCP_REGION` (optional, default `us-central1`)
 - `GCUL_USE_CLOUD_SQL=true` — attach Cloud SQL + per-service DB env (see table above)
 - `GCUL_USE_PUBSUB=true` — after `setup-pubsub.ps1`

@@ -22,7 +22,7 @@ param(
 $ErrorActionPreference = "Stop"
 $Root = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
 
-Write-Host "GCUL GCP setup — project: $ProjectId region: $Region"
+Write-Host "GCUL GCP setup - project: $ProjectId region: $Region"
 
 $exists = $true
 try {
@@ -57,8 +57,9 @@ foreach ($api in $apis) {
 }
 
 $repo = "gcul"
-$repoExists = $true
-try { gcloud artifacts repositories describe $repo --location=$Region --project=$ProjectId | Out-Null } catch { $repoExists = $false }
+$repoExists = $false
+gcloud artifacts repositories describe $repo --location=$Region --project=$ProjectId 2>$null | Out-Null
+if ($LASTEXITCODE -eq 0) { $repoExists = $true }
 if (-not $repoExists) {
   Write-Host "Creating Artifact Registry repo '$repo' in $Region ..."
   gcloud artifacts repositories create $repo `
@@ -75,7 +76,11 @@ try {
   Write-Host "Firebase may already be enabled on this project (continuing)."
 }
 
-$adminSite = "gcul-admin"
+$fbCfgPath = Join-Path $PSScriptRoot "firebase-project.json"
+$adminSite = "insure360-83a36-admin"
+if (Test-Path $fbCfgPath) {
+  $adminSite = (Get-Content $fbCfgPath -Raw | ConvertFrom-Json).adminHostingSite
+}
 $sites = firebase hosting:sites:list --project $ProjectId --json 2>$null | ConvertFrom-Json
 $siteIds = @($sites.result.sites | ForEach-Object { $_.siteId })
 if ($siteIds -notcontains $adminSite) {
@@ -85,6 +90,6 @@ if ($siteIds -notcontains $adminSite) {
 
 Write-Host ""
 Write-Host "Done. Next:"
-Write-Host "  `$env:GCP_PROJECT = '$ProjectId'"
-Write-Host "  .\deploy\deploy-cloud-run.ps1"
-Write-Host "  .\deploy\deploy-firebase.ps1"
+Write-Host ('  $env:GCP_PROJECT = ' + $ProjectId)
+Write-Host "  deploy\deploy-cloud-run.cmd"
+Write-Host "  deploy\deploy-firebase.cmd"

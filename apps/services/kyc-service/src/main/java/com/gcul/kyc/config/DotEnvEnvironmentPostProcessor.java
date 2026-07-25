@@ -4,7 +4,9 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import org.springframework.boot.SpringApplication;
@@ -16,14 +18,37 @@ public class DotEnvEnvironmentPostProcessor implements EnvironmentPostProcessor 
 
 	@Override
 	public void postProcessEnvironment(ConfigurableEnvironment environment, SpringApplication application) {
-		Path envFile = Path.of(".env");
-		if (!Files.isRegularFile(envFile)) {
-			envFile = Path.of("apps/services/kyc-service/.env");
+		for (Path envFile : findEnvCandidates()) {
+			if (!Files.isRegularFile(envFile)) {
+				continue;
+			}
+			Map<String, Object> values = loadEnvFile(envFile, environment);
+			if (!values.isEmpty()) {
+				environment.getPropertySources().addLast(new MapPropertySource("dotenv:" + envFile, values));
+				return;
+			}
 		}
-		if (!Files.isRegularFile(envFile)) {
-			return;
-		}
+	}
 
+	private static List<Path> findEnvCandidates() {
+		List<Path> candidates = new ArrayList<>();
+		Path cwd = Path.of("").toAbsolutePath().normalize();
+		candidates.add(cwd.resolve(".env"));
+
+		Path walk = cwd;
+		for (int i = 0; i < 6 && walk != null; i++) {
+			candidates.add(walk.resolve(".env"));
+			candidates.add(walk.resolve("apps/services/kyc-service/.env"));
+			Path parent = walk.getParent();
+			if (parent != null && parent.equals(walk)) {
+				break;
+			}
+			walk = parent;
+		}
+		return candidates;
+	}
+
+	private static Map<String, Object> loadEnvFile(Path envFile, ConfigurableEnvironment environment) {
 		Map<String, Object> values = new HashMap<>();
 		try (BufferedReader reader = Files.newBufferedReader(envFile)) {
 			String line;
@@ -48,11 +73,8 @@ public class DotEnvEnvironmentPostProcessor implements EnvironmentPostProcessor 
 			}
 		}
 		catch (IOException ignored) {
-			return;
+			return Map.of();
 		}
-
-		if (!values.isEmpty()) {
-			environment.getPropertySources().addLast(new MapPropertySource("dotenv", values));
-		}
+		return values;
 	}
 }

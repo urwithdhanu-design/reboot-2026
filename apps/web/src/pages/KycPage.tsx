@@ -1,5 +1,5 @@
 import { useMemo, useState, type FormEvent } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { api } from "../api";
 import { AssistantBar, StepHeader } from "../components";
 import { IconDoc } from "../icons";
@@ -9,6 +9,9 @@ const STEPS = ["Identity", "Verify", "Liveness", "Complete"] as const;
 
 export function KycPage() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const registrationNote =
+    (location.state as { registrationNote?: string } | null)?.registrationNote ?? null;
   const { token, user, updateUser } = useSession();
   const [documentType, setDocumentType] = useState("passport");
   const [uploaded, setUploaded] = useState(true);
@@ -54,6 +57,12 @@ export function KycPage() {
   return (
     <div className="screen">
       <StepHeader title="KYC Verification" />
+
+      {registrationNote ? (
+        <p className="muted" style={{ margin: "0 0 12px", fontSize: "0.9rem" }}>
+          {registrationNote}
+        </p>
+      ) : null}
 
       <div className="progress-block">
         <h3>KYC Progress</h3>

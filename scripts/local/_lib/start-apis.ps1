@@ -6,7 +6,12 @@ param(
 
 $ErrorActionPreference = "Stop"
 . (Join-Path $PSScriptRoot "common.ps1")
+. (Join-Path $PSScriptRoot "email-env.ps1")
 Ensure-LocalDevDirs
+
+$emailEnv = Ensure-EmailEnvFiles -RepoRoot $RepoRoot
+$emailCmdPrefix = Get-EmailEnvCmdPrefix $emailEnv
+$mailServices = @{ kyc = $true; policy = $true; notification = $true }
 
 function Start-JavaService($Service) {
   $port = $Service.port
@@ -17,7 +22,8 @@ function Start-JavaService($Service) {
   $workDir = Join-Path $RepoRoot $Service.dir
   $log = Join-Path $LogDir "$($Service.id).log"
   if (Test-Path $log) { Remove-Item $log -Force }
-  $cmd = "cd /d `"$workDir`" && mvnw.cmd spring-boot:run > `"$log`" 2>&1"
+  $prefix = if ($mailServices.ContainsKey($Service.id)) { $emailCmdPrefix } else { "" }
+  $cmd = "cd /d `"$workDir`" && ${prefix}mvnw.cmd spring-boot:run > `"$log`" 2>&1"
   Start-Process -FilePath "cmd.exe" -ArgumentList "/c", $cmd -WindowStyle Hidden
   Write-Host "Started $($Service.id) on :$port -> $log"
 }

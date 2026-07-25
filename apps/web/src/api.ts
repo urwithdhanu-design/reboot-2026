@@ -6,7 +6,7 @@ export type AuthUser = {
   email: string;
   mobile_number: string;
   kyc_status: string;
-  wallet: { address: string; status: string } | null;
+  wallet: { address: string; status: string; balance_gbp?: number; currency?: string } | null;
 };
 
 export type Product = {
@@ -77,7 +77,25 @@ export type InsuranceClaim = {
   updated_at?: string;
 };
 
-export type ChatbotAskResponse = {
+export type WalletTransaction = {
+  id: string;
+  type: string;
+  amount: number;
+  currency: string;
+  status: string;
+  reference?: string;
+  created_at: string;
+};
+
+export type WalletInfo = {
+  status: string;
+  address: string | null;
+  balance_gbp: number;
+  currency: string;
+  mode?: string;
+  note?: string;
+  provider?: string;
+};
   answer: string;
   sources: {
     title?: string;
@@ -91,6 +109,7 @@ export type ChatbotAskResponse = {
 type AuthResponse = {
   access_token: string;
   user: AuthUser;
+  emailed?: boolean;
 };
 
 async function request<T>(
@@ -195,21 +214,30 @@ export const api = {
     ),
 
   getWallet: (token: string) =>
-    request<{ status: string; address: string | null }>(
-      "/api/wallet",
-      {},
-      token,
-    ),
+    request<WalletInfo>("/api/wallet", {}, token),
 
   me: (token: string) => request<AuthUser>("/api/auth/me", {}, token),
 
   createWallet: (token: string) =>
-    request<{
-      status: string;
-      address: string;
-      mode: string;
-      note?: string;
-    }>("/api/wallet/create", { method: "POST" }, token),
+    request<WalletInfo & { ledger?: string; reused?: boolean }>(
+      "/api/wallet/create",
+      { method: "POST" },
+      token,
+    ),
+
+  rechargeWallet: (token: string, amount: number) =>
+    request<WalletInfo & { transaction: WalletTransaction }>(
+      "/api/wallet/recharge",
+      { method: "POST", body: JSON.stringify({ amount }) },
+      token,
+    ),
+
+  getWalletTransactions: (token: string) =>
+    request<{ transactions: WalletTransaction[]; count: number }>(
+      "/api/wallet/transactions",
+      {},
+      token,
+    ),
 
   listProducts: (category?: string, q?: string) => {
     const params = new URLSearchParams();

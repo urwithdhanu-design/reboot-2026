@@ -40,14 +40,19 @@ foreach ($app in $UiApps) {
 
 # 3. Default API target for local full-stack
 if (-not (Test-Path $ApiTargetFile)) {
-  Write-Host "[3/3] Creating $ApiTargetFile (VITE_API_TARGET=local) ..."
+  Write-Host "[3/4] Creating $ApiTargetFile (VITE_API_TARGET=local) ..."
   @(
     "# Shared dev API target (used by apps/web and apps/admin Vite)"
     "VITE_API_TARGET=local"
   ) | Set-Content -Path $ApiTargetFile -Encoding utf8
 } else {
-  Write-Host "[3/3] Keeping existing $ApiTargetFile (target=$(Get-ApiTarget))"
+  Write-Host "[3/4] Keeping existing $ApiTargetFile (target=$(Get-ApiTarget))"
 }
+
+# 4. Gmail SMTP for welcome / reset emails
+. (Join-Path $PSScriptRoot "email-env.ps1")
+Write-Host "[4/4] Email configuration ..."
+Ensure-EmailEnvFiles -RepoRoot $RepoRoot | Out-Null
 
 Write-Host ""
 Write-Host "Setup complete. Next:"

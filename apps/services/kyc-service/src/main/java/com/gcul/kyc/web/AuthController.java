@@ -83,11 +83,13 @@ public class AuthController {
 		user.setCreatedAt(Instant.now().toString());
 		store.save(user);
 
-		mail.sendWelcome(user.getEmail(), user.getFullName());
+		boolean emailed = mail.sendWelcome(user.getEmail(), user.getFullName());
 		customerEvents.customerRegistered(user);
 		adminCustomers.refreshAdminViewCaches();
 
-		return UserMapper.authResponse(jwt.createToken(user), user);
+		Map<String, Object> response = UserMapper.authResponse(jwt.createToken(user), user);
+		response.put("emailed", emailed);
+		return response;
 	}
 
 	@PostMapping("/login")

@@ -1,18 +1,17 @@
 {
-    "project":  "community-hub-6fb1b",
+    "project":  "insure360-83a36",
     "region":  "us-central1",
-    "firebaseHosting":  "https://community-hub-6fb1b.web.app",
-    "firebaseAdminHosting":  "https://gcul-admin.web.app",
+    "firebaseHosting":  "https://insure360-83a36.web.app",
+    "firebaseAdminHosting":  "https://insure360-83a36-admin.firebaseapp.com",
     "services":  {
-                     "premiumDeposit":  "https://gcul-premium-deposit-au44fcofwq-uc.a.run.app",
-                     "chatbot":  "https://gcul-chatbot-au44fcofwq-uc.a.run.app",
-                     "payment":  "https://gcul-payment-au44fcofwq-uc.a.run.app",
-                     "parametric":  "https://gcul-parametric-au44fcofwq-uc.a.run.app",
-                     "notification":  "https://gcul-notification-au44fcofwq-uc.a.run.app",
-                     "wallet":  "https://gcul-wallet-au44fcofwq-uc.a.run.app",
-                     "claims":  "https://gcul-claims-au44fcofwq-uc.a.run.app",
-                     "blockchain":  "https://gcul-blockchain-orchestrator-au44fcofwq-uc.a.run.app",
-                     "kyc":  "https://gcul-kyc-au44fcofwq-uc.a.run.app",
-                     "policy":  "https://gcul-policy-au44fcofwq-uc.a.run.app"
+                     "premiumDeposit":  "https://gcul-premium-deposit-rncyb4dteq-uc.a.run.app",
+                     "chatbot":  "https://gcul-chatbot-rncyb4dteq-uc.a.run.app",
+                     "payment":  "https://gcul-payment-rncyb4dteq-uc.a.run.app",
+                     "parametric":  "https://gcul-parametric-rncyb4dteq-uc.a.run.app",
+                     "notification":  "https://gcul-notification-rncyb4dteq-uc.a.run.app",
+                     "wallet":  "https://gcul-wallet-rncyb4dteq-uc.a.run.app",
+                     "claims":  "https://gcul-claims-rncyb4dteq-uc.a.run.app",
+                     "kyc":  "https://gcul-kyc-rncyb4dteq-uc.a.run.app",
+                     "policy":  "https://gcul-policy-rncyb4dteq-uc.a.run.app"
                  }
 }

@@ -1,5 +1,5 @@
 ﻿{
-    "runServiceAccount":  "573487116918-compute@developer.gserviceaccount.com",
+    "runServiceAccount":  "690935448909-compute@developer.gserviceaccount.com",
     "topics":  [
                    "gcul.customer-events",
                    "gcul.wallet-events",
@@ -11,5 +11,5 @@
                    "gcul.audit-events"
                ],
     "topicPrefix":  "gcul",
-    "projectId":  "community-hub-6fb1b"
+    "projectId":  "insure360-83a36"
 }

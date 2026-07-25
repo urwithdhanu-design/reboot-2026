@@ -569,6 +569,30 @@ export function ProfilePage() {
     };
   }, [token]);
 
+  useEffect(() => {
+    if (!token || tab !== "wallet") return;
+    api
+      .getWallet(token)
+      .then((res) => {
+        if (res.status !== "connected" || !res.address) return;
+        setProfile((current) => {
+          if (!current) return current;
+          const next = {
+            ...current,
+            wallet: {
+              address: res.address ?? "",
+              status: res.status,
+              balance_gbp: res.balance_gbp,
+              currency: res.currency,
+            },
+          };
+          updateUser(next);
+          return next;
+        });
+      })
+      .catch(() => undefined);
+  }, [token, tab]);
+
   function logout() {
     clear();
     navigate("/login", { replace: true });
@@ -665,6 +689,17 @@ export function ProfilePage() {
                     <dt>Address</dt>
                     <dd className="mono">{profile.wallet.address}</dd>
                   </div>
+                  {typeof profile.wallet.balance_gbp === "number" ? (
+                    <div>
+                      <dt>Balance</dt>
+                      <dd>
+                        {new Intl.NumberFormat("en-GB", {
+                          style: "currency",
+                          currency: profile.wallet.currency ?? "GBP",
+                        }).format(profile.wallet.balance_gbp)}
+                      </dd>
+                    </div>
+                  ) : null}
                 </dl>
               ) : (
                 <p className="muted" style={{ margin: 0 }}>

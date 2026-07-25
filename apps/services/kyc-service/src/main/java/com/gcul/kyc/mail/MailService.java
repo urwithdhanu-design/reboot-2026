@@ -32,14 +32,14 @@ public class MailService {
 	 * @param contextTitle short event title shown in subject + email header
 	 *                     (e.g. "Welcome", "Login confirmation")
 	 */
-	public void send(String to, String contextTitle, String htmlBody) {
+	public boolean send(String to, String contextTitle, String htmlBody) {
 		if (!isReady()) {
 			log.warn("Email skipped (not configured): {} → {}", contextTitle, to);
-			return;
+			return false;
 		}
 		if (to == null || to.isBlank()) {
 			log.warn("Email skipped (no recipient): {}", contextTitle);
-			return;
+			return false;
 		}
 
 		String platform = properties.getFromName();
@@ -54,14 +54,16 @@ public class MailService {
 			helper.setText(htmlBody, true);
 			mailSender.send(message);
 			log.info("Email sent [{}] to {}", contextTitle, to);
+			return true;
 		}
 		catch (Exception ex) {
 			log.error("Failed to send email [{}] to {}: {}", contextTitle, to, ex.getMessage());
+			return false;
 		}
 	}
 
-	public void sendWelcome(String to, String fullName) {
-		send(to, "Welcome", EmailTemplates.welcome(fullName, properties.getFromName()));
+	public boolean sendWelcome(String to, String fullName) {
+		return send(to, "Welcome", EmailTemplates.welcome(fullName, properties.getFromName()));
 	}
 
 	public boolean sendPasswordReset(String to, String fullName, String resetUrl, long expiryMinutes) {

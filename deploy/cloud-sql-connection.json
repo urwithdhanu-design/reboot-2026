@@ -1,6 +1,7 @@
 ﻿{
     "serviceDatabases":  {
                              "gcul-kyc":  "gcul_kyc",
+                             "gcul-wallet":  "gcul_wallet",
                              "gcul-policy":  "gcul_policy",
                              "gcul-payment":  "gcul_payment",
                              "gcul-notification":  "gcul_notification",
@@ -13,5 +14,5 @@
     "instanceName":  "gcul-pg",
     "secretName":  "gcul-db-password",
     "dbUser":  "gcul_app",
-    "connectionName":  "community-hub-6fb1b:us-central1:gcul-pg"
+    "connectionName":  "insure360-83a36:us-central1:gcul-pg"
 }
