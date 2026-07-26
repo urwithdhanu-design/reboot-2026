@@ -74,12 +74,40 @@ export type InsuranceClaim = {
   approved_amount?: number | null;
   description?: string;
   source?: string;
+  parametric_event_type?: string | null;
   payout_transaction_id?: string | null;
   settlement_transaction_id?: string | null;
   canton_contract_id?: string | null;
   validation_notes?: string | null;
   created_at?: string;
   updated_at?: string;
+  documents?: ClaimDocumentRow[];
+  document_count?: number;
+  queries?: ClaimQueryRow[];
+  open_query_count?: number;
+};
+
+export type ClaimDocumentRow = {
+  id: string;
+  claim_id: string;
+  file_name: string;
+  label?: string;
+  content_type: string;
+  file_size: number;
+  query_id?: string | null;
+  uploaded_at?: string;
+};
+
+export type ClaimQueryRow = {
+  id: string;
+  claim_id: string;
+  status: "open" | "answered";
+  admin_message: string;
+  customer_reply?: string | null;
+  requires_documents: boolean;
+  created_at?: string;
+  answered_at?: string | null;
+  document_count?: number;
 };
 
 export type WalletTransaction = {
@@ -383,6 +411,42 @@ export const api = {
     request<InsuranceClaim>("/api/claims", {
       method: "POST",
       body: JSON.stringify(body),
+    }),
+
+  uploadClaimDocument: async (claimId: string, file: File, label?: string, queryId?: string) => {
+    const form = new FormData();
+    form.append("file", file);
+    if (label?.trim()) form.append("label", label.trim());
+    if (queryId?.trim()) form.append("query_id", queryId.trim());
+    const res = await fetch(`${API_BASE}/api/claims/${encodeURIComponent(claimId)}/documents`, {
+      method: "POST",
+      body: form,
+    });
+    const text = await res.text();
+    let data: unknown = {};
+    if (text.trim()) {
+      try {
+        data = JSON.parse(text) as unknown;
+      } catch {
+        data = {};
+      }
+    }
+    if (!res.ok) {
+      const body = data as { detail?: string; message?: string; error?: string };
+      throw new Error(body.detail ?? body.message ?? body.error ?? res.statusText);
+    }
+    return data as ClaimDocumentRow;
+  },
+
+  listClaimQueries: (claimId: string) =>
+    request<{ queries: ClaimQueryRow[]; count: number; open_count: number }>(
+      `/api/claims/${encodeURIComponent(claimId)}/queries`,
+    ),
+
+  replyToClaimQuery: (claimId: string, queryId: string, message: string) =>
+    request<ClaimQueryRow>(`/api/claims/${encodeURIComponent(claimId)}/queries/${encodeURIComponent(queryId)}/reply`, {
+      method: "POST",
+      body: JSON.stringify({ message }),
     }),
 
   sendNotification: (body: {

@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { ClipboardList, RefreshCw, Satellite } from 'lucide-react';
+import { ClipboardList, Eye, RefreshCw, Satellite } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { AdminLayout } from '../components/layout/AdminLayout';
+import { ClaimReviewModal } from '../components/ClaimReviewModal';
 import {
   PageHeader,
   FilterTabs,
@@ -11,13 +12,16 @@ import {
   Button,
   PaginatedTable,
 } from '../components/ui';
-import { adminApi, type AdminClaimRow, type ParametricTriggerRow } from '../api';
+import { adminApi, type AdminClaimRow, type ParametricRuleRow, type ParametricTriggerRow } from '../api';
+
+const REFRESH_MS = 15_000;
 
 type Filter = 'all' | 'open' | 'approved' | 'rejected' | 'settled' | 'parametric';
 
 const statusBadge: Record<string, 'success' | 'warning' | 'error' | 'neutral' | 'info'> = {
   submitted: 'warning',
   pending_approval: 'warning',
+  awaiting_customer: 'warning',
   in_review: 'info',
   approved: 'info',
   payment_pending: 'info',
@@ -45,38 +49,64 @@ function formatStatus(status: string) {
 }
 
 function isOpen(status: string) {
-  return ['submitted', 'pending_approval', 'in_review', 'approved', 'payment_pending'].includes(status);
+  return ['submitted', 'pending_approval', 'in_review', 'awaiting_customer', 'approved', 'payment_pending'].includes(status);
 }
 
 function isSettled(status: string) {
   return status === 'settled' || status === 'paid_out' || status === 'paid';
 }
 
+function formatParametricEventLabel(eventType?: string | null) {
+  if (eventType === 'trip_cancellation') return 'Trip cancellation';
+  if (eventType === 'flight_delay') return 'Flight delay';
+  return 'Parametric';
+}
+
+function resolveParametricEventType(
+  claim: AdminClaimRow,
+  trigger?: ParametricTriggerRow,
+  rule?: ParametricRuleRow,
+) {
+  if (claim.parametric_event_type) return claim.parametric_event_type;
+  if (trigger?.rule_type) return trigger.rule_type;
+  if (rule?.rule_type) return rule.rule_type;
+  if ((claim.description ?? '').toLowerCase().includes('trip cancel')) return 'trip_cancellation';
+  if ((claim.description ?? '').toLowerCase().includes('delayed')) return 'flight_delay';
+  return null;
+}
+
 export function ClaimsPage() {
   const [claims, setClaims] = useState<AdminClaimRow[]>([]);
   const [triggers, setTriggers] = useState<ParametricTriggerRow[]>([]);
+  const [rules, setRules] = useState<ParametricRuleRow[]>([]);
   const [filter, setFilter] = useState<Filter>('all');
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [reviewClaim, setReviewClaim] = useState<AdminClaimRow | null>(null);
 
-  const load = useCallback(() => {
-    setLoading(true);
-    Promise.all([adminApi.listClaims(), adminApi.listParametricTriggers()])
-      .then(([claimsRes, triggersRes]) => {
+  const load = useCallback((silent = false) => {
+    if (!silent) setLoading(true);
+    Promise.all([adminApi.listClaims(), adminApi.listParametricTriggers(), adminApi.listParametricRules()])
+      .then(([claimsRes, triggersRes, rulesRes]) => {
         setClaims(claimsRes.claims);
         setTriggers(triggersRes.triggers);
+        setRules(rulesRes.rules);
         setError(null);
       })
       .catch((err) => {
         setError(err instanceof Error ? err.message : 'Failed to load claims');
       })
-      .finally(() => setLoading(false));
+      .finally(() => {
+        if (!silent) setLoading(false);
+      });
   }, []);
 
   useEffect(() => {
-    load();
+    load(false);
+    const timer = window.setInterval(() => load(true), REFRESH_MS);
+    return () => window.clearInterval(timer);
   }, [load]);
 
   const triggerByClaimId = useMemo(() => {
@@ -88,6 +118,14 @@ export function ClaimsPage() {
     }
     return map;
   }, [triggers]);
+
+  const ruleById = useMemo(() => {
+    const map = new Map<string, ParametricRuleRow>();
+    for (const rule of rules) {
+      map.set(rule.id, rule);
+    }
+    return map;
+  }, [rules]);
 
   const parametricCount = useMemo(
     () => claims.filter((c) => c.source === 'parametric').length,
@@ -118,7 +156,7 @@ export function ClaimsPage() {
     try {
       const result = await action();
       setSuccess(successMsg.replace('{id}', result.id));
-      load();
+      load(false);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Action failed');
     } finally {
@@ -140,7 +178,7 @@ export function ClaimsPage() {
           { label: 'Value claimed', value: formatGBP(totalClaimed) },
         ]}
         actions={
-          <Button size="sm" variant="hero" onClick={load} disabled={loading}>
+          <Button size="sm" variant="hero" onClick={() => load(false)} disabled={loading}>
             <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
             Refresh
           </Button>
@@ -185,6 +223,7 @@ export function ClaimsPage() {
               { key: 'category', label: 'Category', sortable: true },
               { key: 'amount_claimed', label: 'Amount', sortable: true },
               { key: 'status', label: 'Status', sortable: true },
+              { key: 'document_count', label: 'Documents', sortable: true },
               { key: 'source', label: 'Source / Oracle', sortable: true },
               { key: 'created_at', label: 'Submitted', sortable: true },
               { key: '_actions', label: 'Actions', sortable: false },
@@ -195,29 +234,56 @@ export function ClaimsPage() {
             defaultSortDir="desc"
             getSortValue={(row, key) => {
               if (key === 'amount_claimed') return Number(row.amount_claimed);
+              if (key === 'document_count') return Number(row.document_count ?? row.documents?.length ?? 0);
               if (key === '_actions') return '';
-              return (row as Record<string, string | number>)[key];
+              const value = row[key as keyof AdminClaimRow];
+              if (typeof value === 'string' || typeof value === 'number') return value;
+              return '';
             }}
             emptyMessage="No claims in this view."
             renderRow={(c) => {
               const trigger = triggerByClaimId.get(c.id);
+              const triggerRule = trigger ? ruleById.get(trigger.rule_id) : undefined;
               const isParametric = c.source === 'parametric';
+              const eventType = resolveParametricEventType(c, trigger, triggerRule);
+              const isCancellation = eventType === 'trip_cancellation';
               return (
               <tr key={c.id} className="hover:bg-lbg-green-light/30 transition-colors">
                 <td className="py-3.5 px-4 font-mono text-sm font-semibold text-lbg-green-dark">{c.id}</td>
                 <td className="py-3.5 px-4 font-semibold text-lbg-black">{c.customer_name}</td>
                 <td className="py-3.5 px-4 font-mono text-xs text-lbg-gray-500">{c.policy_ref}</td>
                 <td className="py-3.5 px-4">
-                  <Badge variant="info">{c.category}</Badge>
+                  <Badge variant={isCancellation ? 'warning' : 'info'}>{c.category}</Badge>
+                  {isParametric && eventType ? (
+                    <p className="text-[10px] text-lbg-gray-400 mt-1">{formatParametricEventLabel(eventType)}</p>
+                  ) : null}
                 </td>
                 <td className="py-3.5 px-4 font-bold text-lbg-black">{formatGBP(Number(c.amount_claimed))}</td>
                 <td className="py-3.5 px-4">
                   <Badge variant={statusBadge[c.status] ?? 'neutral'}>
                     {formatStatus(c.status)}
                   </Badge>
+                  {(c.open_query_count ?? 0) > 0 ? (
+                    <p className="text-[10px] text-amber-700 mt-1 font-semibold">
+                      {c.open_query_count} open query{(c.open_query_count ?? 0) === 1 ? '' : 'ies'}
+                    </p>
+                  ) : null}
                   {c.payout_transaction_id ? (
                     <p className="text-[10px] text-lbg-gray-400 mt-1 font-mono">{c.payout_transaction_id}</p>
                   ) : null}
+                </td>
+                <td className="py-3.5 px-4 text-sm">
+                  {c.source === 'parametric' ? (
+                    <span className="text-lbg-gray-400">—</span>
+                  ) : (
+                    <button
+                      type="button"
+                      className="text-lbg-green font-semibold hover:underline"
+                      onClick={() => setReviewClaim(c)}
+                    >
+                      {(c.document_count ?? c.documents?.length ?? 0) || 0} file(s)
+                    </button>
+                  )}
                 </td>
                 <td className="py-3.5 px-4 text-sm">
                   {isParametric ? (
@@ -231,14 +297,18 @@ export function ClaimsPage() {
                       {trigger ? (
                         <div className="mt-1.5 text-xs text-lbg-gray-500 space-y-0.5">
                           <p>
-                            <span className="font-medium text-lbg-black">{trigger.trigger_source === 'oracle_poll' ? 'Oracle' : 'Simulation'}</span>
+                            <span className="font-medium text-lbg-black">
+                              {formatParametricEventLabel(eventType ?? trigger.rule_type)}
+                            </span>
+                            {' · '}
+                            {trigger.trigger_source === 'oracle_poll' ? 'Oracle' : 'Simulation'}
                             {trigger.oracle_provider ? ` · ${trigger.oracle_provider}` : ''}
                           </p>
                           <p>
                             {trigger.flight_number ? `Flight ${trigger.flight_number}` : 'Flight —'}
-                            {' · '}
-                            {trigger.observed_value} min delay
-                            {trigger.flight_status ? ` (${trigger.flight_status})` : ''}
+                            {isCancellation
+                              ? ' · Trip cancelled before departure'
+                              : ` · ${trigger.observed_value} min delay${trigger.flight_status ? ` (${trigger.flight_status})` : ''}`}
                           </p>
                           <p className="text-[10px] text-lbg-gray-400">{trigger.message}</p>
                         </div>
@@ -256,6 +326,14 @@ export function ClaimsPage() {
                     <span className="text-xs text-lbg-green-dark font-medium">Auto-settled</span>
                   ) : isOpen(c.status) ? (
                     <div className="flex gap-1.5 flex-wrap">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        disabled={busyId === c.id}
+                        onClick={() => setReviewClaim(c)}
+                      >
+                        <Eye className="w-3 h-3" /> Review
+                      </Button>
                       {(c.status === 'submitted' || c.status === 'pending_approval') && (
                         <Button
                           size="sm"
@@ -267,12 +345,16 @@ export function ClaimsPage() {
                             'Claim {id} moved to review',
                           )}
                         >
-                          Review
+                          In review
                         </Button>
                       )}
                       <Button
                         size="sm"
-                        disabled={busyId === c.id}
+                        disabled={
+                          busyId === c.id
+                          || (c.source !== 'parametric' && !(c.document_count ?? c.documents?.length))
+                          || (c.open_query_count ?? 0) > 0
+                        }
                         onClick={() => void runAction(
                           c.id,
                           () => adminApi.approveClaim(c.id, Number(c.amount_claimed)),
@@ -305,6 +387,48 @@ export function ClaimsPage() {
           />
         )}
       </ContentPanel>
+
+      <ClaimReviewModal
+        claim={reviewClaim}
+        open={reviewClaim != null}
+        busy={busyId === reviewClaim?.id}
+        onClose={() => setReviewClaim(null)}
+        onReview={async () => {
+          if (!reviewClaim) return;
+          await runAction(reviewClaim.id, () => adminApi.reviewClaim(reviewClaim.id), 'Claim {id} moved to review');
+          const updated = await adminApi.getClaim(reviewClaim.id);
+          setReviewClaim(updated);
+        }}
+        onApprove={async () => {
+          if (!reviewClaim) return;
+          await runAction(
+            reviewClaim.id,
+            () => adminApi.approveClaim(reviewClaim.id, Number(reviewClaim.amount_claimed)),
+            'Claim {id} approved — wallet credited and settlement recorded',
+          );
+          setReviewClaim(null);
+        }}
+        onReject={async () => {
+          if (!reviewClaim) return;
+          await runAction(
+            reviewClaim.id,
+            () => adminApi.rejectClaim(reviewClaim.id, 'Rejected by admin after document review'),
+            'Claim {id} rejected',
+          );
+          setReviewClaim(null);
+        }}
+        onSendQuery={async (message, requiresDocuments) => {
+          if (!reviewClaim) return;
+          await adminApi.createClaimQuery(reviewClaim.id, {
+            message,
+            requires_documents: requiresDocuments,
+          });
+          const updated = await adminApi.getClaim(reviewClaim.id);
+          setReviewClaim(updated);
+          setSuccess(`Query sent on claim ${reviewClaim.id} — awaiting customer response`);
+          load(true);
+        }}
+      />
     </AdminLayout>
   );
 }

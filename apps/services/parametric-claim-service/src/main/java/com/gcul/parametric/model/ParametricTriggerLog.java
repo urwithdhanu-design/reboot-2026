@@ -39,6 +39,8 @@ public class ParametricTriggerLog {
 
 	private String triggerSource = "simulation";
 
+	private String ruleType;
+
 	private String oracleProvider;
 
 	private String flightStatus;
@@ -70,6 +72,8 @@ public class ParametricTriggerLog {
 	public void setMessage(String message) { this.message = message; }
 	public String getTriggerSource() { return triggerSource; }
 	public void setTriggerSource(String triggerSource) { this.triggerSource = triggerSource; }
+	public String getRuleType() { return ruleType; }
+	public void setRuleType(String ruleType) { this.ruleType = ruleType; }
 	public String getOracleProvider() { return oracleProvider; }
 	public void setOracleProvider(String oracleProvider) { this.oracleProvider = oracleProvider; }
 	public String getFlightStatus() { return flightStatus; }

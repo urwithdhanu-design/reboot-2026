@@ -39,15 +39,11 @@ public class QuoteService {
 		if ("Property".equals(key)) {
 			return homeWizardSchema();
 		}
+		if ("Travel".equals(key)) {
+			return travelWizardSchema();
+		}
 
 		List<Map<String, Object>> fields = switch (key) {
-			case "Travel" -> List.of(
-					field("destination", "Destination", "text", "e.g. Spain, France", true),
-					field("trip_type", "Trip Type", "select", null, true,
-							List.of("Single trip", "Annual multi-trip", "Backpacker")),
-					field("departure_date", "Departure Date", "date", null, true),
-					field("return_date", "Return Date", "date", null, true),
-					field("travellers", "Number of travellers", "number", "1", true));
 			case "Life" -> List.of(
 					field("cover_amount", "Cover amount (£)", "number", "100000", true),
 					field("term_years", "Policy term (years)", "number", "20", true),
@@ -131,6 +127,36 @@ public class QuoteService {
 				step(5, "Add your contact details",
 						"You'll receive a copy of your quote and more details on the plan you're interested in.",
 						step5)));
+		response.put("fields", flattenFields(response));
+		return response;
+	}
+
+	private Map<String, Object> travelWizardSchema() {
+		List<Map<String, Object>> step1 = List.of(
+				field("destination", "Destination", "text", "e.g. Spain, France", true),
+				field("trip_type", "Trip type", "select", null, true,
+						List.of("Single trip", "Round trip")),
+				field("departure_date", "Departure date", "date", null, true),
+				field("return_date", "Return date", "date", null, false),
+				field("travellers", "Number of travellers", "number", "1", true));
+
+		List<Map<String, Object>> step2 = List.of(
+				field("flight_number", "Flight number", "text", "e.g. BA117", true),
+				field("coverage_flight_delay", "Flight delay cover", "select", null, true,
+						List.of("Yes", "No")),
+				field("coverage_cancellation", "Trip cancellation cover", "select", null, true,
+						List.of("Yes", "No")),
+				field("email", "Email for your quote", "email", null, true));
+
+		Map<String, Object> response = new LinkedHashMap<>();
+		response.put("category", "Travel");
+		response.put("flow", "wizard");
+		response.put("title", "Travel Protect Plus");
+		response.put("partner", "Reboot 2026");
+		response.put("total_steps", 2);
+		response.put("steps", List.of(
+				step(1, "Trip details", "Tell us about your journey", step1),
+				step(2, "Cover & flight", "Choose parametric cover and your outbound flight", step2)));
 		response.put("fields", flattenFields(response));
 		return response;
 	}
@@ -283,6 +309,9 @@ public class QuoteService {
 		if ("Health".equals(plan.getCategory())) {
 			validateHealthAge(answers);
 		}
+		if ("Travel".equals(plan.getCategory())) {
+			validateTravelQuote(answers);
+		}
 
 		double premium = calculatePremium(plan, answers);
 		String quoteId = "Q-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase(Locale.ROOT);
@@ -353,6 +382,39 @@ public class QuoteService {
 		return map;
 	}
 
+	private void validateTravelQuote(Map<String, Object> answers) {
+		String tripType = str(answers.get("trip_type")).toLowerCase(Locale.ROOT);
+		boolean roundTrip = tripType.contains("round");
+		if (roundTrip) {
+			String returnDate = str(answers.get("return_date"));
+			if (returnDate.isBlank()) {
+				throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+						"Return date is required for round trips");
+			}
+			String departureDate = str(answers.get("departure_date"));
+			if (!departureDate.isBlank() && returnDate.compareTo(departureDate) < 0) {
+				throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+						"Return date must be on or after departure date");
+			}
+		}
+		else {
+			answers.remove("return_date");
+		}
+
+		if ("yes".equalsIgnoreCase(str(answers.get("coverage_flight_delay")))
+				&& str(answers.get("flight_number")).isBlank()) {
+			throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+					"Flight number is required when flight delay cover is selected");
+		}
+
+		boolean anyCover = "yes".equalsIgnoreCase(str(answers.get("coverage_flight_delay")))
+				|| "yes".equalsIgnoreCase(str(answers.get("coverage_cancellation")));
+		if (!anyCover) {
+			throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+					"Select at least one cover option (flight delay or trip cancellation)");
+		}
+	}
+
 	private void validateHealthAge(Map<String, Object> answers) {
 		int day = intVal(answers.get("dob_day"), 0);
 		int month = intVal(answers.get("dob_month"), 0);
@@ -380,8 +442,15 @@ public class QuoteService {
 			case "Travel" -> {
 				int travellers = intVal(answers.get("travellers"), 1);
 				String tripType = str(answers.get("trip_type")).toLowerCase(Locale.ROOT);
-				double mult = tripType.contains("annual") ? 3.2 : tripType.contains("backpack") ? 1.6 : 1.0;
-				yield base * Math.max(1, travellers) * mult;
+				double tripMult = tripType.contains("round") ? 1.15 : 1.0;
+				double coverMult = 1.0;
+				if ("yes".equalsIgnoreCase(str(answers.get("coverage_flight_delay")))) {
+					coverMult += 0.28;
+				}
+				if ("yes".equalsIgnoreCase(str(answers.get("coverage_cancellation")))) {
+					coverMult += 0.22;
+				}
+				yield base * Math.max(1, travellers) * tripMult * coverMult;
 			}
 			case "Health" -> {
 				int age = intVal(answers.get("age"), 30);

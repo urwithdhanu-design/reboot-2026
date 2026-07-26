@@ -729,6 +729,134 @@ a.link-quiet:hover {
   margin-bottom: 12px;
 }
 
+.claims-parametric-badge {
+  display: inline-block;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #006a4d;
+  background: #e8f6ee;
+  border-radius: 999px;
+  padding: 4px 10px;
+}
+
+.quote-card--action {
+  border-color: #f5c16c;
+  box-shadow: 0 0 0 1px rgba(245, 193, 108, 0.35);
+}
+
+.claim-action-pill {
+  display: inline-block;
+  margin-left: 8px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: #9a5b00;
+  background: #fff4df;
+  border-radius: 999px;
+  padding: 3px 8px;
+  vertical-align: middle;
+}
+
+.claim-query-panel {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid #ececec;
+}
+
+.claim-query-action-badge {
+  margin: 0 0 8px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: #fff4df;
+  color: #9a5b00;
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+.claim-query-toggle {
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--lbg-green-deep);
+  font-size: 0.86rem;
+  font-weight: 700;
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+.claim-query-thread {
+  margin-top: 10px;
+  display: grid;
+  gap: 10px;
+}
+
+.claim-query-card {
+  border: 1px solid #ececec;
+  border-radius: 12px;
+  padding: 12px;
+  background: #fafafa;
+}
+
+.claim-query-card--open {
+  border-color: #f5c16c;
+  background: #fffaf0;
+}
+
+.claim-query-admin,
+.claim-query-reply {
+  margin: 0;
+  font-size: 0.88rem;
+  line-height: 1.45;
+}
+
+.claim-query-docs-hint {
+  margin: 6px 0 0;
+  font-size: 0.8rem;
+  color: #9a5b00;
+  font-weight: 600;
+}
+
+.claim-query-reply-form {
+  margin-top: 10px;
+  display: grid;
+  gap: 10px;
+}
+
+.claim-query-reply-form textarea {
+  width: 100%;
+  min-height: 72px;
+  border-radius: 10px;
+  border: 1px solid #ddd;
+  padding: 10px;
+  font: inherit;
+  resize: vertical;
+}
+
+.claim-query-reply-form .btn-primary {
+  width: fit-content;
+}
+
+.claim-attachments-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.claim-attachments-list li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  font-size: 0.88rem;
+}
+
 .claim-steps {
   display: flex;
   flex-direction: column;
@@ -4878,5 +5006,97 @@ a.link-quiet:hover {
 .app-shell.view-desktop .customer-hero {
   margin-left: 0;
   margin-right: 0;
+}
+
+/* Travel Protect Plus quote wizard */
+.travel-quote-screen {
+  background: linear-gradient(180deg, #f0faf5 0%, #fff 28%);
+}
+
+.travel-quote-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 18px 10px;
+  font-weight: 700;
+  font-size: 0.92rem;
+}
+
+.travel-quote-body {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 18px 18px 24px;
+  flex: 1;
+}
+
+.travel-step-eyebrow {
+  margin: 0 0 6px;
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: #006a4d;
+}
+
+.travel-cover-cards {
+  margin: 4px 0 2px;
+}
+
+.travel-cover-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.travel-cover-card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  text-align: left;
+  padding: 14px;
+  border: 2px solid #d8ebe2;
+  border-radius: 12px;
+  background: #fff;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.travel-cover-card strong {
+  font-size: 0.92rem;
+}
+
+.travel-cover-card span {
+  font-size: 0.78rem;
+  color: var(--muted);
+  line-height: 1.35;
+}
+
+.travel-cover-card.active {
+  border-color: #00a651;
+  background: #e8f6ee;
+}
+
+.travel-cover-summary {
+  background: #f7fbf9;
+  border: 1px solid #d8ebe2;
+  border-radius: 12px;
+  padding: 14px;
+}
+
+.travel-cover-summary ul {
+  margin: 8px 0 0;
+  padding-left: 18px;
+  font-size: 0.88rem;
+}
+
+.travel-parametric-note {
+  margin: 12px 0 0;
+  font-size: 0.8rem;
+  line-height: 1.45;
+}
+
+@media (max-width: 420px) {
+  .travel-cover-grid {
+    grid-template-columns: 1fr;
+  }
 }
 

@@ -18,6 +18,7 @@ import { PayQuoteButton } from "../components/PayQuoteButton";
 import { productIcon } from "../icons";
 import { useSession } from "../session";
 import { HOME_DEMO_ADDRESS, HomeQuoteWizard } from "./HomeQuoteWizard";
+import { TravelQuoteWizard } from "./TravelQuoteWizard";
 
 export function QuoteBuilderPage() {
   const { productId = "" } = useParams();
@@ -50,12 +51,35 @@ export function QuoteBuilderPage() {
         const defaults: Record<string, string> = {};
         const isHome =
           quoteSchema.flow === "wizard" && quoteSchema.category === "Property";
+        const isTravel =
+          quoteSchema.flow === "wizard" && quoteSchema.category === "Travel";
 
         for (const field of quoteSchema.fields) {
           if (field.name === "cover_start_date") {
             const d = new Date();
             d.setDate(d.getDate() + 3);
             defaults[field.name] = d.toISOString().slice(0, 10);
+          } else if (isTravel && field.name === "departure_date") {
+            const d = new Date();
+            d.setDate(d.getDate() + 14);
+            defaults[field.name] = d.toISOString().slice(0, 10);
+          } else if (isTravel && field.name === "return_date") {
+            const d = new Date();
+            d.setDate(d.getDate() + 21);
+            defaults[field.name] = d.toISOString().slice(0, 10);
+          } else if (isTravel && field.name === "trip_type") {
+            defaults[field.name] = "Round trip";
+          } else if (
+            isTravel &&
+            (field.name === "coverage_flight_delay" || field.name === "coverage_cancellation")
+          ) {
+            defaults[field.name] = "Yes";
+          } else if (isTravel && field.name === "travellers") {
+            defaults[field.name] = "1";
+          } else if (isTravel && field.name === "flight_number") {
+            defaults[field.name] = "BA117";
+          } else if (isTravel && field.name === "email" && user?.email) {
+            defaults[field.name] = user.email;
           } else if (isHome && field.name === "address_line") {
             defaults[field.name] = HOME_DEMO_ADDRESS;
           } else if (isHome && field.name === "cover_type") {
@@ -111,6 +135,7 @@ export function QuoteBuilderPage() {
 
   const isHealthWizard = schema?.flow === "wizard" && schema.category === "Health";
   const isHomeWizard = schema?.flow === "wizard" && schema.category === "Property";
+  const isTravelWizard = schema?.flow === "wizard" && schema.category === "Travel";
   const totalSteps = schema?.total_steps ?? 2;
   const firstName = answers.first_name?.trim() || "there";
 
@@ -185,7 +210,7 @@ export function QuoteBuilderPage() {
     setError(null);
     if (!schema) return;
 
-    if (!isHealthWizard && !isHomeWizard) {
+    if (!isHealthWizard && !isHomeWizard && !isTravelWizard) {
       void submitQuote();
       return;
     }
@@ -226,6 +251,30 @@ export function QuoteBuilderPage() {
       }
     }
 
+    if (isTravelWizard && wizardStep === 1) {
+      const roundTrip = (answers.trip_type ?? "").toLowerCase().includes("round");
+      if (roundTrip && !String(answers.return_date ?? "").trim()) {
+        setError("Return date is required for round trips");
+        return;
+      }
+      if (!roundTrip) {
+        setAnswers((prev) => {
+          const next = { ...prev };
+          delete next.return_date;
+          return next;
+        });
+      }
+    }
+
+    if (isTravelWizard && wizardStep === 2) {
+      const hasCover =
+        answers.coverage_flight_delay === "Yes" || answers.coverage_cancellation === "Yes";
+      if (!hasCover) {
+        setError("Select at least one parametric cover option");
+        return;
+      }
+    }
+
     if (wizardStep < totalSteps) {
       if (isHomeWizard) {
         setWizardStep((s) => nextHomeStep(s));
@@ -234,7 +283,12 @@ export function QuoteBuilderPage() {
       }
       return;
     }
-    void submitQuote();
+
+    const payload = { ...answers };
+    if (isTravelWizard && !(payload.trip_type ?? "").toLowerCase().includes("round")) {
+      delete payload.return_date;
+    }
+    void submitQuote(payload);
   }
 
   function onBack() {
@@ -276,6 +330,24 @@ export function QuoteBuilderPage() {
         </Link>
         <BottomNav active="home" />
       </div>
+    );
+  }
+
+  if (isTravelWizard) {
+    return (
+      <TravelQuoteWizard
+        product={product}
+        schema={schema}
+        answers={answers}
+        setAnswers={setAnswers}
+        wizardStep={wizardStep}
+        showQuote={showQuote}
+        quote={quote}
+        submitting={submitting}
+        error={error}
+        onBack={onBack}
+        onNext={onNextStep}
+      />
     );
   }
 

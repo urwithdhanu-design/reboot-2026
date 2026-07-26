@@ -57,17 +57,25 @@ public class ParametricTriggerService {
 		Map<String, Object> policy = policyClient.fetchPolicy(policyRef);
 		String ruleType = firstNonBlank(str(body.get("rule_type")), "flight_delay");
 		boolean flightDelay = "flight_delay".equalsIgnoreCase(ruleType);
+		boolean tripCancellation = "trip_cancellation".equalsIgnoreCase(ruleType);
+
+		var existing = repo.findFirstByPolicyRefAndRuleType(policyRef, ruleType);
+		if (existing.isPresent()) {
+			return toMap(existing.get());
+		}
 
 		ParametricRule rule = new ParametricRule();
 		rule.setId("PR-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase(Locale.ROOT));
 		rule.setName(firstNonBlank(str(body.get("name")),
-				flightDelay ? "Flight delay cover" : "Parametric rule"));
+				flightDelay ? "Flight delay cover"
+						: tripCancellation ? "Trip cancellation cover" : "Parametric rule"));
 		rule.setRuleType(ruleType);
 		rule.setMetric(firstNonBlank(str(body.get("metric")),
-				flightDelay ? "flight_delay_minutes" : "rainfall_mm"));
-		rule.setThreshold(num(body.get("threshold"), flightDelay ? 240 : 50));
+				flightDelay ? "flight_delay_minutes"
+						: tripCancellation ? "trip_cancelled" : "rainfall_mm"));
+		rule.setThreshold(num(body.get("threshold"), flightDelay ? 240 : tripCancellation ? 1 : 50));
 		rule.setComparison(firstNonBlank(str(body.get("comparison")), "gte"));
-		rule.setPayoutAmount(num(body.get("payout_amount"), flightDelay ? 250 : 500));
+		rule.setPayoutAmount(num(body.get("payout_amount"), flightDelay ? 250 : tripCancellation ? 150 : 500));
 		rule.setPolicyRef(policyRef);
 		rule.setProductCategory(firstNonBlank(str(body.get("product_category")), str(policy.get("product_title")), "Travel"));
 		rule.setFlightNumber(str(body.get("flight_number")));
@@ -125,6 +133,17 @@ public class ParametricTriggerService {
 		return claimProcessor.initiateAndProcess(body);
 	}
 
+	/** Admin simulation: trip cancellation payout for demos. */
+	public Map<String, Object> simulateTripCancellation(Map<String, Object> body) {
+		body.put("simulation", true);
+		body.put("trigger_source", "simulation");
+		body.put("cancellation_confirmed", true);
+		body.put("trip_cancelled", true);
+		body.put("observed_value", 1);
+		body.put("flight_delay_minutes", 1);
+		return claimProcessor.initiateAndProcess(body);
+	}
+
 	/** Live oracle poll — fetches real delay and auto-triggers when threshold met. */
 	public Map<String, Object> triggerFromOracle(Map<String, Object> body) {
 		String ruleId = str(body.get("rule_id"));
@@ -173,6 +192,7 @@ public class ParametricTriggerService {
 		map.put("status", log.getStatus());
 		map.put("message", log.getMessage());
 		map.put("trigger_source", log.getTriggerSource());
+		map.put("rule_type", log.getRuleType());
 		map.put("oracle_provider", log.getOracleProvider());
 		map.put("flight_status", log.getFlightStatus());
 		map.put("triggered_at", log.getTriggeredAt().toString());

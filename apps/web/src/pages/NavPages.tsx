@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { api, type AuthUser, type CustomerPolicyRecord, type QuoteEstimate } from "../api";
+import { api, type AuthUser, type ClaimQueryRow, type CustomerPolicyRecord, type InsuranceClaim, type QuoteEstimate } from "../api";
 import { buildClaimDemoForPolicy, sleep } from "../claimsDemoFill";
 import { saveQuoteToCompare } from "../compareBasket";
 import {
@@ -433,6 +433,196 @@ function formatClaimStatus(status: string) {
   return status.replace(/_/g, " ");
 }
 
+function formatParametricEventLabel(eventType?: string | null, description?: string) {
+  if (eventType === "trip_cancellation") return "Trip cancellation";
+  if (eventType === "flight_delay") return "Flight delay";
+  if ((description ?? "").toLowerCase().includes("trip cancel")) return "Trip cancellation";
+  if ((description ?? "").toLowerCase().includes("delayed")) return "Flight delay";
+  return "Parametric auto-claim";
+}
+
+const CLAIMS_REFRESH_MS = 15_000;
+
+function ClaimQueryReplyPanel({
+  claim,
+  onReplied,
+}: {
+  claim: InsuranceClaim;
+  onReplied: () => void;
+}) {
+  const [expanded, setExpanded] = useState(false);
+  const [queries, setQueries] = useState<ClaimQueryRow[]>(claim.queries ?? []);
+  const [loading, setLoading] = useState(false);
+  const [replyText, setReplyText] = useState<Record<string, string>>({});
+  const [queryFiles, setQueryFiles] = useState<Record<string, File[]>>({});
+  const [submitting, setSubmitting] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const openQueries = queries.filter((q) => q.status === "open");
+  const openCount = claim.open_query_count ?? openQueries.length;
+  const hasQueries = openCount > 0 || queries.length > 0 || (claim.queries?.length ?? 0) > 0;
+
+  useEffect(() => {
+    setQueries(claim.queries ?? []);
+  }, [claim.id, claim.queries, claim.open_query_count]);
+
+  useEffect(() => {
+    if (!expanded) return;
+    let alive = true;
+    setLoading(true);
+    api
+      .listClaimQueries(claim.id)
+      .then((res) => {
+        if (!alive) return;
+        setQueries(res.queries);
+        setError(null);
+      })
+      .catch((err) => {
+        if (!alive) return;
+        setError(err instanceof Error ? err.message : "Could not load queries");
+      })
+      .finally(() => {
+        if (alive) setLoading(false);
+      });
+    return () => {
+      alive = false;
+    };
+  }, [expanded, claim.id]);
+
+  if (!hasQueries) return null;
+
+  function onFilesSelected(queryId: string, files: FileList | null) {
+    if (!files?.length) return;
+    setQueryFiles((prev) => {
+      const next = [...(prev[queryId] ?? [])];
+      for (const file of Array.from(files)) {
+        if (next.length >= 5) break;
+        next.push(file);
+      }
+      return { ...prev, [queryId]: next };
+    });
+  }
+
+  async function submitReply(query: ClaimQueryRow) {
+    const message = (replyText[query.id] ?? "").trim();
+    if (!message) {
+      setError("Enter a reply message before submitting.");
+      return;
+    }
+    setSubmitting(query.id);
+    setError(null);
+    try {
+      const files = queryFiles[query.id] ?? [];
+      for (const file of files) {
+        await api.uploadClaimDocument(claim.id, file, undefined, query.id);
+      }
+      await api.replyToClaimQuery(claim.id, query.id, message);
+      setReplyText((prev) => ({ ...prev, [query.id]: "" }));
+      setQueryFiles((prev) => ({ ...prev, [query.id]: [] }));
+      const res = await api.listClaimQueries(claim.id);
+      setQueries(res.queries);
+      onReplied();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not submit reply");
+    } finally {
+      setSubmitting(null);
+    }
+  }
+
+  return (
+    <div className="claim-query-panel">
+      {openCount > 0 ? (
+        <p className="claim-query-action-badge" role="status">
+          Action required — {openCount} open quer{openCount === 1 ? "y" : "ies"} from admin
+        </p>
+      ) : null}
+      <button
+        type="button"
+        className="claim-query-toggle"
+        onClick={() => setExpanded((v) => !v)}
+        aria-expanded={expanded}
+      >
+        {expanded ? "Hide" : "View"} admin queries ({queries.length || openCount})
+      </button>
+      {expanded ? (
+        <div className="claim-query-thread">
+          {loading ? <p className="muted">Loading queries…</p> : null}
+          {error ? (
+            <p className="error" role="alert">
+              {error}
+            </p>
+          ) : null}
+          {queries.map((query) => (
+            <div
+              key={query.id}
+              className={`claim-query-card${query.status === "open" ? " claim-query-card--open" : ""}`}
+            >
+              <p className="claim-query-admin">
+                <strong>Admin:</strong> {query.admin_message}
+              </p>
+              {query.requires_documents ? (
+                <p className="claim-query-docs-hint">Please attach the requested documents below.</p>
+              ) : null}
+              {query.customer_reply ? (
+                <p className="claim-query-reply">
+                  <strong>Your reply:</strong> {query.customer_reply}
+                </p>
+              ) : null}
+              {query.status === "open" ? (
+                <div className="claim-query-reply-form">
+                  <label>
+                    Your response
+                    <textarea
+                      value={replyText[query.id] ?? ""}
+                      onChange={(e) =>
+                        setReplyText((prev) => ({ ...prev, [query.id]: e.target.value }))
+                      }
+                      placeholder="Explain or provide the information requested…"
+                      disabled={submitting === query.id}
+                    />
+                  </label>
+                  {query.requires_documents ? (
+                    <label>
+                      Attach documents
+                      <input
+                        type="file"
+                        multiple
+                        accept=".pdf,image/jpeg,image/png,image/gif,image/webp"
+                        onChange={(e) => {
+                          onFilesSelected(query.id, e.target.files);
+                          e.target.value = "";
+                        }}
+                        disabled={submitting === query.id}
+                      />
+                    </label>
+                  ) : null}
+                  {(queryFiles[query.id]?.length ?? 0) > 0 ? (
+                    <ul className="claim-attachments-list">
+                      {(queryFiles[query.id] ?? []).map((file, index) => (
+                        <li key={`${file.name}-${index}`}>
+                          <span>{file.name}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : null}
+                  <button
+                    type="button"
+                    className="btn-primary"
+                    disabled={submitting === query.id}
+                    onClick={() => void submitReply(query)}
+                  >
+                    {submitting === query.id ? "Submitting…" : "Submit reply"}
+                  </button>
+                </div>
+              ) : null}
+            </div>
+          ))}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 export function ClaimsPage() {
   const { user, token } = useSession();
   const [tab, setTab] = useState<"new" | "track">("new");
@@ -451,6 +641,7 @@ export function ClaimsPage() {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [attachments, setAttachments] = useState<File[]>([]);
 
   const selectedPolicy = useMemo(
     () => policies.find((p) => p.quote_id === selectedQuoteId) ?? policies[0],
@@ -516,6 +707,15 @@ export function ClaimsPage() {
     void loadClaims();
   }, []);
 
+  useEffect(() => {
+    if (tab !== "track") return;
+    void loadClaims();
+    const timer = window.setInterval(() => {
+      void loadClaims();
+    }, CLAIMS_REFRESH_MS);
+    return () => window.clearInterval(timer);
+  }, [tab]);
+
   async function runDemoFill() {
     if (!user || demoFilling || !selectedPolicy) return;
     setDemoFilling(true);
@@ -540,6 +740,20 @@ export function ClaimsPage() {
     }
   }
 
+  function onAttachmentsSelected(files: FileList | null) {
+    if (!files?.length) return;
+    const next = [...attachments];
+    for (const file of Array.from(files)) {
+      if (next.length >= 5) break;
+      next.push(file);
+    }
+    setAttachments(next);
+  }
+
+  function removeAttachment(index: number) {
+    setAttachments((prev) => prev.filter((_, i) => i !== index));
+  }
+
   async function startClaim() {
     setSubmitting(true);
     setSubmitError(null);
@@ -554,8 +768,32 @@ export function ClaimsPage() {
         amount_claimed: Number(amount) || 0,
         description: description.trim() || "Claim submitted from the app",
       });
-      setNotice(`Claim ${claim.id} submitted — pending admin approval.`);
+
+      const uploadErrors: string[] = [];
+      for (const file of attachments) {
+        try {
+          await api.uploadClaimDocument(claim.id, file);
+        } catch (err) {
+          uploadErrors.push(
+            `${file.name}: ${err instanceof Error ? err.message : "upload failed"}`,
+          );
+        }
+      }
+
+      if (uploadErrors.length > 0) {
+        setNotice(
+          `Claim ${claim.id} submitted, but some documents failed to upload: ${uploadErrors.join("; ")}`,
+        );
+      } else if (attachments.length > 0) {
+        setNotice(
+          `Claim ${claim.id} submitted with ${attachments.length} supporting document(s) — pending admin review.`,
+        );
+      } else {
+        setNotice(`Claim ${claim.id} submitted — pending admin approval.`);
+      }
+
       setDescription("");
+      setAttachments([]);
       await loadClaims();
       setTab("track");
     } catch (err) {
@@ -692,6 +930,40 @@ export function ClaimsPage() {
                 disabled={demoFilling}
               />
             </label>
+            <label>
+              Supporting documents
+              <span className="muted" style={{ display: "block", fontSize: "0.82rem", marginBottom: 6 }}>
+                Upload receipts, photos, or PDFs (max 5 files, 8 MB each)
+              </span>
+              <input
+                type="file"
+                multiple
+                accept=".pdf,image/jpeg,image/png,image/gif,image/webp"
+                onChange={(e) => {
+                  onAttachmentsSelected(e.target.files);
+                  e.target.value = "";
+                }}
+                disabled={demoFilling || submitting || attachments.length >= 5}
+                aria-label="Upload supporting documents"
+              />
+            </label>
+            {attachments.length > 0 ? (
+              <ul className="claim-attachments-list">
+                {attachments.map((file, index) => (
+                  <li key={`${file.name}-${index}`}>
+                    <span>{file.name}</span>
+                    <button
+                      type="button"
+                      className="link-quiet"
+                      onClick={() => removeAttachment(index)}
+                      disabled={submitting}
+                    >
+                      Remove
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            ) : null}
           </div>
 
           {submitError ? (
@@ -724,9 +996,23 @@ export function ClaimsPage() {
             <p className="muted">No claims yet for your policies.</p>
           ) : null}
           <div className="claim-list">
-            {visibleClaims.map((claim) => (
-              <article className="quote-card" key={claim.id}>
+            {visibleClaims.map((claim) => {
+              const isParametric = claim.source === "parametric";
+              const eventLabel = isParametric
+                ? formatParametricEventLabel(claim.parametric_event_type, claim.description)
+                : null;
+              const needsAction = (claim.open_query_count ?? 0) > 0;
+              return (
+              <article className={`quote-card${needsAction ? " quote-card--action" : ""}`} key={claim.id}>
                 <strong>{claim.id}</strong>
+                {needsAction ? (
+                  <span className="claim-action-pill">Action required</span>
+                ) : null}
+                {isParametric ? (
+                  <p className="claims-parametric-badge" style={{ margin: "6px 0 0" }}>
+                    Auto-settled · {eventLabel}
+                  </p>
+                ) : null}
                 <p className="muted" style={{ margin: "4px 0 0" }}>
                   {claim.category} · {formatClaimStatus(claim.status)} · £
                   {Number(claim.amount_claimed).toFixed(2)}
@@ -737,10 +1023,16 @@ export function ClaimsPage() {
                 <p className="muted" style={{ margin: "4px 0 0" }}>
                   {claim.policy_ref}
                   {claim.payout_transaction_id ? ` · paid ${claim.payout_transaction_id}` : ""}
+                  {(claim.document_count ?? claim.documents?.length ?? 0) > 0
+                    ? ` · ${claim.document_count ?? claim.documents?.length} document(s) attached`
+                    : ""}
                   {claim.description ? ` · ${claim.description}` : ""}
                 </p>
+                {!isParametric ? (
+                  <ClaimQueryReplyPanel claim={claim} onReplied={() => void loadClaims()} />
+                ) : null}
               </article>
-            ))}
+            );})}
           </div>
         </CustomerPanel>
       )}

@@ -22,6 +22,8 @@ import com.gcul.claims.messaging.ClaimEventPublisher;
 import com.gcul.claims.model.ClaimStatus;
 import com.gcul.claims.model.InsuranceClaim;
 import com.gcul.claims.repository.ClaimRepository;
+import com.gcul.claims.service.ClaimDocumentService;
+import com.gcul.claims.service.ClaimQueryService;
 
 @Service
 public class ClaimWorkflowService {
@@ -39,18 +41,24 @@ public class ClaimWorkflowService {
 	private final PolicyValidationClient policyClient;
 	private final BlockchainValidationClient blockchainClient;
 	private final WalletPayoutClient walletClient;
+	private final ClaimDocumentService claimDocuments;
+	private final ClaimQueryService claimQueries;
 
 	public ClaimWorkflowService(
 			ClaimRepository repo,
 			ClaimEventPublisher claimEvents,
 			PolicyValidationClient policyClient,
 			BlockchainValidationClient blockchainClient,
-			WalletPayoutClient walletClient) {
+			WalletPayoutClient walletClient,
+			ClaimDocumentService claimDocuments,
+			ClaimQueryService claimQueries) {
 		this.repo = repo;
 		this.claimEvents = claimEvents;
 		this.policyClient = policyClient;
 		this.blockchainClient = blockchainClient;
 		this.walletClient = walletClient;
+		this.claimDocuments = claimDocuments;
+		this.claimQueries = claimQueries;
 	}
 
 	@Transactional
@@ -150,6 +158,7 @@ public class ClaimWorkflowService {
 		claim.setAmountClaimed(amount);
 		claim.setDescription(str(body.get("description")));
 		claim.setSource("parametric");
+		claim.setParametricEventType(firstNonBlank(str(body.get("parametric_event_type")), ""));
 		claim.setStatus(ClaimStatus.SUBMITTED);
 		claim.setValidationNotes("Parametric trigger — Canton policy verified, auto-approval");
 		claim.setCreatedAt(Instant.now());
@@ -177,7 +186,7 @@ public class ClaimWorkflowService {
 	@Transactional
 	public Map<String, Object> startReview(String id) {
 		InsuranceClaim claim = find(id);
-		assertTransition(claim, Set.of(ClaimStatus.SUBMITTED, ClaimStatus.PENDING_APPROVAL));
+		assertTransition(claim, Set.of(ClaimStatus.SUBMITTED, ClaimStatus.PENDING_APPROVAL, ClaimStatus.AWAITING_CUSTOMER));
 		claim.setStatus(ClaimStatus.IN_REVIEW);
 		claim.setUpdatedAt(Instant.now());
 		InsuranceClaim saved = repo.save(claim);
@@ -193,6 +202,8 @@ public class ClaimWorkflowService {
 				ClaimStatus.SUBMITTED,
 				ClaimStatus.PENDING_APPROVAL,
 				ClaimStatus.IN_REVIEW));
+
+		claimQueries.assertNoOpenQueries(id);
 
 		Double approvedAmount = body == null ? null : optionalAmount(body.get("approved_amount"));
 		if (approvedAmount != null && approvedAmount > 0) {
@@ -344,12 +355,19 @@ public class ClaimWorkflowService {
 		map.put("approved_amount", c.getApprovedAmount());
 		map.put("description", c.getDescription());
 		map.put("source", c.getSource());
+		map.put("parametric_event_type", c.getParametricEventType());
 		map.put("payout_transaction_id", c.getPayoutTransactionId());
 		map.put("settlement_transaction_id", c.getSettlementTransactionId());
 		map.put("rejection_reason", c.getRejectionReason());
 		map.put("validation_notes", c.getValidationNotes());
 		map.put("created_at", c.getCreatedAt().toString());
 		map.put("updated_at", c.getUpdatedAt() == null ? null : c.getUpdatedAt().toString());
+		List<Map<String, Object>> docs = claimDocuments.listForClaim(c.getId());
+		map.put("documents", docs);
+		map.put("document_count", docs.size());
+		List<Map<String, Object>> queryList = claimQueries.listForClaim(c.getId());
+		map.put("queries", queryList);
+		map.put("open_query_count", claimQueries.countOpenForClaim(c.getId()));
 		return map;
 	}
 

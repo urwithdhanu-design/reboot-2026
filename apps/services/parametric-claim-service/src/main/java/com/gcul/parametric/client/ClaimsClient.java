@@ -49,7 +49,8 @@ public class ClaimsClient {
 			double amount,
 			String description,
 			String category,
-			String walletAddress) {
+			String walletAddress,
+			String parametricEventType) {
 		Map<String, Object> body = new LinkedHashMap<>();
 		body.put("policy_ref", policyRef);
 		body.put("customer_name", customerName);
@@ -67,6 +68,9 @@ public class ClaimsClient {
 		body.put("category", category);
 		body.put("source", "parametric");
 		body.put("auto_settle", true);
+		if (parametricEventType != null && !parametricEventType.isBlank()) {
+			body.put("parametric_event_type", parametricEventType);
+		}
 		return body;
 	}
 }

@@ -45,6 +45,9 @@ public class InsuranceClaim {
 	@Column(nullable = false)
 	private String source = "manual";
 
+	/** flight_delay | trip_cancellation — set for parametric auto-claims */
+	private String parametricEventType;
+
 	private String payoutTransactionId;
 
 	private String settlementTransactionId;
@@ -85,6 +88,8 @@ public class InsuranceClaim {
 	public void setDescription(String description) { this.description = description; }
 	public String getSource() { return source; }
 	public void setSource(String source) { this.source = source; }
+	public String getParametricEventType() { return parametricEventType; }
+	public void setParametricEventType(String parametricEventType) { this.parametricEventType = parametricEventType; }
 	public String getPayoutTransactionId() { return payoutTransactionId; }
 	public void setPayoutTransactionId(String payoutTransactionId) { this.payoutTransactionId = payoutTransactionId; }
 	public String getSettlementTransactionId() { return settlementTransactionId; }

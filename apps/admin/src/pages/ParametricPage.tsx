@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Plane, Plus, Radio, RefreshCw, Satellite, Zap } from 'lucide-react';
+import { Plane, Plus, Radio, RefreshCw, Satellite, Zap, XCircle } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { AdminLayout } from '../components/layout/AdminLayout';
 import {
@@ -47,7 +47,9 @@ export function ParametricPage() {
   const [delayMinutes, setDelayMinutes] = useState('270');
   const [threshold, setThreshold] = useState('240');
   const [payout, setPayout] = useState('250');
+  const [cancellationPayout, setCancellationPayout] = useState('150');
   const [selectedRuleId, setSelectedRuleId] = useState('');
+  const [selectedCancellationRuleId, setSelectedCancellationRuleId] = useState('');
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -65,7 +67,12 @@ export function ParametricPage() {
       const minted = policiesRes.policies.filter((p) => p.mint_status === 'MINTED');
       setPolicies(minted);
       setPolicyRef((prev) => prev || (minted[0]?.policy_ref ?? ''));
-      setSelectedRuleId((prev) => prev || (rulesRes.rules[0]?.id ?? ''));
+      setSelectedRuleId((prev) => prev || (rulesRes.rules.find((r) => r.rule_type === 'flight_delay')?.id ?? rulesRes.rules[0]?.id ?? ''));
+      setSelectedCancellationRuleId(
+        (prev) =>
+          prev ||
+          (rulesRes.rules.find((r) => r.rule_type === 'trip_cancellation')?.id ?? ''),
+      );
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load parametric data');
     } finally {
@@ -76,6 +83,16 @@ export function ParametricPage() {
   useEffect(() => {
     void load();
   }, [load]);
+
+  useEffect(() => {
+    const rule = rules.find((r) => r.id === selectedRuleId);
+    if (!rule) return;
+    if (rule.flight_number) setFlightNumber(rule.flight_number);
+    if (rule.travel_date) setTravelDate(rule.travel_date);
+    if (rule.threshold != null) setThreshold(String(rule.threshold));
+    if (rule.payout_amount != null) setPayout(String(rule.payout_amount));
+    if (rule.policy_ref) setPolicyRef(rule.policy_ref);
+  }, [rules, selectedRuleId]);
 
   async function createFlightDelayRule() {
     if (!policyRef.trim()) {
@@ -173,7 +190,72 @@ export function ParametricPage() {
     }
   }
 
+  async function createTripCancellationRule() {
+    if (!policyRef.trim()) {
+      setError('Select a Canton-minted policy');
+      return;
+    }
+    setBusy(true);
+    setError(null);
+    setSuccess(null);
+    try {
+      const rule = await adminApi.createParametricRule({
+        name: `Trip cancellation · ${flightNumber}`,
+        rule_type: 'trip_cancellation',
+        policy_ref: policyRef.trim(),
+        flight_number: flightNumber.trim(),
+        travel_date: travelDate,
+        threshold: 1,
+        payout_amount: Number(cancellationPayout),
+        product_category: 'Travel',
+      });
+      setSelectedCancellationRuleId(rule.id);
+      setSuccess(`Cancellation rule ${rule.id} created for ${policyRef.trim()}`);
+      await load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not create cancellation rule');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function simulateCancellation(ruleIdOverride?: string) {
+    const ruleId = ruleIdOverride || selectedCancellationRuleId || cancellationRules[0]?.id;
+    if (!ruleId) {
+      setError('Create or select a trip cancellation rule first');
+      return;
+    }
+    const rule = rules.find((r) => r.id === ruleId);
+    setBusy(true);
+    setError(null);
+    setSuccess(null);
+    try {
+      const result = await adminApi.simulateTripCancellation({
+        rule_id: ruleId,
+        flight_number: (rule?.flight_number || flightNumber).trim(),
+        travel_date: rule?.travel_date || travelDate,
+      });
+      if (result.claim_created && result.claim_id) {
+        setSuccess(
+          `Trip cancellation auto-triggered — claim ${result.claim_id} auto-settled (${result.status}).`,
+        );
+      } else if (result.matched) {
+        setSuccess(result.message ?? 'Cancellation threshold matched');
+      } else {
+        setError(result.message ?? 'Simulation did not create a claim');
+      }
+      await load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Cancellation simulation failed');
+    } finally {
+      setBusy(false);
+    }
+  }
+
   const flightRules = rules.filter((r) => r.rule_type === 'flight_delay' || r.metric === 'flight_delay_minutes');
+  const cancellationRules = rules.filter(
+    (r) => r.rule_type === 'trip_cancellation' || r.metric === 'trip_cancelled',
+  );
   const autoSettled = triggers.filter((t) => t.claim_created).length;
   const oracleTriggered = triggers.filter((t) => t.trigger_source === 'oracle_poll' && t.claim_created).length;
 
@@ -182,7 +264,7 @@ export function ParametricPage() {
       <PageHeader
         icon={Radio}
         title="Parametric insurance"
-        subtitle="Live flight-delay oracle for Canton-minted travel policies — auto ClaimInitiated with settlement"
+        subtitle="Flight delay oracle and trip cancellation simulation for Canton-minted travel policies"
         metrics={[
           { label: 'Active rules', value: rules.filter((r) => r.active).length },
           { label: 'Oracle triggers', value: oracleTriggered, tone: 'success' },
@@ -232,7 +314,7 @@ export function ParametricPage() {
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
         <StatCard label="Flight delay rules" value={String(flightRules.length)} change="Travel parametric" icon={Plane} trend="neutral" />
-        <StatCard label="Oracle auto-claims" value={String(oracleTriggered)} change="Live flight data" icon={Satellite} trend="up" />
+        <StatCard label="Cancellation rules" value={String(cancellationRules.length)} change="Trip cancellation" icon={XCircle} trend="neutral" />
         <StatCard label="Total auto payouts" value={String(autoSettled)} change="Settled on-chain + wallet" icon={Radio} trend="up" />
       </div>
 
@@ -329,6 +411,87 @@ export function ParametricPage() {
             </p>
           </div>
         </Card>
+
+        <Card className="p-5 border-amber-200/60 bg-amber-50/30 xl:col-span-2">
+          <h3 className="font-bold text-lbg-black mb-1 flex items-center gap-2">
+            <XCircle className="w-4 h-4 text-amber-600" /> Trip cancellation
+          </h3>
+          <p className="text-xs text-lbg-gray-400 mb-4">
+            Create a cancellation rule for a minted Travel Protect Plus policy, then simulate to auto-trigger
+            ClaimInitiated and auto-settle — same flow as flight delay simulation.
+          </p>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div className="space-y-3">
+              <p className="text-sm font-semibold text-lbg-gray-700">1. Create cancellation rule</p>
+              <label className="block text-sm">
+                <span className="font-medium">Policy (minted on Canton)</span>
+                <select
+                  className="mt-1 w-full border rounded-lg px-3 py-2 text-sm"
+                  value={policyRef}
+                  onChange={(e) => setPolicyRef(e.target.value)}
+                >
+                  <option value="">Select policy…</option>
+                  {policies.map((p) => (
+                    <option key={p.policy_ref} value={p.policy_ref ?? ''}>
+                      {p.policy_ref} · {p.product_title}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <div className="grid grid-cols-2 gap-3">
+                <label className="block text-sm">
+                  <span className="font-medium">Flight number</span>
+                  <input className="mt-1 w-full border rounded-lg px-3 py-2 text-sm" value={flightNumber} onChange={(e) => setFlightNumber(e.target.value)} />
+                </label>
+                <label className="block text-sm">
+                  <span className="font-medium">Travel date</span>
+                  <input type="date" className="mt-1 w-full border rounded-lg px-3 py-2 text-sm" value={travelDate} onChange={(e) => setTravelDate(e.target.value)} />
+                </label>
+              </div>
+              <label className="block text-sm">
+                <span className="font-medium">Payout (£)</span>
+                <input className="mt-1 w-full border rounded-lg px-3 py-2 text-sm" value={cancellationPayout} onChange={(e) => setCancellationPayout(e.target.value)} />
+              </label>
+              <Button onClick={() => void createTripCancellationRule()} disabled={busy || !policyRef}>
+                <Plus className="w-4 h-4" /> Create cancellation rule
+              </Button>
+            </div>
+            <div className="space-y-3">
+              <p className="text-sm font-semibold text-lbg-gray-700">2. Simulate cancellation event</p>
+              <label className="block text-sm">
+                <span className="font-medium">Cancellation rule</span>
+                <select
+                  className="mt-1 w-full border rounded-lg px-3 py-2 text-sm"
+                  value={selectedCancellationRuleId}
+                  onChange={(e) => setSelectedCancellationRuleId(e.target.value)}
+                >
+                  <option value="">Select rule…</option>
+                  {cancellationRules.map((r) => (
+                    <option key={r.id} value={r.id}>
+                      {r.name} · {r.policy_ref} → {formatGBP(r.payout_amount)}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <Button
+                variant="hero"
+                onClick={() => void simulateCancellation()}
+                disabled={busy || !selectedCancellationRuleId}
+              >
+                <Zap className="w-4 h-4" /> Simulate trip cancellation
+              </Button>
+              <p className="text-xs text-lbg-gray-500">
+                Publishes ClaimInitiated, records on Canton, creates an auto-approved claim, and credits the customer wallet.
+              </p>
+              {cancellationRules.length === 0 ? (
+                <p className="text-xs text-amber-700 bg-amber-100/60 rounded-lg p-3">
+                  No cancellation rules yet — create one using a minted travel policy on the left, or complete a
+                  Travel Protect Plus quote with cancellation cover and mint on Canton (rules are provisioned automatically).
+                </p>
+              ) : null}
+            </div>
+          </div>
+        </Card>
       </div>
 
       <ContentPanel title="Parametric rules" description="Oracle monitoring status per Canton-minted policy">
@@ -344,7 +507,7 @@ export function ParametricPage() {
                   <th className="py-2 pr-4">Rule</th>
                   <th className="py-2 pr-4">Flight</th>
                   <th className="py-2 pr-4">Oracle status</th>
-                  <th className="py-2 pr-4">Last delay</th>
+                  <th className="py-2 pr-4">Observed</th>
                   <th className="py-2 pr-4">Threshold</th>
                   <th className="py-2">Action</th>
                 </tr>
@@ -372,13 +535,35 @@ export function ParametricPage() {
                       ) : null}
                     </td>
                     <td className="py-3 pr-4 font-bold">
-                      {r.last_observed_delay != null ? `${r.last_observed_delay} min` : '—'}
+                      {r.rule_type === 'trip_cancellation' || r.metric === 'trip_cancelled'
+                        ? 'Cancellation'
+                        : r.last_observed_delay != null
+                          ? `${r.last_observed_delay} min`
+                          : '—'}
                     </td>
-                    <td className="py-3 pr-4">≥{r.threshold} min → {formatGBP(r.payout_amount)}</td>
+                    <td className="py-3 pr-4">
+                      {r.rule_type === 'trip_cancellation' || r.metric === 'trip_cancelled'
+                        ? `Cancelled → ${formatGBP(r.payout_amount)}`
+                        : `≥${r.threshold} min → ${formatGBP(r.payout_amount)}`}
+                    </td>
                     <td className="py-3">
-                      <Button size="sm" variant="outline" disabled={busy} onClick={() => void pollOracle(r.id)}>
-                        Poll
-                      </Button>
+                      {r.rule_type === 'trip_cancellation' || r.metric === 'trip_cancelled' ? (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          disabled={busy}
+                          onClick={() => {
+                            setSelectedCancellationRuleId(r.id);
+                            void simulateCancellation(r.id);
+                          }}
+                        >
+                          Simulate
+                        </Button>
+                      ) : (
+                        <Button size="sm" variant="outline" disabled={busy} onClick={() => void pollOracle(r.id)}>
+                          Poll
+                        </Button>
+                      )}
                     </td>
                   </tr>
                 ))}
@@ -400,13 +585,18 @@ export function ParametricPage() {
                   <th className="py-2 pr-4">Source</th>
                   <th className="py-2 pr-4">Policy</th>
                   <th className="py-2 pr-4">Flight</th>
-                  <th className="py-2 pr-4">Delay</th>
+                  <th className="py-2 pr-4">Observed</th>
                   <th className="py-2 pr-4">Result</th>
                   <th className="py-2">Claim</th>
                 </tr>
               </thead>
               <tbody>
-                {triggers.map((t) => (
+                {triggers.map((t) => {
+                  const triggerRule = rules.find((r) => r.id === t.rule_id);
+                  const isCancellation =
+                    triggerRule?.rule_type === 'trip_cancellation'
+                    || triggerRule?.metric === 'trip_cancelled';
+                  return (
                   <tr key={t.id} className="border-b border-lbg-gray-50">
                     <td className="py-3 pr-4 whitespace-nowrap">{formatWhen(t.triggered_at)}</td>
                     <td className="py-3 pr-4">
@@ -424,7 +614,7 @@ export function ParametricPage() {
                         <p className="text-[10px] text-lbg-gray-400">{t.flight_status}</p>
                       ) : null}
                     </td>
-                    <td className="py-3 pr-4">{t.observed_value} min</td>
+                    <td className="py-3 pr-4">{isCancellation ? 'Trip cancelled' : `${t.observed_value} min`}</td>
                     <td className="py-3 pr-4">
                       <Badge variant={t.claim_created ? 'success' : t.matched ? 'warning' : 'neutral'}>
                         {t.status}
@@ -436,7 +626,8 @@ export function ParametricPage() {
                       ) : '—'}
                     </td>
                   </tr>
-                ))}
+                  );
+                })}
               </tbody>
             </table>
           </div>

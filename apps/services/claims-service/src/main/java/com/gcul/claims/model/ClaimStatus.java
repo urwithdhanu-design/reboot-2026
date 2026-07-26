@@ -11,6 +11,7 @@ public final class ClaimStatus {
 	public static final String PAID_OUT = "paid_out";
 	public static final String SETTLED = "settled";
 	public static final String REJECTED = "rejected";
+	public static final String AWAITING_CUSTOMER = "awaiting_customer";
 
 	/** Legacy alias kept for older rows. */
 	public static final String PAID = "paid";

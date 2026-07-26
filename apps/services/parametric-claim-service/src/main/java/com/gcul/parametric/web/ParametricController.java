@@ -49,6 +49,11 @@ public class ParametricController {
 		return parametric.simulateFlightDelay(body);
 	}
 
+	@PostMapping("/simulate/trip-cancellation")
+	public Map<String, Object> simulateTripCancellation(@RequestBody Map<String, Object> body) {
+		return parametric.simulateTripCancellation(body);
+	}
+
 	@GetMapping("/oracle/status")
 	public Map<String, Object> oracleStatus() {
 		return parametric.oracleStatus();

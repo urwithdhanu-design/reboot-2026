@@ -20,6 +20,7 @@ import com.gcul.policy.model.PolicyRecord;
 import com.gcul.policy.policy.PolicyRecordService;
 import com.gcul.policy.policy.PolicyReferenceHasher;
 import com.gcul.policy.quote.QuoteService;
+import com.gcul.policy.travel.TravelParametricProvisioner;
 
 @Service
 public class PolicyIssuanceService {
@@ -32,6 +33,7 @@ public class PolicyIssuanceService {
 	private final WalletLookupClient walletLookupClient;
 	private final KycInternalClient kycInternalClient;
 	private final PolicyRecordService policyRecords;
+	private final TravelParametricProvisioner travelParametricProvisioner;
 
 	public PolicyIssuanceService(
 			QuoteService quotes,
@@ -39,13 +41,15 @@ public class PolicyIssuanceService {
 			BlockchainMintClient blockchainMintClient,
 			WalletLookupClient walletLookupClient,
 			KycInternalClient kycInternalClient,
-			PolicyRecordService policyRecords) {
+			PolicyRecordService policyRecords,
+			TravelParametricProvisioner travelParametricProvisioner) {
 		this.quotes = quotes;
 		this.publisher = publisher;
 		this.blockchainMintClient = blockchainMintClient;
 		this.walletLookupClient = walletLookupClient;
 		this.kycInternalClient = kycInternalClient;
 		this.policyRecords = policyRecords;
+		this.travelParametricProvisioner = travelParametricProvisioner;
 	}
 
 	public void onPremiumPaid(Map<String, Object> payload) {
@@ -132,13 +136,16 @@ public class PolicyIssuanceService {
 			return;
 		}
 		policyRecords.findByPolicyId(policyId).ifPresent(record -> {
-			if ("MINTED".equalsIgnoreCase(record.getMintStatus())
+			boolean alreadyMinted = "MINTED".equalsIgnoreCase(record.getMintStatus())
 					&& record.getTokenId() != null
-					&& record.getTokenId().equals(str(payload.get("tokenId")))) {
-				log.debug("Policy {} already minted with token {}", policyId, record.getTokenId());
+					&& record.getTokenId().equals(str(payload.get("tokenId")));
+			if (!alreadyMinted) {
+				policyRecords.applyMintResult(policyId, payload);
+			}
+			policyRecords.findByPolicyId(policyId).ifPresent(travelParametricProvisioner::provisionForMintedPolicy);
+			if (alreadyMinted) {
 				return;
 			}
-			policyRecords.applyMintResult(policyId, payload);
 			Map<String, Object> activated = new LinkedHashMap<>();
 			activated.put("eventType", "PolicyActivated");
 			activated.put("policyId", policyId);

@@ -9,4 +9,5 @@ import com.gcul.parametric.model.ParametricRule;
 public interface ParametricRuleRepository extends JpaRepository<ParametricRule, String> {
 	List<ParametricRule> findByActiveTrueOrderByCreatedAtDesc();
 	List<ParametricRule> findAllByOrderByCreatedAtDesc();
+	java.util.Optional<ParametricRule> findFirstByPolicyRefAndRuleType(String policyRef, String ruleType);
 }

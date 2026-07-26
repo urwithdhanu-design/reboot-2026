@@ -219,6 +219,7 @@ export type ParametricTriggerRow = {
   status: string;
   message?: string;
   trigger_source?: string;
+  rule_type?: string;
   oracle_provider?: string;
   flight_status?: string;
   triggered_at?: string;
@@ -271,6 +272,7 @@ export type AdminClaimRow = {
   approved_amount?: number | null;
   description?: string;
   source?: string;
+  parametric_event_type?: string | null;
   canton_contract_id?: string | null;
   payout_transaction_id?: string | null;
   settlement_transaction_id?: string | null;
@@ -278,6 +280,33 @@ export type AdminClaimRow = {
   rejection_reason?: string | null;
   created_at?: string;
   updated_at?: string;
+  documents?: ClaimDocumentRow[];
+  document_count?: number;
+  queries?: ClaimQueryRow[];
+  open_query_count?: number;
+};
+
+export type ClaimDocumentRow = {
+  id: string;
+  claim_id: string;
+  file_name: string;
+  label?: string;
+  content_type: string;
+  file_size: number;
+  query_id?: string | null;
+  uploaded_at?: string;
+};
+
+export type ClaimQueryRow = {
+  id: string;
+  claim_id: string;
+  status: 'open' | 'answered';
+  admin_message: string;
+  customer_reply?: string | null;
+  requires_documents: boolean;
+  created_at?: string;
+  answered_at?: string | null;
+  document_count?: number;
 };
 
 export type InsuranceChainTx = {
@@ -602,6 +631,28 @@ export const adminApi = {
     return adminRequest<{ claims: AdminClaimRow[]; count: number }>(`/api/claims${qs}`);
   },
 
+  getClaim: (claimId: string) =>
+    adminRequest<AdminClaimRow>(`/api/claims/${encodeURIComponent(claimId)}`),
+
+  listClaimDocuments: (claimId: string) =>
+    adminRequest<{ documents: ClaimDocumentRow[]; count: number }>(
+      `/api/claims/${encodeURIComponent(claimId)}/documents`,
+    ),
+
+  claimDocumentContentUrl: (claimId: string, docId: string) =>
+    `/api/claims/${encodeURIComponent(claimId)}/documents/${encodeURIComponent(docId)}/content`,
+
+  listClaimQueries: (claimId: string) =>
+    adminRequest<{ queries: ClaimQueryRow[]; count: number; open_count: number }>(
+      `/api/claims/${encodeURIComponent(claimId)}/queries`,
+    ),
+
+  createClaimQuery: (claimId: string, body: { message: string; requires_documents?: boolean }) =>
+    adminRequest<ClaimQueryRow>(`/api/claims/${encodeURIComponent(claimId)}/queries`, {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }),
+
   updateClaimStatus: (claimId: string, status: string) =>
     adminRequest<AdminClaimRow>(`/api/claims/${encodeURIComponent(claimId)}/status`, {
       method: 'PATCH',
@@ -642,6 +693,16 @@ export const adminApi = {
     flight_delay_minutes: number;
   }) =>
     adminRequest<ParametricSimulateResult>('/api/parametric/simulate/flight-delay', {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }),
+
+  simulateTripCancellation: (body: {
+    rule_id: string;
+    flight_number?: string;
+    travel_date?: string;
+  }) =>
+    adminRequest<ParametricSimulateResult>('/api/parametric/simulate/trip-cancellation', {
       method: 'POST',
       body: JSON.stringify(body),
     }),
