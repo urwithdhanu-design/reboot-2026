@@ -32,6 +32,7 @@ See [`packages/gcul-sdk/README.md`](packages/gcul-sdk/README.md).
 **Hosted apps (URLs + login):** [`docs/HOSTING-ACCESS.md`](docs/HOSTING-ACCESS.md)
 
 **Local dev:** run `local-dev.cmd setup` then `local-dev.cmd start` from repo root.  
+**New machine setup (step-by-step):** [`docs/LOCAL-SETUP.md`](docs/LOCAL-SETUP.md)  
 **Full Windows guide:** [`scripts/local/README.md`](scripts/local/README.md) · Short reference: [`apps/services/LOCAL-DEV.md`](apps/services/LOCAL-DEV.md)
 
 ```cmd
