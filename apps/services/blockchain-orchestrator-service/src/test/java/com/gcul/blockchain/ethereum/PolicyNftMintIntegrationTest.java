@@ -15,7 +15,9 @@ import org.springframework.web.client.RestClient;
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @TestPropertySource(properties = {
 		"gcul.h2.url=jdbc:h2:mem:policy-nft-test;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE",
-		"gcul.ethereum.enabled=false"
+		"gcul.ethereum.enabled=false",
+		"gcul.canton.enabled=false",
+		"gcul.ledger.backend=ethereum"
 })
 class PolicyNftMintIntegrationTest {
 

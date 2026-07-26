@@ -23,9 +23,17 @@ public class CustomerPolicyController {
 
 	@GetMapping("/me")
 	public Map<String, Object> myPolicies(HttpServletRequest request) {
-		String userId = String.valueOf(request.getAttribute("userId"));
-		String email = String.valueOf(request.getAttribute("userEmail"));
+		String userId = attribute(request, "userId");
+		String email = attribute(request, "userEmail");
 		List<Map<String, Object>> policies = issuance.listCustomerPolicies(userId, email);
 		return Map.of("policies", policies, "count", policies.size());
+	}
+
+	private static String attribute(HttpServletRequest request, String name) {
+		Object value = request.getAttribute(name);
+		if (value instanceof String text && !text.isBlank() && !"null".equalsIgnoreCase(text)) {
+			return text.trim();
+		}
+		return "";
 	}
 }

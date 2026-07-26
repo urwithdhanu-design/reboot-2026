@@ -8,6 +8,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
 import com.gcul.policy.client.BlockchainMintClient;
+import com.gcul.policy.messaging.PolicyIssuanceService;
 import com.gcul.policy.model.PolicyRecord;
 import com.gcul.policy.policy.PolicyRecordService;
 
@@ -18,10 +19,15 @@ public class AdminTokenizationService {
 
 	private final PolicyRecordService policyRecords;
 	private final BlockchainMintClient blockchainClient;
+	private final PolicyIssuanceService policyIssuance;
 
-	public AdminTokenizationService(PolicyRecordService policyRecords, BlockchainMintClient blockchainClient) {
+	public AdminTokenizationService(
+			PolicyRecordService policyRecords,
+			BlockchainMintClient blockchainClient,
+			PolicyIssuanceService policyIssuance) {
 		this.policyRecords = policyRecords;
 		this.blockchainClient = blockchainClient;
+		this.policyIssuance = policyIssuance;
 	}
 
 	public Map<String, Object> view() {
@@ -55,9 +61,17 @@ public class AdminTokenizationService {
 		response.put("mint_queue", mintQueue);
 		response.put("stats", stats);
 		response.put("blockchain", toBlockchainSummary(blockchain));
-		response.put("standards", List.of(buildPolicyNftStandard(mintedCount, contractAddress)));
+		response.put("standards", List.of(buildPolicyNftStandard(mintedCount, contractAddress, str(blockchain.get("mode")))));
 		response.put("count", registry.size());
 		return response;
+	}
+
+	public Map<String, Object> approveMint(String policyId) {
+		return policyIssuance.adminApproveMint(policyId);
+	}
+
+	public Map<String, Object> rejectMint(String policyId) {
+		return policyIssuance.adminRejectMint(policyId);
 	}
 
 	private Map<String, Object> toRegistryRow(PolicyRecord record) {
@@ -66,7 +80,7 @@ public class AdminTokenizationService {
 		row.put("token_id", record.getTokenId());
 		row.put("name", record.getProductTitle());
 		row.put("policy_number", record.getPolicyNumber());
-		row.put("standard", "ERC-721");
+		row.put("standard", standardFor(record));
 		row.put("type", "policy_nft");
 		row.put("owner", record.getCustomerEmail());
 		row.put("status", registryStatus(record));
@@ -84,7 +98,7 @@ public class AdminTokenizationService {
 		Map<String, Object> row = new LinkedHashMap<>();
 		row.put("id", record.getPolicyId());
 		row.put("policy_number", record.getPolicyNumber());
-		row.put("standard", "ERC-721");
+		row.put("standard", standardFor(record));
 		row.put("status", queueStatus(record.getMintStatus()));
 		row.put("customer_name", record.getCustomerEmail());
 		row.put("customer_email", record.getCustomerEmail());
@@ -115,26 +129,37 @@ public class AdminTokenizationService {
 
 	private static Map<String, Object> toBlockchainSummary(Map<String, Object> status) {
 		Map<String, Object> summary = new LinkedHashMap<>();
-		summary.put("network_name", str(status.getOrDefault("network", "Ethereum Sepolia")));
-		summary.put("chain_id", status.getOrDefault("chainId", 11155111L));
-		summary.put("mode", str(status.getOrDefault("mode", "simulated")));
+		String mode = str(status.getOrDefault("mode", "simulated"));
+		String network = str(status.getOrDefault("network", "Ethereum Sepolia"));
+		summary.put("network_name", network);
+		summary.put("chain_id", status.getOrDefault("chainId", mode.contains("canton") ? 0L : 11155111L));
+		summary.put("mode", mode);
 		summary.put("live", Boolean.TRUE.equals(status.get("live")));
 		summary.put("contract_address", str(status.get("contractAddress")));
 		summary.put("enabled", Boolean.TRUE.equals(status.get("enabled")));
+		summary.put("ledger_type", mode.contains("canton") ? "canton" : "ethereum");
 		return summary;
 	}
 
-	private static Map<String, Object> buildPolicyNftStandard(long supply, String contractAddress) {
+	private static Map<String, Object> buildPolicyNftStandard(long supply, String contractAddress, String mode) {
+		boolean canton = mode.contains("canton");
 		Map<String, Object> standard = new LinkedHashMap<>();
-		standard.put("standard", "ERC-721");
-		standard.put("symbol", "GCULPOL");
-		standard.put("name", "Policy NFT");
-		standard.put("description", "Unique insurance policy certificates minted to customer wallets on Sepolia.");
+		standard.put("standard", canton ? "Daml/Canton" : "ERC-721");
+		standard.put("symbol", canton ? "GCULPOL-C" : "GCULPOL");
+		standard.put("name", canton ? "Policy Certificate (Canton)" : "Policy NFT");
+		standard.put("description", canton
+				? "Insurance policy certificates minted on Canton local sandbox by the insurer."
+				: "Unique insurance policy certificates minted to customer wallets on Sepolia.");
 		standard.put("total_supply", supply);
 		standard.put("circulating", supply);
 		standard.put("enabled", true);
 		standard.put("contract_address", contractAddress.isBlank() ? "Not deployed" : contractAddress);
 		return standard;
+	}
+
+	private static String standardFor(PolicyRecord record) {
+		String network = record.getBlockchainNetwork() == null ? "" : record.getBlockchainNetwork().toLowerCase();
+		return network.contains("canton") ? "Daml/Canton" : "ERC-721";
 	}
 
 	private static String abbreviateAddress(String address) {

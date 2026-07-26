@@ -71,9 +71,21 @@ public class PolicyIssuanceService {
 
 		String policyId = "POL-" + quoteId.replace("Q-", "");
 		String policyNumber = policyId;
-		String customerEmail = extractEmail(quote).toLowerCase();
+		String customerEmail = firstNonBlank(
+				str(payload.get("customerEmail")),
+				extractEmail(quote)).toLowerCase(java.util.Locale.ROOT);
+		if (!isKnown(customerEmail)) {
+			customerEmail = "";
+		}
+
 		WalletLookup wallet = resolveWallet(customerEmail, payload.get("walletAddress"));
-		String customerId = firstNonBlank(wallet.userId(), customerEmail);
+		String customerId = firstNonBlank(
+				str(payload.get("customerId")),
+				wallet.userId(),
+				customerEmail);
+		if (!isKnown(customerId)) {
+			customerId = customerEmail;
+		}
 		String walletAddress = wallet.address();
 		String productTitle = String.valueOf(quote.getOrDefault("product_title", "Insurance"));
 		String policyReferenceHash = PolicyReferenceHasher.hash(policyId, policyNumber, customerId, quoteId);
@@ -110,7 +122,7 @@ public class PolicyIssuanceService {
 			return;
 		}
 
-		requestBlockchainMint(record, true);
+		requestBlockchainMint(record, true, false);
 		log.info("Issued policy {} for quote {}", policyId, quoteId);
 	}
 
@@ -155,7 +167,7 @@ public class PolicyIssuanceService {
 				continue;
 			}
 			policyRecords.attachWallet(pending.getPolicyId(), walletAddress);
-			requestBlockchainMint(pending, true);
+			requestBlockchainMint(pending, true, false);
 		}
 	}
 
@@ -171,9 +183,74 @@ public class PolicyIssuanceService {
 	}
 
 	public List<Map<String, Object>> listCustomerPolicies(String customerId, String email) {
-		return policyRecords.listForCustomer(customerId, email).stream()
+		String walletAddress = "";
+		if (StringUtils.hasText(email) && !"unknown".equalsIgnoreCase(email.trim())) {
+			WalletLookup wallet = walletLookupClient.lookupByEmail(email.trim());
+			if (wallet.connected()) {
+				walletAddress = wallet.address();
+			}
+		}
+		if (!StringUtils.hasText(walletAddress) && StringUtils.hasText(customerId)
+				&& !"unknown".equalsIgnoreCase(customerId.trim())) {
+			WalletLookup wallet = walletLookupClient.lookupByCustomerId(customerId.trim());
+			if (wallet.connected()) {
+				walletAddress = wallet.address();
+			}
+		}
+		return policyRecords.listForCustomer(customerId, email, walletAddress).stream()
 				.map(policyRecords::toResponse)
 				.toList();
+	}
+
+	public Map<String, Object> adminApproveMint(String policyId) {
+		PolicyRecord record = policyRecords.findByPolicyId(policyId)
+				.orElseThrow(() -> new org.springframework.web.server.ResponseStatusException(
+						org.springframework.http.HttpStatus.NOT_FOUND, "Policy not found"));
+		if ("MINTED".equalsIgnoreCase(record.getMintStatus())) {
+			return policyRecords.toResponse(record);
+		}
+
+		PolicyRecord current = record;
+		if (!StringUtils.hasText(current.getWalletAddress())) {
+			WalletLookup wallet = walletLookupClient.lookupByEmail(current.getCustomerEmail());
+			if (!wallet.connected() || wallet.address().isBlank()) {
+				// Fall back to customer id lookup for wallet-service linkage
+				wallet = walletLookupClient.lookupByCustomerId(current.getCustomerId());
+			}
+			if (!wallet.connected() || wallet.address().isBlank()) {
+				throw new org.springframework.web.server.ResponseStatusException(
+						org.springframework.http.HttpStatus.BAD_REQUEST,
+						"Customer wallet not linked — ask customer to link wallet first");
+			}
+			current = policyRecords.attachWallet(policyId, wallet.address());
+		}
+
+		if ("FAILED".equalsIgnoreCase(current.getMintStatus())) {
+			current = policyRecords.resetMintForRetry(policyId);
+		}
+
+		// Admin approve = insurer authorization to mint on Canton (KYC not re-checked here).
+		requestBlockchainMint(current, true, true);
+		PolicyRecord updated = policyRecords.findByPolicyId(policyId).orElseThrow();
+		if (!"MINTED".equalsIgnoreCase(updated.getMintStatus())) {
+			throw new org.springframework.web.server.ResponseStatusException(
+					org.springframework.http.HttpStatus.BAD_GATEWAY,
+					"Canton mint did not complete — status is " + updated.getMintStatus()
+							+ ". Ensure Canton sandbox and blockchain orchestrator are running.");
+		}
+		return policyRecords.toResponse(updated);
+	}
+
+	public Map<String, Object> adminRejectMint(String policyId) {
+		PolicyRecord record = policyRecords.findByPolicyId(policyId)
+				.orElseThrow(() -> new org.springframework.web.server.ResponseStatusException(
+						org.springframework.http.HttpStatus.NOT_FOUND, "Policy not found"));
+		if ("MINTED".equalsIgnoreCase(record.getMintStatus())) {
+			throw new org.springframework.web.server.ResponseStatusException(
+					org.springframework.http.HttpStatus.CONFLICT, "Policy already minted");
+		}
+		policyRecords.markMintFailed(policyId, "Rejected by admin");
+		return policyRecords.toResponse(policyRecords.findByPolicyId(policyId).orElseThrow());
 	}
 
 	private void maybeRetryMint(PolicyRecord record, Map<String, Object> payload) {
@@ -193,10 +270,10 @@ public class PolicyIssuanceService {
 		if (!kycInternalClient.isVerified(customerId)) {
 			return;
 		}
-		requestBlockchainMint(current, true);
+		requestBlockchainMint(current, true, false);
 	}
 
-	private void requestBlockchainMint(PolicyRecord record, boolean kycVerified) {
+	private void requestBlockchainMint(PolicyRecord record, boolean kycVerified, boolean throwOnFailure) {
 		if ("MINTED".equalsIgnoreCase(record.getMintStatus())) {
 			return;
 		}
@@ -212,6 +289,11 @@ public class PolicyIssuanceService {
 		catch (Exception ex) {
 			policyRecords.markMintFailed(record.getPolicyId(), ex.getMessage());
 			log.error("Blockchain mint failed for {}: {}", record.getPolicyId(), ex.getMessage());
+			if (throwOnFailure) {
+				throw new org.springframework.web.server.ResponseStatusException(
+						org.springframework.http.HttpStatus.BAD_GATEWAY,
+						"Canton mint failed: " + ex.getMessage());
+			}
 		}
 	}
 
@@ -248,7 +330,15 @@ public class PolicyIssuanceService {
 				return String.valueOf(email).trim();
 			}
 		}
-		return "unknown";
+		return "";
+	}
+
+	private static boolean isKnown(String value) {
+		if (!StringUtils.hasText(value)) {
+			return false;
+		}
+		String normalized = value.trim().toLowerCase(java.util.Locale.ROOT);
+		return !normalized.equals("unknown") && !normalized.equals("n/a") && !normalized.equals("-");
 	}
 
 	private static String str(Object value) {

@@ -71,8 +71,13 @@ export type InsuranceClaim = {
   category: string;
   status: string;
   amount_claimed: number;
+  approved_amount?: number | null;
   description?: string;
   source?: string;
+  payout_transaction_id?: string | null;
+  settlement_transaction_id?: string | null;
+  canton_contract_id?: string | null;
+  validation_notes?: string | null;
   created_at?: string;
   updated_at?: string;
 };
@@ -111,6 +116,7 @@ export type CustomerPolicyRecord = {
   contract_address?: string | null;
   block_number?: number | null;
   blockchain_network?: string | null;
+  ledger_type?: "canton" | "ethereum" | "simulated" | string;
   mint_status?: string;
   payment_status?: string;
   issued_at?: string;
@@ -368,6 +374,8 @@ export const api = {
   createClaim: (body: {
     policy_ref: string;
     customer_name?: string;
+    customer_id?: string;
+    customer_email?: string;
     category?: string;
     amount_claimed?: number;
     description?: string;

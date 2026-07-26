@@ -1,0 +1,49 @@
+module Gcul.InsurancePolicy where
+
+template InsurerMintAuthority
+  with
+    insurer : Party
+  where
+    signatory insurer
+
+    nonconsuming choice MintPolicy : ContractId InsurancePolicy
+      with
+        customer : Party
+        policyId : Text
+        policyNumber : Text
+        policyReferenceHash : Text
+        customerId : Text
+        walletAddress : Text
+        metadataUri : Text
+      controller insurer
+      do
+        now <- getTime
+        create InsurancePolicy with
+          insurer
+          customer
+          policyId
+          policyNumber
+          policyReferenceHash
+          customerId
+          walletAddress
+          metadataUri
+          mintedAt = now
+
+-- On-ledger insurance policy certificate minted by the insurer for a customer.
+template InsurancePolicy
+  with
+    insurer : Party
+    customer : Party
+    policyId : Text
+    policyNumber : Text
+    policyReferenceHash : Text
+    customerId : Text
+    walletAddress : Text
+    metadataUri : Text
+    mintedAt : Time
+  where
+    signatory insurer
+    observer customer
+
+    key (insurer, policyReferenceHash) : (Party, Text)
+    maintainer key._1

@@ -39,6 +39,7 @@ import org.web3j.tx.RawTransactionManager;
 import org.web3j.tx.response.PollingTransactionReceiptProcessor;
 import org.web3j.utils.Numeric;
 
+import com.gcul.blockchain.canton.CantonPolicyMintService;
 import com.gcul.blockchain.config.EthereumProperties;
 import com.gcul.blockchain.ethereum.PolicyMintValidator.MintContext;
 import com.gcul.blockchain.model.PolicyNftRecord;
@@ -62,18 +63,21 @@ public class PolicyNftMintService {
 	private final PolicyMintValidator validator;
 	private final Optional<Web3j> web3j;
 	private final Optional<Credentials> insurerCredentials;
+	private final CantonPolicyMintService cantonPolicyMintService;
 
 	public PolicyNftMintService(
 			EthereumProperties props,
 			PolicyNftRecordRepository repository,
 			PolicyMintValidator validator,
 			Optional<Web3j> web3j,
-			Optional<Credentials> insurerCredentials) {
+			Optional<Credentials> insurerCredentials,
+			CantonPolicyMintService cantonPolicyMintService) {
 		this.props = props;
 		this.repository = repository;
 		this.validator = validator;
 		this.web3j = web3j;
 		this.insurerCredentials = insurerCredentials;
+		this.cantonPolicyMintService = cantonPolicyMintService;
 	}
 
 	public boolean isEthereumLive() {
@@ -84,6 +88,9 @@ public class PolicyNftMintService {
 	}
 
 	public Map<String, Object> status() {
+		if (cantonPolicyMintService.isActive()) {
+			return cantonPolicyMintService.status();
+		}
 		Map<String, Object> status = new LinkedHashMap<>();
 		status.put("enabled", props.isEnabled());
 		status.put("live", isEthereumLive());
@@ -93,6 +100,7 @@ public class PolicyNftMintService {
 		status.put("insurerAddress", insurerCredentials.map(c -> c.getAddress()).orElse(null));
 		status.put("rpcConfigured", StringUtils.hasText(props.getRpcUrl()));
 		status.put("mode", isEthereumLive() ? "ethereum" : "simulated");
+		status.put("canton", cantonPolicyMintService.status());
 		return status;
 	}
 
@@ -116,9 +124,25 @@ public class PolicyNftMintService {
 				request.kycVerified(),
 				request.policyEligible()));
 
-		PolicyNftMintResult result = isEthereumLive()
-				? mintOnChain(policyId, policyReferenceHash, policyNumber, customerId, walletAddress, metadataUri)
-				: mintSimulated(policyId, policyReferenceHash, policyNumber, customerId, walletAddress, metadataUri);
+		PolicyNftMintResult result;
+		if (cantonPolicyMintService.isActive()) {
+			result = cantonPolicyMintService.mintPolicy(new MintRequest(
+					policyId,
+					policyNumber,
+					customerId,
+					walletAddress,
+					policyReferenceHash,
+					metadataUri,
+					request.kycVerified(),
+					request.policyEligible(),
+					request.metadata()));
+		}
+		else if (isEthereumLive()) {
+			result = mintOnChain(policyId, policyReferenceHash, policyNumber, customerId, walletAddress, metadataUri);
+		}
+		else {
+			result = mintSimulated(policyId, policyReferenceHash, policyNumber, customerId, walletAddress, metadataUri);
+		}
 
 		saveRecord(result, policyNumber, customerId);
 		return result;

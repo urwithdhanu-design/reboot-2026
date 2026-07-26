@@ -7,6 +7,13 @@ $ErrorActionPreference = "Stop"
 . (Join-Path $PSScriptRoot "common.ps1")
 
 & (Join-Path $PSScriptRoot "api-target.ps1") -Target local
+
+$CantonScript = Join-Path $PSScriptRoot "..\start-canton.ps1"
+if (Test-Path $CantonScript) {
+  Write-Host "Starting Canton local sandbox ..."
+  & $CantonScript
+}
+
 & (Join-Path $PSScriptRoot "start-apis.ps1") -IncludePython:$IncludePython
 & (Join-Path $PSScriptRoot "start-ui.ps1")
 

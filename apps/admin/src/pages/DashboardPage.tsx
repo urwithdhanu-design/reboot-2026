@@ -1,16 +1,15 @@
 import { Link, useSearchParams } from 'react-router-dom';
 import {
-  Users, FileText, ShieldCheck, ClipboardList, PoundSterling, TrendingUp, Zap, Coins, Link2,
-  Flame, Snowflake, Activity, Layers, LayoutDashboard, BarChart3, GitBranch,
+  Users, FileText, ShieldCheck, ClipboardList, PoundSterling, TrendingUp, Coins, Link2,
+  Zap, Activity, Layers, LayoutDashboard, BarChart3, GitBranch, RefreshCw, AlertCircle,
 } from 'lucide-react';
 import {
   AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend,
 } from 'recharts';
 import { AdminLayout } from '../components/layout/AdminLayout';
-import { Card, StatCard, Badge, PageHeader, Button } from '../components/ui';
-import {
-  dashboardStats, workflowRuns, blockchainStats, tokenTypeConfigs, formatGBP, formatNumber, chartData,
-} from '../data/adminMockData';
+import { Card, StatCard, Badge, PageHeader, Button, AlertBanner } from '../components/ui';
+import { useDashboardData, type DashboardActivity } from '../hooks/useDashboardData';
+import { formatGBP, formatNumber, formatWhen } from '../utils/format';
 
 const PIE_COLORS = ['#00864f', '#016846', '#4caf82', '#b8e0cc', '#6b9e82', '#2d6a4f'];
 const TOKEN_COLORS = ['#00864f', '#016846', '#4caf82'];
@@ -24,28 +23,59 @@ const TABS = [
 
 type TabId = (typeof TABS)[number]['id'];
 
+function activityBadge(kind: DashboardActivity['kind']) {
+  if (kind === 'kyc') return 'info' as const;
+  if (kind === 'claim') return 'warning' as const;
+  if (kind === 'mint') return 'success' as const;
+  return 'neutral' as const;
+}
+
+function EmptyChart({ message }: { message: string }) {
+  return (
+    <div className="flex items-center justify-center h-[220px] text-sm text-lbg-gray-400 text-center px-6">
+      {message}
+    </div>
+  );
+}
+
 export function DashboardPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const tabParam = searchParams.get('tab') as TabId | null;
   const tab: TabId = tabParam && TABS.some((t) => t.id === tabParam) ? tabParam : 'overview';
-  const stats = dashboardStats;
+  const { loading, error, refreshedAt, metrics, refresh } = useDashboardData();
 
   const selectTab = (id: TabId) => setSearchParams({ tab: id });
+
+  const networkLabel = metrics?.blockchain?.ledger_type === 'canton'
+    ? (metrics.blockchain.live ? 'Canton live' : 'Canton sandbox')
+    : (metrics?.blockchain?.network_name ?? 'Blockchain');
 
   return (
     <AdminLayout>
       <PageHeader
         icon={LayoutDashboard}
         title="Operations dashboard"
-        subtitle="Real-time overview of Reboot 2026 enterprise operations"
+        subtitle="Live metrics from customers, policies, Canton minting, claims, and payments"
         metrics={[
-          { label: 'Customers', value: formatNumber(stats.totalCustomers) },
-          { label: 'Active policies', value: formatNumber(stats.activePolicies), tone: 'success' },
-          { label: 'Open claims', value: String(stats.openClaims), tone: 'warning' },
-          { label: 'Premium (MTD)', value: formatGBP(stats.monthlyPremium) },
+          { label: 'Customers', value: metrics ? formatNumber(metrics.customers.total) : '—' },
+          { label: 'Minted policies', value: metrics ? formatNumber(metrics.policies.minted) : '—', tone: 'success' },
+          { label: 'Open claims', value: metrics ? String(metrics.claims.open) : '—', tone: 'warning' },
+          { label: 'Premium (MTD)', value: metrics ? formatGBP(metrics.payments.mtdPremium) : '—' },
         ]}
-        actions={<Badge variant="success">Live · Updated just now</Badge>}
+        actions={
+          <div className="flex items-center gap-2">
+            <Badge variant={metrics?.blockchain?.live ? 'success' : 'neutral'}>
+              {refreshedAt ? `Updated ${formatWhen(refreshedAt.toISOString())}` : 'Loading…'}
+            </Badge>
+            <Button size="sm" variant="outline" onClick={() => void refresh()} disabled={loading}>
+              <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+              Refresh
+            </Button>
+          </div>
+        }
       />
+
+      {error ? <AlertBanner>{error}</AlertBanner> : null}
 
       <div className="flex gap-1 mb-6 p-1 bg-white rounded-xl border border-lbg-gray-100 shadow-sm overflow-x-auto">
         {TABS.map(({ id, label, icon: Icon }) => (
@@ -63,37 +93,44 @@ export function DashboardPage() {
         ))}
       </div>
 
-      {tab === 'overview' && <OverviewTab stats={stats} />}
-      {tab === 'financial' && <FinancialTab stats={stats} />}
-      {tab === 'tokenization' && <TokenizationTab stats={stats} />}
-      {tab === 'operations' && <OperationsTab stats={stats} />}
+      {loading && !metrics ? (
+        <Card className="p-12 text-center text-sm text-lbg-gray-500">Loading dashboard data…</Card>
+      ) : metrics ? (
+        <>
+          {tab === 'overview' && <OverviewTab metrics={metrics} networkLabel={networkLabel} />}
+          {tab === 'financial' && <FinancialTab metrics={metrics} />}
+          {tab === 'tokenization' && <TokenizationTab metrics={metrics} networkLabel={networkLabel} />}
+          {tab === 'operations' && <OperationsTab metrics={metrics} />}
+        </>
+      ) : null}
     </AdminLayout>
   );
 }
 
-function OverviewTab({ stats }: { stats: typeof dashboardStats }) {
+function OverviewTab({ metrics, networkLabel }: { metrics: NonNullable<ReturnType<typeof useDashboardData>['metrics']>; networkLabel: string }) {
   return (
     <>
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-6">
-        <StatCard label="Total Customers" value={formatNumber(stats.totalCustomers)} change="+4.2% this month" icon={Users} trend="up" />
-        <StatCard label="Active Policies" value={formatNumber(stats.activePolicies)} change="+2.8% this month" icon={FileText} trend="up" />
-        <StatCard label="Pending KYC" value={String(stats.pendingKYC)} change="4 awaiting review" icon={ShieldCheck} trend="neutral" />
-        <StatCard label="Open Claims" value={String(stats.openClaims)} change="5 manual queue" icon={ClipboardList} trend="neutral" />
+        <StatCard label="Total customers" value={formatNumber(metrics.customers.total)} change={`${metrics.customers.kycVerified} KYC verified`} icon={Users} trend="neutral" />
+        <StatCard label="Issued policies" value={formatNumber(metrics.policies.issued)} change={`${metrics.policies.minted} minted on ledger`} icon={FileText} trend="up" />
+        <StatCard label="KYC pending review" value={String(metrics.customers.pendingReview)} change={`${metrics.customers.kycInProgress} in progress`} icon={ShieldCheck} trend="neutral" />
+        <StatCard label="Open claims" value={String(metrics.claims.open)} change={`${metrics.claims.settled} settled`} icon={ClipboardList} trend="neutral" />
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-6">
-        <StatCard label="Monthly Premium" value={formatGBP(stats.monthlyPremium)} change="+6.1% vs last month" icon={PoundSterling} trend="up" />
-        <StatCard label="Tokenization Rate" value={`${stats.tokenizationRate}%`} change={`${formatNumber(stats.tokenizedPolicies)} on-chain`} icon={Layers} trend="up" />
-        <StatCard label="On-Chain Claims" value={formatNumber(stats.onChainClaims)} change="ERC-1155 vouchers" icon={Link2} trend="up" />
-        <StatCard label="Automation Rate" value={`${stats.automationRate}%`} change="Workflow efficiency" icon={Zap} trend="up" />
+        <StatCard label="Premium collected" value={formatGBP(metrics.payments.totalPremium)} change={`${metrics.payments.paidCount} payments`} icon={PoundSterling} trend="up" />
+        <StatCard label="Tokenization rate" value={`${metrics.policies.tokenizationRate}%`} change={`${formatNumber(metrics.policies.minted)} / ${formatNumber(metrics.policies.issued)} issued`} icon={Layers} trend="up" />
+        <StatCard label="Claims paid out" value={formatGBP(metrics.claims.totalPaidOut)} change={`${metrics.claims.settled} settled claims`} icon={Link2} trend="neutral" />
+        <StatCard label="Quotes in system" value={formatNumber(metrics.policies.totalQuotes)} change="From policy-service" icon={Zap} trend="neutral" />
       </div>
 
       <Card className="mb-6 border-lbg-green/20 bg-lbg-green-light/20">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <div>
-            <p className="font-bold text-lbg-black">GCUL L2</p>
+            <p className="font-bold text-lbg-black">{networkLabel}</p>
             <p className="text-sm text-lbg-gray-400">
-              Block #{formatNumber(blockchainStats.blockHeight)} · {blockchainStats.networkHealth}% uptime · {blockchainStats.dailyOnChainTx.toLocaleString()} tx today
+              {metrics.blockchain?.mode ?? 'offline'} · {metrics.tokenization?.policy_nfts ?? 0} policy certificates minted
+              {metrics.observability ? ` · ${metrics.observability.dashboard.transactions_24h} chain tx (24h)` : ''}
             </p>
           </div>
           <div className="flex gap-2">
@@ -107,33 +144,36 @@ function OverviewTab({ stats }: { stats: typeof dashboardStats }) {
         <Link to="/kyc">
           <Card className="hover:border-lbg-green/30 transition-colors cursor-pointer h-full">
             <ShieldCheck className="w-8 h-8 text-lbg-green mb-3" />
-            <p className="font-bold">KYC Review Queue</p>
-            <p className="text-2xl font-bold text-lbg-green mt-1">{stats.pendingKYC}</p>
-            <p className="text-xs text-lbg-gray-400 mt-1">Applications pending review</p>
+            <p className="font-bold">KYC review queue</p>
+            <p className="text-2xl font-bold text-lbg-green mt-1">{metrics.customers.pendingReview}</p>
+            <p className="text-xs text-lbg-gray-400 mt-1">Applications awaiting review</p>
           </Card>
         </Link>
         <Link to="/claims">
           <Card className="hover:border-lbg-green/30 transition-colors cursor-pointer h-full">
             <ClipboardList className="w-8 h-8 text-amber-600 mb-3" />
-            <p className="font-bold">Claims Queue</p>
-            <p className="text-2xl font-bold text-amber-600 mt-1">{stats.openClaims}</p>
+            <p className="font-bold">Claims queue</p>
+            <p className="text-2xl font-bold text-amber-600 mt-1">{metrics.claims.open}</p>
             <p className="text-xs text-lbg-gray-400 mt-1">Open claims requiring action</p>
           </Card>
         </Link>
         <Link to="/tokenization">
           <Card className="hover:border-lbg-green/30 transition-colors cursor-pointer h-full">
             <Coins className="w-8 h-8 text-lbg-green mb-3" />
-            <p className="font-bold">Tokenization</p>
-            <p className="text-2xl font-bold text-lbg-green mt-1">{blockchainStats.pendingMints}</p>
-            <p className="text-xs text-lbg-gray-400 mt-1">Pending policy token mints</p>
+            <p className="font-bold">Mint queue</p>
+            <p className="text-2xl font-bold text-lbg-green mt-1">{metrics.tokenization?.pending_mints ?? 0}</p>
+            <p className="text-xs text-lbg-gray-400 mt-1">
+              {metrics.tokenization?.failed_mints ? `${metrics.tokenization.failed_mints} failed · ` : ''}
+              pending Canton mints
+            </p>
           </Card>
         </Link>
-        <Link to="/workflows">
+        <Link to="/policies">
           <Card className="hover:border-lbg-green/30 transition-colors cursor-pointer h-full">
-            <GitBranch className="w-8 h-8 text-purple-600 mb-3" />
-            <p className="font-bold">Active Workflows</p>
-            <p className="text-2xl font-bold text-purple-600 mt-1">{workflowRuns.filter((r) => r.status !== 'completed').length}</p>
-            <p className="text-xs text-lbg-gray-400 mt-1">Runs in progress</p>
+            <FileText className="w-8 h-8 text-purple-600 mb-3" />
+            <p className="font-bold">Policy registry</p>
+            <p className="text-2xl font-bold text-purple-600 mt-1">{metrics.policies.issued}</p>
+            <p className="text-xs text-lbg-gray-400 mt-1">{metrics.policies.active} active in system</p>
           </Card>
         </Link>
       </div>
@@ -141,77 +181,117 @@ function OverviewTab({ stats }: { stats: typeof dashboardStats }) {
   );
 }
 
-function FinancialTab({ stats }: { stats: typeof dashboardStats }) {
+function FinancialTab({ metrics }: { metrics: NonNullable<ReturnType<typeof useDashboardData>['metrics']> }) {
+  const premiumData = metrics.charts.premiumsByMonth.length > 0
+    ? metrics.charts.premiumsByMonth
+    : [{ month: 'Now', value: metrics.payments.totalPremium }];
+
   return (
     <>
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
-        <StatCard label="Monthly Premium" value={formatGBP(stats.monthlyPremium)} change="+6.1% vs last month" icon={PoundSterling} trend="up" />
-        <StatCard label="Claim Payouts" value={formatGBP(stats.claimPayouts)} change="-3.2% vs last month" icon={TrendingUp} trend="down" />
-        <StatCard label="Wallet Volume" value={formatGBP(stats.walletVolume)} change="+12% this quarter" icon={Coins} trend="up" />
+        <StatCard label="Premium (MTD)" value={formatGBP(metrics.payments.mtdPremium)} change={`${metrics.payments.paidCount} paid records`} icon={PoundSterling} trend="up" />
+        <StatCard label="Claim payouts" value={formatGBP(metrics.claims.totalPaidOut)} change={`${metrics.claims.settled} settled`} icon={TrendingUp} trend="neutral" />
+        <StatCard label="Total claimed" value={formatGBP(metrics.claims.totalClaimed)} change={`${metrics.claims.total} claims filed`} icon={Coins} trend="neutral" />
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 mb-6">
         <Card className="xl:col-span-2">
-          <h3 className="font-bold text-lbg-black mb-4">Premium Revenue</h3>
-          <ResponsiveContainer width="100%" height={280}>
-            <AreaChart data={chartData.premiums}>
-              <defs>
-                <linearGradient id="greenGrad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#00864f" stopOpacity={0.3} />
-                  <stop offset="95%" stopColor="#00864f" stopOpacity={0} />
-                </linearGradient>
-              </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="#eef0f0" />
-              <XAxis dataKey="month" tick={{ fontSize: 12 }} stroke="#8a9290" />
-              <YAxis tick={{ fontSize: 12 }} stroke="#8a9290" tickFormatter={(v) => `£${(Number(v) / 1000000).toFixed(1)}M`} />
-              <Tooltip formatter={(v) => formatGBP(Number(v))} />
-              <Area type="monotone" dataKey="value" stroke="#00864f" strokeWidth={2} fill="url(#greenGrad)" />
-            </AreaChart>
-          </ResponsiveContainer>
+          <h3 className="font-bold text-lbg-black mb-4">Premium payments</h3>
+          {premiumData.length > 0 ? (
+            <ResponsiveContainer width="100%" height={280}>
+              <AreaChart data={premiumData}>
+                <defs>
+                  <linearGradient id="greenGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#00864f" stopOpacity={0.3} />
+                    <stop offset="95%" stopColor="#00864f" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke="#eef0f0" />
+                <XAxis dataKey="month" tick={{ fontSize: 12 }} stroke="#8a9290" />
+                <YAxis tick={{ fontSize: 12 }} stroke="#8a9290" tickFormatter={(v) => `£${Number(v).toLocaleString()}`} />
+                <Tooltip formatter={(v) => formatGBP(Number(v))} />
+                <Area type="monotone" dataKey="value" stroke="#00864f" strokeWidth={2} fill="url(#greenGrad)" />
+              </AreaChart>
+            </ResponsiveContainer>
+          ) : (
+            <EmptyChart message="No premium payments recorded yet." />
+          )}
         </Card>
 
         <Card>
-          <h3 className="font-bold text-lbg-black mb-4">Policies by Category</h3>
-          <ResponsiveContainer width="100%" height={220}>
-            <PieChart>
-              <Pie data={chartData.policiesByCategory} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={50} outerRadius={80} paddingAngle={2}>
-                {chartData.policiesByCategory.map((_, i) => (
-                  <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />
+          <h3 className="font-bold text-lbg-black mb-4">Policies by category</h3>
+          {metrics.charts.policiesByCategory.length > 0 ? (
+            <>
+              <ResponsiveContainer width="100%" height={220}>
+                <PieChart>
+                  <Pie data={metrics.charts.policiesByCategory} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={50} outerRadius={80} paddingAngle={2}>
+                    {metrics.charts.policiesByCategory.map((_, i) => (
+                      <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip formatter={(v) => formatNumber(Number(v))} />
+                </PieChart>
+              </ResponsiveContainer>
+              <div className="grid grid-cols-2 gap-1 mt-2">
+                {metrics.charts.policiesByCategory.map((c, i) => (
+                  <div key={c.name} className="flex items-center gap-1.5 text-xs text-lbg-gray-600">
+                    <span className="w-2 h-2 rounded-full shrink-0" style={{ background: PIE_COLORS[i] }} />
+                    {c.name} ({c.value})
+                  </div>
                 ))}
-              </Pie>
-              <Tooltip formatter={(v) => formatNumber(Number(v))} />
-            </PieChart>
-          </ResponsiveContainer>
-          <div className="grid grid-cols-2 gap-1 mt-2">
-            {chartData.policiesByCategory.map((c, i) => (
-              <div key={c.name} className="flex items-center gap-1.5 text-xs text-lbg-gray-600">
-                <span className="w-2 h-2 rounded-full shrink-0" style={{ background: PIE_COLORS[i] }} />
-                {c.name}
               </div>
-            ))}
-          </div>
+            </>
+          ) : (
+            <EmptyChart message="No issued policies with categories yet." />
+          )}
         </Card>
       </div>
 
+      <Card className="mb-6">
+        <h3 className="font-bold text-lbg-black mb-4">Recent payments</h3>
+        {metrics.recentPayments.length === 0 ? (
+          <p className="text-sm text-lbg-gray-400">No paid premiums in the ledger.</p>
+        ) : (
+          <div className="space-y-2">
+            {metrics.recentPayments.map((p) => (
+              <div key={p.id} className="flex items-center justify-between py-2 border-b border-lbg-gray-50 last:border-0">
+                <div>
+                  <p className="text-sm font-semibold">{p.policy_ref || p.quote_id}</p>
+                  <p className="text-xs text-lbg-gray-400">{p.customer_email} · {formatWhen(p.created_at)}</p>
+                </div>
+                <p className="font-bold text-lbg-green">{formatGBP(Number(p.amount))}</p>
+              </div>
+            ))}
+          </div>
+        )}
+      </Card>
+
       <Card>
-        <h3 className="font-bold text-lbg-black mb-4">Claims: Automated vs Manual</h3>
-        <ResponsiveContainer width="100%" height={260}>
-          <BarChart data={chartData.claims}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#eef0f0" />
-            <XAxis dataKey="month" tick={{ fontSize: 12 }} stroke="#8a9290" />
-            <YAxis tick={{ fontSize: 12 }} stroke="#8a9290" />
-            <Tooltip />
-            <Legend />
-            <Bar dataKey="automated" name="Automated (on-chain)" fill="#00864f" radius={[4, 4, 0, 0]} />
-            <Bar dataKey="manual" name="Manual review" fill="#b8e0cc" radius={[4, 4, 0, 0]} />
-          </BarChart>
-        </ResponsiveContainer>
+        <h3 className="font-bold text-lbg-black mb-4">Claims: parametric vs manual</h3>
+        {metrics.charts.claimsByMonth.length > 0 ? (
+          <ResponsiveContainer width="100%" height={260}>
+            <BarChart data={metrics.charts.claimsByMonth}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#eef0f0" />
+              <XAxis dataKey="month" tick={{ fontSize: 12 }} stroke="#8a9290" />
+              <YAxis tick={{ fontSize: 12 }} stroke="#8a9290" allowDecimals={false} />
+              <Tooltip />
+              <Legend />
+              <Bar dataKey="automated" name="Parametric" fill="#00864f" radius={[4, 4, 0, 0]} />
+              <Bar dataKey="manual" name="Manual" fill="#b8e0cc" radius={[4, 4, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        ) : (
+          <EmptyChart message="No claims submitted yet." />
+        )}
       </Card>
     </>
   );
 }
 
-function TokenizationTab({ stats }: { stats: typeof dashboardStats }) {
+function TokenizationTab({ metrics, networkLabel }: { metrics: NonNullable<ReturnType<typeof useDashboardData>['metrics']>; networkLabel: string }) {
+  const bc = metrics.blockchain;
+  const stdData = metrics.standards.map((s) => ({ name: s.standard, value: s.circulating }));
+
   return (
     <>
       <Card className="mb-6 border-lbg-green/20 overflow-hidden">
@@ -220,170 +300,170 @@ function TokenizationTab({ stats }: { stats: typeof dashboardStats }) {
             <div>
               <div className="flex items-center gap-2">
                 <Coins className="w-5 h-5" />
-                <h3 className="font-bold text-lg">Blockchain Network</h3>
+                <h3 className="font-bold text-lg">{networkLabel}</h3>
+                {bc?.live ? <Badge variant="success">Live</Badge> : <Badge variant="warning">Offline</Badge>}
               </div>
               <p className="text-sm text-white/80 mt-1">
-                {blockchainStats.networkName} · Chain {blockchainStats.chainId} · Block #{formatNumber(blockchainStats.blockHeight)}
+                {bc?.network_name ?? 'Not configured'} · mode {bc?.mode ?? '—'} · template {bc?.contract_address ? 'configured' : 'not set'}
               </p>
             </div>
             <div className="flex gap-2">
               <Link to="/tokenization" className="text-sm bg-white/15 hover:bg-white/25 px-4 py-2 rounded-lg font-semibold">Manage →</Link>
-              <Link to="/contracts" className="text-sm bg-white/15 hover:bg-white/25 px-4 py-2 rounded-lg font-semibold">Contracts →</Link>
             </div>
           </div>
         </div>
 
         <div className="p-5 bg-gradient-to-b from-lbg-green-light/30 to-white">
           <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-3 mb-5">
-            <StatCard label="Tokenization Rate" value={`${stats.tokenizationRate}%`} change={`${formatNumber(stats.tokenizedPolicies)} policies`} icon={Layers} trend="up" />
-            <StatCard label="Policy NFTs" value={formatNumber(blockchainStats.policyNFTs)} change="ERC-721" icon={Coins} trend="up" />
-            <StatCard label="Premium Tokens" value={formatNumber(stats.premiumTokensCirculating)} change="LBGP" icon={Coins} trend="up" />
-            <StatCard label="Claim Vouchers" value={formatNumber(stats.claimVouchersActive)} change="ERC-1155" icon={Link2} trend="neutral" />
-            <StatCard label="Minted MTD" value={formatNumber(stats.tokensMintedMTD)} change={`${stats.tokensBurnedMTD} burned`} icon={Activity} trend="up" />
-            <StatCard label="Pending Mints" value={String(blockchainStats.pendingMints)} change={blockchainStats.avgConfirmationTime} icon={Zap} trend="neutral" />
-          </div>
-
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
-            {[
-              { label: 'On-Chain Claims', value: formatNumber(stats.onChainClaims), icon: Link2 },
-              { label: 'Daily Tx', value: formatNumber(blockchainStats.dailyOnChainTx), icon: Activity },
-              { label: 'Gas Today', value: blockchainStats.gasSpentToday, icon: Flame },
-              { label: 'Frozen Tokens', value: String(stats.frozenTokens), icon: Snowflake },
-            ].map(({ label, value, icon: Icon }) => (
-              <div key={label} className="flex items-center gap-3 bg-white rounded-xl border border-lbg-gray-100 px-4 py-3">
-                <div className="w-9 h-9 rounded-lg bg-lbg-green-light flex items-center justify-center shrink-0">
-                  <Icon className="w-4 h-4 text-lbg-green" />
-                </div>
-                <div>
-                  <p className="text-[10px] text-lbg-gray-400 uppercase font-medium">{label}</p>
-                  <p className="text-sm font-bold">{value}</p>
-                </div>
-              </div>
-            ))}
+            <StatCard label="Tokenization rate" value={`${metrics.policies.tokenizationRate}%`} change={`${metrics.policies.minted} minted`} icon={Layers} trend="up" />
+            <StatCard label="Policy NFTs" value={formatNumber(metrics.tokenization?.policy_nfts ?? 0)} change={metrics.standards[0]?.standard ?? 'Daml/Canton'} icon={Coins} trend="up" />
+            <StatCard label="Issued total" value={formatNumber(metrics.tokenization?.total_issued ?? 0)} change="All policies" icon={FileText} trend="neutral" />
+            <StatCard label="Pending mints" value={String(metrics.tokenization?.pending_mints ?? 0)} change={`${metrics.tokenization?.pending_wallet ?? 0} awaiting wallet`} icon={Zap} trend="neutral" />
+            <StatCard label="Failed mints" value={String(metrics.tokenization?.failed_mints ?? 0)} change="Needs retry" icon={AlertCircle} trend="down" />
+            <StatCard label="Chain tx (24h)" value={formatNumber(metrics.observability?.dashboard.transactions_24h ?? 0)} change="GCUL PoA chain" icon={Activity} trend="neutral" />
           </div>
 
           <div className="mb-4">
             <div className="flex items-center justify-between mb-2">
-              <p className="text-sm font-semibold">Policy Tokenization Coverage</p>
-              <p className="text-sm font-bold text-lbg-green">{stats.tokenizationRate}%</p>
+              <p className="text-sm font-semibold">Policy tokenization coverage</p>
+              <p className="text-sm font-bold text-lbg-green">{metrics.policies.tokenizationRate}%</p>
             </div>
             <div className="h-2.5 bg-lbg-gray-100 rounded-full overflow-hidden">
-              <div className="h-full bg-gradient-to-r from-lbg-green to-lbg-green-dark rounded-full" style={{ width: `${stats.tokenizationRate}%` }} />
+              <div className="h-full bg-gradient-to-r from-lbg-green to-lbg-green-dark rounded-full transition-all" style={{ width: `${Math.min(100, metrics.policies.tokenizationRate)}%` }} />
             </div>
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-            {tokenTypeConfigs.map((tc) => (
+            {metrics.standards.length > 0 ? metrics.standards.map((tc) => (
               <div key={tc.standard} className="bg-white rounded-xl border border-lbg-gray-100 p-4">
                 <div className="flex items-center justify-between mb-2">
                   <Badge variant="info">{tc.standard}</Badge>
                   <span className="text-xs font-mono text-lbg-gray-400">{tc.symbol}</span>
                 </div>
                 <p className="font-semibold text-sm">{tc.name}</p>
+                <p className="text-xs text-lbg-gray-400 mt-1 line-clamp-2">{tc.description}</p>
                 <div className="flex justify-between mt-3 text-xs">
-                  <div><p className="text-lbg-gray-400">Supply</p><p className="font-bold">{formatNumber(tc.totalSupply)}</p></div>
+                  <div><p className="text-lbg-gray-400">Supply</p><p className="font-bold">{formatNumber(tc.total_supply)}</p></div>
                   <div className="text-right"><p className="text-lbg-gray-400">Circulating</p><p className="font-bold text-lbg-green">{formatNumber(tc.circulating)}</p></div>
                 </div>
               </div>
-            ))}
+            )) : (
+              <p className="text-sm text-lbg-gray-400 col-span-3">No token standards configured.</p>
+            )}
           </div>
         </div>
       </Card>
 
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 mb-6">
         <Card className="xl:col-span-2">
-          <h3 className="font-bold mb-4">Token Minting vs Burn</h3>
-          <ResponsiveContainer width="100%" height={240}>
-            <BarChart data={chartData.tokenization}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#eef0f0" />
-              <XAxis dataKey="month" tick={{ fontSize: 12 }} />
-              <YAxis tick={{ fontSize: 12 }} />
-              <Tooltip /><Legend />
-              <Bar dataKey="minted" name="Minted" fill="#00864f" radius={[4, 4, 0, 0]} />
-              <Bar dataKey="burned" name="Burned" fill="#d9dddc" radius={[4, 4, 0, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
+          <h3 className="font-bold mb-4">Policy mints over time</h3>
+          {metrics.charts.mintsByMonth.length > 0 ? (
+            <ResponsiveContainer width="100%" height={240}>
+              <BarChart data={metrics.charts.mintsByMonth}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#eef0f0" />
+                <XAxis dataKey="month" tick={{ fontSize: 12 }} />
+                <YAxis tick={{ fontSize: 12 }} allowDecimals={false} />
+                <Tooltip />
+                <Bar dataKey="minted" name="Minted" fill="#00864f" radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          ) : (
+            <EmptyChart message="No minted policy certificates yet." />
+          )}
         </Card>
         <Card>
-          <h3 className="font-bold mb-4">Tokens by Standard</h3>
-          <ResponsiveContainer width="100%" height={200}>
-            <PieChart>
-              <Pie data={chartData.tokensByStandard} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={50} outerRadius={75} paddingAngle={2}>
-                {chartData.tokensByStandard.map((_, i) => (
-                  <Cell key={i} fill={TOKEN_COLORS[i % TOKEN_COLORS.length]} />
-                ))}
-              </Pie>
-              <Tooltip formatter={(v) => formatNumber(Number(v))} />
-            </PieChart>
-          </ResponsiveContainer>
+          <h3 className="font-bold mb-4">Tokens by standard</h3>
+          {stdData.length > 0 && stdData.some((d) => d.value > 0) ? (
+            <ResponsiveContainer width="100%" height={200}>
+              <PieChart>
+                <Pie data={stdData} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={50} outerRadius={75} paddingAngle={2}>
+                  {stdData.map((_, i) => (
+                    <Cell key={i} fill={TOKEN_COLORS[i % TOKEN_COLORS.length]} />
+                  ))}
+                </Pie>
+                <Tooltip formatter={(v) => formatNumber(Number(v))} />
+              </PieChart>
+            </ResponsiveContainer>
+          ) : (
+            <EmptyChart message="Mint policies to populate this chart." />
+          )}
         </Card>
       </div>
 
       <Card>
         <div className="flex items-center justify-between mb-4">
-          <h3 className="font-bold">On-Chain Activity</h3>
-          <Link to="/blockchain" className="text-xs text-lbg-green font-semibold hover:underline">View ledger →</Link>
+          <h3 className="font-bold">Minted policy registry (recent)</h3>
+          <Link to="/tokenization" className="text-xs text-lbg-green font-semibold hover:underline">View all →</Link>
         </div>
-        <ResponsiveContainer width="100%" height={220}>
-          <AreaChart data={chartData.onChainActivity}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#eef0f0" />
-            <XAxis dataKey="month" tick={{ fontSize: 12 }} />
-            <YAxis tick={{ fontSize: 12 }} />
-            <Tooltip /><Legend />
-            <Area type="monotone" dataKey="mints" name="Policy Mints" stroke="#00864f" fill="#00864f33" strokeWidth={2} />
-            <Area type="monotone" dataKey="payouts" name="Claim Payouts" stroke="#016846" fill="#01684622" strokeWidth={2} />
-            <Area type="monotone" dataKey="transfers" name="Transfers" stroke="#4caf82" fill="none" strokeWidth={2} strokeDasharray="4 4" />
-          </AreaChart>
-        </ResponsiveContainer>
+        {metrics.registry.length === 0 ? (
+          <p className="text-sm text-lbg-gray-400">No minted policies in the registry.</p>
+        ) : (
+          <div className="space-y-2">
+            {metrics.registry.slice(0, 8).map((row) => (
+              <div key={row.id} className="flex items-center justify-between py-2 border-b border-lbg-gray-50 last:border-0">
+                <div>
+                  <p className="text-sm font-semibold">{row.policy_number}</p>
+                  <p className="text-xs text-lbg-gray-400">{row.owner} · {row.standard}</p>
+                </div>
+                <div className="text-right">
+                  <Badge variant="success">{row.status}</Badge>
+                  {row.token_id ? <p className="text-[10px] font-mono text-lbg-gray-400 mt-1">{row.token_id}</p> : null}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </Card>
     </>
   );
 }
 
-function OperationsTab({ stats }: { stats: typeof dashboardStats }) {
+function OperationsTab({ metrics }: { metrics: NonNullable<ReturnType<typeof useDashboardData>['metrics']> }) {
   return (
     <>
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-6">
-        <StatCard label="Open Claims" value={String(stats.openClaims)} change="5 manual queue" icon={ClipboardList} trend="neutral" />
-        <StatCard label="Pending KYC" value={String(stats.pendingKYC)} change="Compliance review" icon={ShieldCheck} trend="neutral" />
-        <StatCard label="Automation Rate" value={`${stats.automationRate}%`} change="Workflow efficiency" icon={Zap} trend="up" />
-        <StatCard label="Active Workflow Runs" value={String(workflowRuns.filter((r) => r.status !== 'completed').length)} change="In progress" icon={GitBranch} trend="neutral" />
+        <StatCard label="Open claims" value={String(metrics.claims.open)} change={`${metrics.claims.rejected} rejected`} icon={ClipboardList} trend="neutral" />
+        <StatCard label="KYC pending" value={String(metrics.customers.pendingReview)} change={`${metrics.customers.kycNotStarted} not started`} icon={ShieldCheck} trend="neutral" />
+        <StatCard label="Mint queue" value={String(metrics.tokenization?.pending_mints ?? 0)} change={`${metrics.tokenization?.failed_mints ?? 0} failed`} icon={Coins} trend="neutral" />
+        <StatCard label="Chain height" value={formatNumber(metrics.observability?.dashboard.block_height ?? metrics.observability?.network.block_height ?? 0)} change={metrics.observability?.dashboard.chain_valid ? 'Chain valid' : 'Unverified'} icon={GitBranch} trend="neutral" />
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 mb-6">
         <Card>
           <div className="flex items-center justify-between mb-4">
-            <h3 className="font-bold">Active Workflow Runs</h3>
-            <Link to="/workflows" className="text-xs text-lbg-green font-semibold hover:underline">View all →</Link>
+            <h3 className="font-bold">Recent platform activity</h3>
           </div>
-          <div className="space-y-3">
-            {workflowRuns.map((run) => (
-              <div key={run.id} className="flex items-center gap-3 p-3 rounded-lg bg-lbg-gray-50">
-                <div className={`w-2 h-2 rounded-full shrink-0 ${
-                  run.status === 'running' ? 'bg-blue-500 animate-pulse' :
-                  run.status === 'awaiting_review' ? 'bg-amber-500' :
-                  run.status === 'completed' ? 'bg-lbg-green' : 'bg-red-500'
-                }`} />
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold truncate">{run.workflowName}</p>
-                  <p className="text-xs text-lbg-gray-400">{run.customerName} · {run.currentStep}</p>
+          {metrics.recentActivity.length === 0 ? (
+            <p className="text-sm text-lbg-gray-400">No recent KYC, claims, mints, or payments.</p>
+          ) : (
+            <div className="space-y-3">
+              {metrics.recentActivity.map((run) => (
+                <div key={run.id} className="flex items-center gap-3 p-3 rounded-lg bg-lbg-gray-50">
+                  <div className={`w-2 h-2 rounded-full shrink-0 ${
+                    run.kind === 'claim' ? 'bg-amber-500' :
+                    run.kind === 'mint' ? 'bg-lbg-green' :
+                    run.kind === 'kyc' ? 'bg-blue-500' : 'bg-purple-500'
+                  }`} />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold truncate">{run.title}</p>
+                    <p className="text-xs text-lbg-gray-400 truncate">{run.subtitle}</p>
+                    {run.at ? <p className="text-[10px] text-lbg-gray-400">{formatWhen(run.at)}</p> : null}
+                  </div>
+                  <Badge variant={activityBadge(run.kind)}>{run.status.replace(/_/g, ' ')}</Badge>
                 </div>
-                <Badge variant={run.type === 'automated' ? 'success' : run.type === 'manual' ? 'warning' : 'purple'}>
-                  {run.type}
-                </Badge>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </Card>
 
         <Card>
-          <h3 className="font-bold mb-4">Operational Queues</h3>
+          <h3 className="font-bold mb-4">Operational queues</h3>
           <div className="space-y-3">
             {[
-              { label: 'KYC Review', count: stats.pendingKYC, to: '/kyc', color: 'text-lbg-green' },
-              { label: 'Claims Processing', count: stats.openClaims, to: '/claims', color: 'text-amber-600' },
-              { label: 'Token Mint Queue', count: blockchainStats.pendingMints, to: '/tokenization', color: 'text-lbg-green' },
-              { label: 'Manual Workflows', count: workflowRuns.filter((r) => r.type === 'manual' && r.status === 'awaiting_review').length, to: '/workflows', color: 'text-purple-600' },
+              { label: 'KYC review', count: metrics.customers.pendingReview, to: '/kyc', color: 'text-lbg-green' },
+              { label: 'Claims processing', count: metrics.claims.open, to: '/claims', color: 'text-amber-600' },
+              { label: 'Mint queue', count: metrics.tokenization?.pending_mints ?? 0, to: '/tokenization', color: 'text-lbg-green' },
+              { label: 'Failed mints', count: metrics.tokenization?.failed_mints ?? 0, to: '/tokenization', color: 'text-red-600' },
             ].map(({ label, count, to, color }) => (
               <Link key={label} to={to} className="flex items-center justify-between p-4 rounded-xl border border-lbg-gray-100 hover:border-lbg-green/30 transition-colors">
                 <span className="font-semibold text-sm">{label}</span>
@@ -393,6 +473,30 @@ function OperationsTab({ stats }: { stats: typeof dashboardStats }) {
           </div>
         </Card>
       </div>
+
+      <Card>
+        <h3 className="font-bold mb-4">Recent claims</h3>
+        {metrics.recentClaims.length === 0 ? (
+          <p className="text-sm text-lbg-gray-400">No claims filed yet.</p>
+        ) : (
+          <div className="space-y-2">
+            {metrics.recentClaims.map((c) => (
+              <div key={c.id} className="flex items-center justify-between py-2 border-b border-lbg-gray-50 last:border-0">
+                <div>
+                  <p className="text-sm font-semibold font-mono">{c.id}</p>
+                  <p className="text-xs text-lbg-gray-400">{c.policy_ref} · {c.customer_name}</p>
+                </div>
+                <div className="text-right">
+                  <Badge variant={c.status === 'settled' || c.status === 'paid_out' ? 'success' : c.status === 'rejected' ? 'error' : 'warning'}>
+                    {c.status.replace(/_/g, ' ')}
+                  </Badge>
+                  <p className="text-xs font-bold mt-1">{formatGBP(Number(c.amount_claimed))}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </Card>
     </>
   );
 }

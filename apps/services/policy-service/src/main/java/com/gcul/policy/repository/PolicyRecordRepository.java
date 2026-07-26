@@ -16,6 +16,8 @@ public interface PolicyRecordRepository extends JpaRepository<PolicyRecord, Stri
 
 	List<PolicyRecord> findByCustomerEmailOrderByIssuedAtDesc(String customerEmail);
 
+	List<PolicyRecord> findByWalletAddressIgnoreCaseOrderByIssuedAtDesc(String walletAddress);
+
 	List<PolicyRecord> findByMintStatusOrderByIssuedAtAsc(String mintStatus);
 
 	List<PolicyRecord> findByMintStatusInOrderByIssuedAtAsc(Collection<String> mintStatuses);

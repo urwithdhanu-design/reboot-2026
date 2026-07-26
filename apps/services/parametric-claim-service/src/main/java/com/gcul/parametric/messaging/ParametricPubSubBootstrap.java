@@ -9,6 +9,7 @@ import org.springframework.stereotype.Component;
 import com.gcul.messaging.EventTopics;
 import com.gcul.messaging.GculEventSubscriber;
 import com.gcul.messaging.GculEventSubscriberGroup;
+import com.gcul.messaging.LocalEventBus;
 import com.gcul.messaging.PubSubNames;
 import com.gcul.messaging.spring.GculPubSubProperties;
 
@@ -16,16 +17,20 @@ import com.gcul.messaging.spring.GculPubSubProperties;
 public class ParametricPubSubBootstrap implements ApplicationRunner, AutoCloseable {
 
 	private final GculPubSubProperties properties;
-	private final ClaimFraudScreeningHandler handler;
+	private final ClaimInitiatedHandler handler;
 	private final GculEventSubscriberGroup group = new GculEventSubscriberGroup();
 
-	public ParametricPubSubBootstrap(GculPubSubProperties properties, ClaimFraudScreeningHandler handler) {
+	public ParametricPubSubBootstrap(GculPubSubProperties properties, ClaimInitiatedHandler handler) {
 		this.properties = properties;
 		this.handler = handler;
 	}
 
 	@Override
 	public void run(ApplicationArguments args) throws Exception {
+		if (!properties.isEnabled()) {
+			LocalEventBus.register(EventTopics.CLAIM, handler::handle);
+			return;
+		}
 		GculEventSubscriber subscriber = new GculEventSubscriber(properties.isEnabled(), properties.getProjectId());
 		String subId = PubSubNames.subscriptionId(
 				properties.getTopicPrefix(), EventTopics.CLAIM, properties.getServiceId());

@@ -1,0 +1,12 @@
+sdk-version: 2.9.3
+name: gcul-policy
+source: daml
+version: 0.1.0
+dependencies:
+  - daml-prim
+  - daml-stdlib
+  - daml-script
+exposed-modules:
+  - Gcul.InsurancePolicy
+  - Gcul.Setup
+init-script: Gcul.Setup:initialize

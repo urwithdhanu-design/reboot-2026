@@ -233,11 +233,32 @@ public class StripePaymentService {
 		payload.put("amount", amountTotal);
 		payload.put("currency", currency);
 		payload.put("paymentStatus", "paid");
-		payload.put("customerId", quoteId);
 		payload.put("mode", isDemoSession(sessionId) ? "demo" : "stripe");
 		payload.put("paymentMethod", isDemoSession(sessionId) ? "demo" : "stripe");
+		try {
+			Map<String, Object> quote = quotes.getQuote(quoteId);
+			String email = extractEmailFromQuote(quote);
+			if (!email.isBlank()) {
+				payload.put("customerEmail", email);
+				payload.put("customerId", email);
+			}
+		}
+		catch (Exception ignored) {
+			// quote may have expired; issuance will still attempt lookup
+		}
 		String provider = isDemoSession(sessionId) ? "demo" : "stripe";
 		premiumPayments.completePremiumPayment(payload, provider);
+	}
+
+	private static String extractEmailFromQuote(Map<String, Object> quote) {
+		Object answersObj = quote.get("answers");
+		if (answersObj instanceof Map<?, ?> answers) {
+			Object raw = answers.get("email");
+			if (raw != null && !String.valueOf(raw).isBlank()) {
+				return String.valueOf(raw).trim();
+			}
+		}
+		return "";
 	}
 
 	private static boolean isDemoSession(String sessionId) {

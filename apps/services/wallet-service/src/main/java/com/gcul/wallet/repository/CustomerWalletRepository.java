@@ -11,4 +11,6 @@ public interface CustomerWalletRepository extends JpaRepository<CustomerWallet, 
 	Optional<CustomerWallet> findByUserId(String userId);
 
 	Optional<CustomerWallet> findByUserEmailIgnoreCase(String userEmail);
+
+	Optional<CustomerWallet> findByAddressIgnoreCase(String address);
 }

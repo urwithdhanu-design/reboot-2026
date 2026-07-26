@@ -33,6 +33,7 @@ if /i "%CMD%"=="ui" goto ui
 if /i "%CMD%"=="status" goto status
 if /i "%CMD%"=="stop" goto stop
 if /i "%CMD%"=="target" goto target
+if /i "%CMD%"=="canton" goto canton
 echo Unknown command: %CMD%
 goto help
 
@@ -79,4 +80,16 @@ if "%TARGET%"=="" (
   exit /b 1
 )
 powershell -NoProfile -ExecutionPolicy Bypass -File "%LIB%\api-target.ps1" -Target %TARGET%
+exit /b %ERRORLEVEL%
+
+:canton
+if /i "%~1"=="stop" (
+  powershell -NoProfile -ExecutionPolicy Bypass -File "%SCRIPT_DIR%local\start-canton.ps1" -Stop
+  exit /b %ERRORLEVEL%
+)
+if /i "%~1"=="status" (
+  powershell -NoProfile -ExecutionPolicy Bypass -File "%SCRIPT_DIR%local\start-canton.ps1" -Status
+  exit /b %ERRORLEVEL%
+)
+powershell -NoProfile -ExecutionPolicy Bypass -File "%SCRIPT_DIR%local\start-canton.ps1"
 exit /b %ERRORLEVEL%

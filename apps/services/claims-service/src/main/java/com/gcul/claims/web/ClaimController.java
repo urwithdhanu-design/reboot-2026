@@ -4,9 +4,9 @@ import java.util.List;
 import java.util.Map;
 
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -38,6 +38,21 @@ public class ClaimController {
 	@GetMapping("/{id}")
 	public Map<String, Object> get(@PathVariable String id) {
 		return claims.get(id);
+	}
+
+	@PostMapping("/{id}/review")
+	public Map<String, Object> review(@PathVariable String id) {
+		return claims.startReview(id);
+	}
+
+	@PostMapping("/{id}/approve")
+	public Map<String, Object> approve(@PathVariable String id, @RequestBody(required = false) Map<String, Object> body) {
+		return claims.approveAndSettle(id, body);
+	}
+
+	@PostMapping("/{id}/reject")
+	public Map<String, Object> reject(@PathVariable String id, @RequestBody(required = false) Map<String, Object> body) {
+		return claims.reject(id, body);
 	}
 
 	@PatchMapping("/{id}/status")

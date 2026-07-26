@@ -32,8 +32,41 @@ public class ParametricController {
 		return parametric.createRule(body);
 	}
 
+	@GetMapping("/triggers")
+	public Map<String, Object> triggers() {
+		List<Map<String, Object>> items = parametric.listTriggerLogs();
+		return Map.of("triggers", items, "count", items.size());
+	}
+
 	@PostMapping("/trigger")
 	public Map<String, Object> trigger(@RequestBody Map<String, Object> body) {
 		return parametric.trigger(body);
+	}
+
+	/** Simulate flight delay oracle — publishes ClaimInitiated and auto-settles if rule matches. */
+	@PostMapping("/simulate/flight-delay")
+	public Map<String, Object> simulateFlightDelay(@RequestBody Map<String, Object> body) {
+		return parametric.simulateFlightDelay(body);
+	}
+
+	@GetMapping("/oracle/status")
+	public Map<String, Object> oracleStatus() {
+		return parametric.oracleStatus();
+	}
+
+	@PostMapping("/oracle/poll")
+	public Map<String, Object> pollOracle(@RequestBody(required = false) Map<String, Object> body) {
+		return parametric.pollOracle(body == null ? Map.of() : body);
+	}
+
+	@PostMapping("/oracle/poll/{ruleId}")
+	public Map<String, Object> pollOracleRule(@org.springframework.web.bind.annotation.PathVariable String ruleId) {
+		return parametric.pollOracleForRule(ruleId);
+	}
+
+	/** Fetch live delay from external oracle and auto-trigger claim when threshold met. */
+	@PostMapping("/trigger/oracle")
+	public Map<String, Object> triggerFromOracle(@RequestBody Map<String, Object> body) {
+		return parametric.triggerFromOracle(body);
 	}
 }

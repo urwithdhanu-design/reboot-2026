@@ -6,6 +6,7 @@ import { CustomersPage } from './pages/CustomersPage';
 import { KYCReviewPage } from './pages/KYCReviewPage';
 import { PoliciesPage } from './pages/PoliciesPage';
 import { ClaimsPage } from './pages/ClaimsPage';
+import { ParametricPage } from './pages/ParametricPage';
 import { WorkflowsPage } from './pages/WorkflowsPage';
 import { PlatformServicesPage } from './pages/PlatformServicesPage';
 import { WalletOpsPage } from './pages/WalletOpsPage';
@@ -45,6 +46,7 @@ export default function App() {
           <Route path="/kyc" element={<ProtectedRoute><KYCReviewPage /></ProtectedRoute>} />
           <Route path="/policies" element={<ProtectedRoute><PoliciesPage /></ProtectedRoute>} />
           <Route path="/claims" element={<ProtectedRoute><ClaimsPage /></ProtectedRoute>} />
+          <Route path="/parametric" element={<ProtectedRoute><ParametricPage /></ProtectedRoute>} />
           <Route path="/workflows" element={<ProtectedRoute><WorkflowsPage /></ProtectedRoute>} />
           <Route path="/services" element={<ProtectedRoute><PlatformServicesPage /></ProtectedRoute>} />
           <Route path="/tokenization" element={<ProtectedRoute><TokenizationPage /></ProtectedRoute>} />

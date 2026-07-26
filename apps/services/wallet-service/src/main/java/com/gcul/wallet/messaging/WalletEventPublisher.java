@@ -42,6 +42,20 @@ public class WalletEventPublisher {
 		publisher.publish(EventTopics.WALLET, payload);
 	}
 
+	public void walletClaimPaid(String userId, CustomerWallet wallet, WalletTransaction tx, String claimId) {
+		Map<String, Object> payload = new LinkedHashMap<>();
+		payload.put("eventType", "WalletClaimPaid");
+		payload.put("customerId", userId);
+		payload.put("walletAddress", wallet.getAddress());
+		payload.put("claimId", claimId);
+		payload.put("amount", tx.getAmount());
+		payload.put("currency", tx.getCurrency());
+		payload.put("balanceGbp", wallet.getBalanceGbp());
+		payload.put("transactionId", tx.getId());
+		payload.put("status", "SUCCESS");
+		publisher.publish(EventTopics.WALLET, payload);
+	}
+
 	public void walletPremiumPaid(String userId, CustomerWallet wallet, WalletTransaction tx, String quoteId) {
 		Map<String, Object> payload = new LinkedHashMap<>();
 		payload.put("eventType", "WalletPremiumPaid");

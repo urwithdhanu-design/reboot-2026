@@ -128,6 +128,17 @@ public class BlockchainOrchestratorService {
 		return submit(payload);
 	}
 
+	public Map<String, Object> recordParametricClaimInitiated(Map<String, Object> body) {
+		Map<String, Object> payload = new LinkedHashMap<>(body);
+		payload.putIfAbsent("type", "parametric_claim_initiated");
+		payload.putIfAbsent("from_wallet", "gcul:oracle");
+		payload.putIfAbsent("to_wallet", "gcul:claims-pool");
+		payload.putIfAbsent("amount", num(body.get("payout_amount"), 0));
+		payload.putIfAbsent("asset", "GBP");
+		payload.putIfAbsent("reference", firstNonBlank(str(body.get("policy_ref")), "parametric"));
+		return submit(payload);
+	}
+
 	public Map<String, Object> sidecarHealth() {
 		return gcul.health();
 	}

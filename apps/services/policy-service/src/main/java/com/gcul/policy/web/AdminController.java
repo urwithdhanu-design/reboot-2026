@@ -4,6 +4,7 @@ import java.util.List;
 import java.util.Map;
 
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -46,6 +47,16 @@ public class AdminController {
 	@GetMapping("/tokenization")
 	public Map<String, Object> tokenization() {
 		return tokenization.view();
+	}
+
+	@PostMapping("/tokenization/mint-queue/{policyId}/approve")
+	public Map<String, Object> approveMint(@PathVariable String policyId) {
+		return tokenization.approveMint(policyId);
+	}
+
+	@PostMapping("/tokenization/mint-queue/{policyId}/reject")
+	public Map<String, Object> rejectMint(@PathVariable String policyId) {
+		return tokenization.rejectMint(policyId);
 	}
 
 	@PostMapping("/policies/refresh-cache")

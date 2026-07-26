@@ -50,7 +50,10 @@ public class PolicyNftRecord {
 	@Column(nullable = false)
 	private String mintMode;
 
-	@Column(nullable = false)
+	@Column(name = "status", nullable = false)
+	private String status = "MINTED";
+
+	@Column(name = "mint_status", nullable = false)
 	private String mintStatus = "MINTED";
 
 	@Column(nullable = false)
@@ -166,17 +169,19 @@ public class PolicyNftRecord {
 
 	public void setMintStatus(String mintStatus) {
 		this.mintStatus = mintStatus;
+		this.status = mintStatus;
 	}
 
 	/** @deprecated use {@link #getMintStatus()} */
 	@Deprecated
 	public String getStatus() {
-		return mintStatus;
+		return status;
 	}
 
 	/** @deprecated use {@link #setMintStatus(String)} */
 	@Deprecated
 	public void setStatus(String status) {
+		this.status = status;
 		this.mintStatus = status;
 	}
 

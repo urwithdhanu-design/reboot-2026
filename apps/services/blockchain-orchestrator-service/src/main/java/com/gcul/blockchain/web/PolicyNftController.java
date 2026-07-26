@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
 
+import com.gcul.blockchain.canton.CantonPolicyMintService;
 import com.gcul.blockchain.ethereum.PolicyNftMintResult;
 import com.gcul.blockchain.ethereum.PolicyNftMintService;
 import com.gcul.blockchain.messaging.PolicyMintService;
@@ -27,10 +28,15 @@ public class PolicyNftController {
 
 	private final PolicyNftMintService mintService;
 	private final PolicyMintService policyMintService;
+	private final CantonPolicyMintService cantonPolicyMintService;
 
-	public PolicyNftController(PolicyNftMintService mintService, PolicyMintService policyMintService) {
+	public PolicyNftController(
+			PolicyNftMintService mintService,
+			PolicyMintService policyMintService,
+			CantonPolicyMintService cantonPolicyMintService) {
 		this.mintService = mintService;
 		this.policyMintService = policyMintService;
+		this.cantonPolicyMintService = cantonPolicyMintService;
 	}
 
 	@GetMapping("/status")
@@ -51,6 +57,16 @@ public class PolicyNftController {
 		PolicyNftRecord record = mintService.findByPolicyId(policyId)
 				.orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Mint record not found"));
 		return toResponse(record);
+	}
+
+	@GetMapping("/{policyId}/verify")
+	public Map<String, Object> verify(
+			@PathVariable String policyId,
+			@org.springframework.web.bind.annotation.RequestParam String policyReferenceHash) {
+		if (policyReferenceHash == null || policyReferenceHash.isBlank()) {
+			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "policyReferenceHash is required");
+		}
+		return cantonPolicyMintService.verifyPolicy(policyId, policyReferenceHash.trim());
 	}
 
 	@PostMapping("/mint")

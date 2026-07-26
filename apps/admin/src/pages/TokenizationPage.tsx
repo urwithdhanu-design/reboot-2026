@@ -36,6 +36,8 @@ export function TokenizationPage() {
   const [data, setData] = useState<TokenizationView | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
+  const [actionPolicyId, setActionPolicyId] = useState<string | null>(null);
 
   const load = useCallback((silent = false) => {
     if (!silent) setLoading(true);
@@ -71,6 +73,44 @@ export function TokenizationPage() {
     pageSize: 5,
   });
 
+  const isCanton = blockchain?.ledger_type === 'canton' || (blockchain?.mode?.includes('canton') ?? false);
+  const networkLabel = blockchain?.network_name ?? (isCanton ? 'Canton Local Sandbox' : 'Ethereum Sepolia');
+  const modeLabel = isCanton
+    ? (blockchain?.live ? 'Live Canton minting' : 'Canton offline (simulated fallback)')
+    : (blockchain?.mode === 'ethereum' ? 'Live Sepolia minting' : 'Simulated minting');
+
+  const handleApproveMint = async (policyId: string) => {
+    setActionPolicyId(policyId);
+    setError(null);
+    setSuccess(null);
+    try {
+      const result = await adminApi.approvePolicyMint(policyId);
+      setSuccess(
+        result.token_id
+          ? `Policy ${policyId} minted on Canton (token ${result.token_id}).`
+          : `Policy ${policyId} mint approved.`,
+      );
+      await load(true);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Mint approval failed');
+    } finally {
+      setActionPolicyId(null);
+    }
+  };
+
+  const handleRejectMint = async (policyId: string) => {
+    setActionPolicyId(policyId);
+    setError(null);
+    try {
+      await adminApi.rejectPolicyMint(policyId);
+      await load(true);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Mint rejection failed');
+    } finally {
+      setActionPolicyId(null);
+    }
+  };
+
   return (
     <AdminLayout>
       <PageHeader
@@ -80,7 +120,7 @@ export function TokenizationPage() {
         metrics={[
           { label: 'Policy NFTs', value: formatNumber(stats?.policy_nfts ?? 0) },
           { label: 'Pending mints', value: String(stats?.pending_mints ?? 0), tone: 'warning' },
-          { label: 'Network', value: blockchain?.live ? 'Sepolia live' : 'Simulated', tone: blockchain?.live ? 'success' : 'default' },
+          { label: 'Network', value: isCanton ? (blockchain?.live ? 'Canton live' : 'Canton') : (blockchain?.live ? 'Sepolia live' : 'Simulated'), tone: blockchain?.live ? 'success' : 'default' },
         ]}
         actions={
           <>
@@ -94,18 +134,17 @@ export function TokenizationPage() {
       />
 
       {error ? <AlertBanner>{error}</AlertBanner> : null}
+      {success ? <AlertBanner variant="success">{success}</AlertBanner> : null}
 
       <Card className="mb-6 bg-gradient-to-r from-lbg-green to-lbg-sidebar text-white border-0">
         <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
           <div>
             <p className="text-sm text-white/80 font-medium">
-              {blockchain?.network_name ?? 'Ethereum Sepolia'} · Chain ID {blockchain?.chain_id ?? 11155111}
+              {networkLabel} · {isCanton ? 'Daml ledger' : `Chain ID ${blockchain?.chain_id ?? 11155111}`}
             </p>
-            <p className="text-2xl font-bold mt-1">
-              {blockchain?.mode === 'ethereum' ? 'Live Sepolia minting' : 'Simulated minting'}
-            </p>
+            <p className="text-2xl font-bold mt-1">{modeLabel}</p>
             <p className="text-xs text-white/70 mt-1">
-              Contract {blockchain?.contract_address || 'not configured'} · Auto-refresh every {REFRESH_MS / 1000}s
+              {isCanton ? 'Template' : 'Contract'} {blockchain?.contract_address || 'not configured'} · Auto-refresh every {REFRESH_MS / 1000}s
             </p>
           </div>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
@@ -125,7 +164,7 @@ export function TokenizationPage() {
       </Card>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-6">
-        <StatCard label="Minted policy NFTs" value={formatNumber(stats?.policy_nfts ?? 0)} change="ERC-721 on Sepolia" icon={Coins} trend="up" />
+        <StatCard label="Minted policy certificates" value={formatNumber(stats?.policy_nfts ?? 0)} change={isCanton ? 'Daml on Canton' : 'ERC-721 on Sepolia'} icon={Coins} trend="up" />
         <StatCard label="Issued policies" value={formatNumber(stats?.total_issued ?? 0)} change="All issuance records" icon={Coins} trend="neutral" />
         <StatCard label="Mint queue" value={String(stats?.pending_mints ?? 0)} change="Pending insurer mint" icon={Coins} trend="neutral" />
         <StatCard label="Failed mints" value={String(stats?.failed_mints ?? 0)} change="Needs investigation" icon={Coins} trend={stats?.failed_mints ? 'down' : 'neutral'} />
@@ -232,16 +271,39 @@ export function TokenizationPage() {
                 </p>
                 <p className="text-xs text-lbg-gray-400 mt-1">Issued {formatWhen(m.requested_at)}</p>
               </div>
-              {m.status === 'pending' && (
+              {(m.status === 'pending' || m.status === 'failed') && (
                 <div className="flex gap-2 shrink-0">
-                  <Button size="sm" disabled><Check className="w-4 h-4" /> Approve Mint</Button>
-                  <Button variant="danger" size="sm" disabled><X className="w-4 h-4" /> Reject</Button>
+                  <Button
+                    size="sm"
+                    disabled={actionPolicyId !== null}
+                    onClick={() => handleApproveMint(m.id)}
+                  >
+                    <Check className="w-4 h-4" />
+                    {actionPolicyId === m.id ? 'Minting…' : 'Approve Mint'}
+                  </Button>
+                  <Button
+                    variant="danger"
+                    size="sm"
+                    disabled={actionPolicyId !== null}
+                    onClick={() => handleRejectMint(m.id)}
+                  >
+                    <X className="w-4 h-4" /> Reject
+                  </Button>
                 </div>
               )}
               {m.status === 'pending_wallet' && (
-                <Badge variant="warning">Customer must link wallet</Badge>
+                <div className="flex flex-col items-end gap-2 shrink-0">
+                  <Badge variant="warning">Customer must link wallet</Badge>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={actionPolicyId !== null}
+                    onClick={() => handleApproveMint(m.id)}
+                  >
+                    {actionPolicyId === m.id ? 'Minting…' : 'Retry after wallet linked'}
+                  </Button>
+                </div>
               )}
-              {m.status === 'failed' && <Badge variant="error">Mint failed — check policy logs</Badge>}
             </Card>
           ))}
           <TablePagination

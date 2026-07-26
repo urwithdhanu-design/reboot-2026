@@ -1,0 +1,12 @@
+module Gcul.Setup where
+
+import Gcul.InsurancePolicy
+import Daml.Script
+
+initialize : Script ()
+initialize = script do
+  insurer <- allocatePartyWithHint "GCUL_Insurer" (PartyIdHint "GCUL_Insurer")
+  _customer <- allocatePartyWithHint "GCUL_Customer" (PartyIdHint "GCUL_Customer")
+  _ <- submit insurer do
+    createCmd InsurerMintAuthority with insurer = insurer
+  return ()

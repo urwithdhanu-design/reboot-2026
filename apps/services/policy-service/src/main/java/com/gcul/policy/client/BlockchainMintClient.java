@@ -1,5 +1,6 @@
 package com.gcul.policy.client;
 
+import java.nio.charset.StandardCharsets;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
@@ -10,6 +11,7 @@ import org.springframework.http.HttpStatusCode;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
+import org.springframework.web.client.RestClientException;
 
 @Component
 public class BlockchainMintClient {
@@ -33,8 +35,13 @@ public class BlockchainMintClient {
 					.body(request)
 					.retrieve()
 					.onStatus(HttpStatusCode::isError, (req, res) -> {
-						log.warn("Blockchain mint API returned {} for policy {}", res.getStatusCode(),
-								request.get("policyId"));
+						String body = res.getBody() == null
+								? ""
+								: new String(res.getBody().readAllBytes(), StandardCharsets.UTF_8);
+						log.warn("Blockchain mint API returned {} for policy {}: {}",
+								res.getStatusCode(), request.get("policyId"), body);
+						throw new RestClientException(
+								body.isBlank() ? "Blockchain mint failed: " + res.getStatusCode() : body);
 					})
 					.body(Map.class);
 			log.info("Blockchain mint completed for policy {} tokenId={}",
@@ -60,9 +67,9 @@ public class BlockchainMintClient {
 		catch (Exception ex) {
 			log.debug("Blockchain status lookup failed: {}", ex.getMessage());
 			return Map.of(
-					"network", "Ethereum Sepolia",
-					"chainId", 11155111L,
-					"mode", "simulated",
+					"network", "Canton Local Sandbox",
+					"chainId", 0L,
+					"mode", "canton-offline",
 					"live", false,
 					"enabled", false);
 		}

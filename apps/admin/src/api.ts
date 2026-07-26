@@ -168,6 +168,7 @@ export type TokenizationView = {
     live: boolean;
     contract_address: string;
     enabled: boolean;
+    ledger_type?: string;
   };
   standards: TokenStandardRow[];
   count: number;
@@ -184,15 +185,97 @@ export type PaymentLedgerRow = {
   created_at?: string;
 };
 
+export type ParametricRuleRow = {
+  id: string;
+  name: string;
+  rule_type: string;
+  policy_ref: string;
+  metric?: string;
+  threshold: number;
+  payout_amount: number;
+  flight_number?: string;
+  travel_date?: string;
+  policy_expires_at?: string;
+  product_category?: string;
+  active: boolean;
+  created_at?: string;
+  last_polled_at?: string | null;
+  last_observed_delay?: number | null;
+  oracle_status?: string;
+  oracle_provider?: string;
+  oracle_message?: string;
+};
+
+export type ParametricTriggerRow = {
+  id: string;
+  rule_id: string;
+  policy_ref: string;
+  flight_number?: string;
+  observed_value: number;
+  threshold?: number;
+  matched: boolean;
+  claim_created: boolean;
+  claim_id?: string | null;
+  status: string;
+  message?: string;
+  trigger_source?: string;
+  oracle_provider?: string;
+  flight_status?: string;
+  triggered_at?: string;
+};
+
+export type ParametricOracleStatus = {
+  enabled: boolean;
+  configured: boolean;
+  provider: string;
+  poll_interval_ms: number;
+  api_key_set: boolean;
+  message?: string;
+};
+
+export type ParametricOraclePollResult = {
+  polled?: number;
+  triggered?: number;
+  skipped_already_settled?: number;
+  errors?: number;
+  active_rules?: number;
+  polled_at?: string;
+  rule_id?: string;
+  matched?: boolean;
+  claim_created?: boolean;
+  claim_id?: string | null;
+  status?: string;
+  message?: string;
+  oracle?: {
+    provider?: string;
+    delay_minutes?: number;
+    flight_status?: string;
+    scheduled_departure?: string;
+    actual_departure?: string;
+    flight_found?: boolean;
+    message?: string;
+  };
+};
+
+export type ParametricSimulateResult = ParametricOraclePollResult;
+
 export type AdminClaimRow = {
   id: string;
   policy_ref: string;
   customer_name: string;
+  customer_id?: string;
+  customer_email?: string;
   category: string;
   status: string;
   amount_claimed: number;
+  approved_amount?: number | null;
   description?: string;
   source?: string;
+  canton_contract_id?: string | null;
+  payout_transaction_id?: string | null;
+  settlement_transaction_id?: string | null;
+  validation_notes?: string | null;
+  rejection_reason?: string | null;
   created_at?: string;
   updated_at?: string;
 };
@@ -375,10 +458,27 @@ export const adminApi = {
     adminRequest<{ policies: AdminPolicyRow[]; count: number }>('/api/admin/policies'),
 
   policyStats: () =>
-    adminRequest<{ total_quotes: number; total_applications: number }>('/api/admin/policy-stats'),
+    adminRequest<{
+      total_quotes: number;
+      total_applications: number;
+      issued_policies?: number;
+      minted_nfts?: number;
+    }>('/api/admin/policy-stats'),
 
   tokenizationView: () =>
     adminRequest<TokenizationView>('/api/admin/tokenization'),
+
+  approvePolicyMint: (policyId: string) =>
+    adminRequest<{ policy_id: string; mint_status?: string; token_id?: string }>(
+      `/api/admin/tokenization/mint-queue/${encodeURIComponent(policyId)}/approve`,
+      { method: 'POST' },
+    ),
+
+  rejectPolicyMint: (policyId: string) =>
+    adminRequest<{ policy_id: string; mint_status?: string }>(
+      `/api/admin/tokenization/mint-queue/${encodeURIComponent(policyId)}/reject`,
+      { method: 'POST' },
+    ),
 
   listPayments: () =>
     adminRequest<{ payments: PaymentLedgerRow[]; count: number }>('/api/payment-ledger'),
@@ -419,6 +519,59 @@ export const adminApi = {
     adminRequest<AdminClaimRow>(`/api/claims/${encodeURIComponent(claimId)}/status`, {
       method: 'PATCH',
       body: JSON.stringify({ status }),
+    }),
+
+  reviewClaim: (claimId: string) =>
+    adminRequest<AdminClaimRow>(`/api/claims/${encodeURIComponent(claimId)}/review`, { method: 'POST' }),
+
+  approveClaim: (claimId: string, approvedAmount?: number) =>
+    adminRequest<AdminClaimRow>(`/api/claims/${encodeURIComponent(claimId)}/approve`, {
+      method: 'POST',
+      body: JSON.stringify(approvedAmount != null ? { approved_amount: approvedAmount } : {}),
+    }),
+
+  rejectClaim: (claimId: string, reason?: string) =>
+    adminRequest<AdminClaimRow>(`/api/claims/${encodeURIComponent(claimId)}/reject`, {
+      method: 'POST',
+      body: JSON.stringify(reason ? { reason } : {}),
+    }),
+
+  listParametricRules: () =>
+    adminRequest<{ rules: ParametricRuleRow[]; count: number }>('/api/parametric/rules'),
+
+  createParametricRule: (body: Record<string, unknown>) =>
+    adminRequest<ParametricRuleRow>('/api/parametric/rules', {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }),
+
+  listParametricTriggers: () =>
+    adminRequest<{ triggers: ParametricTriggerRow[]; count: number }>('/api/parametric/triggers'),
+
+  simulateFlightDelay: (body: {
+    rule_id: string;
+    flight_number?: string;
+    travel_date?: string;
+    flight_delay_minutes: number;
+  }) =>
+    adminRequest<ParametricSimulateResult>('/api/parametric/simulate/flight-delay', {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }),
+
+  getParametricOracleStatus: () =>
+    adminRequest<ParametricOracleStatus>('/api/parametric/oracle/status'),
+
+  pollParametricOracle: (body?: { rule_id?: string }) =>
+    adminRequest<ParametricOraclePollResult>('/api/parametric/oracle/poll', {
+      method: 'POST',
+      body: JSON.stringify(body ?? {}),
+    }),
+
+  triggerParametricOracle: (body: { rule_id: string }) =>
+    adminRequest<ParametricOraclePollResult>('/api/parametric/trigger/oracle', {
+      method: 'POST',
+      body: JSON.stringify(body),
     }),
 
   insuranceChain: () => request<InsuranceChainResponse>('/api/blockchain/chain'),

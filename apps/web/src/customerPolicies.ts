@@ -11,6 +11,9 @@ export type CustomerPolicy = {
   premium: number;
   price_unit: string;
   paid: boolean;
+  mint_status?: string;
+  token_id?: string | null;
+  ledger_type?: string;
 };
 
 /** Matches policy-service admin numbering: POL-{quoteId without Q- prefix}. */
@@ -57,7 +60,14 @@ export function issuedPolicyToCustomerPolicy(
     premium: quote?.estimated_premium ?? 0,
     price_unit: quote?.price_unit ?? "month",
     paid: true,
+    mint_status: policy.mint_status,
+    token_id: policy.token_id,
+    ledger_type: policy.ledger_type,
   };
+}
+
+export function isClaimablePolicy(policy: CustomerPolicy): boolean {
+  return policy.mint_status === "MINTED" || Boolean(policy.token_id);
 }
 
 export async function fetchIssuedPolicies(token: string): Promise<CustomerPolicyRecord[]> {

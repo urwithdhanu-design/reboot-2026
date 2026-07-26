@@ -15,6 +15,7 @@ import {
   FileCode2,
   Building2,
   Server,
+  Zap,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -32,6 +33,7 @@ export const navItems: NavItem[] = [
   { to: '/kyc', label: 'KYC Review', icon: ShieldCheck, badge: 4, section: 'Operations' },
   { to: '/policies', label: 'Policies', icon: FileText, section: 'Operations' },
   { to: '/claims', label: 'Claims', icon: ClipboardList, section: 'Operations' },
+  { to: '/parametric', label: 'Parametric', icon: Zap, section: 'Operations' },
   { to: '/workflows', label: 'Workflows', icon: GitBranch, section: 'Operations' },
   { to: '/services', label: 'Platform Services', icon: Server, section: 'Operations' },
   { to: '/tokenization', label: 'Tokenization', icon: Coins, badge: 7, section: 'Blockchain' },

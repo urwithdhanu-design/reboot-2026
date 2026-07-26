@@ -6,6 +6,7 @@ import { saveQuoteToCompare } from "../compareBasket";
 import {
   buildIssuedQuoteIdSet,
   getUnpaidSavedQuotes,
+  isClaimablePolicy,
   loadIssuedCustomerPolicies,
   markQuotePaid,
   quoteToPolicyRef,
@@ -37,6 +38,31 @@ const ACTION_MESSAGES: Record<string, string> = {
   documents: "Policy schedule, terms, and certificates are available here.",
 };
 
+function policyMintStatusLabel(policy: CustomerPolicyRecord): string {
+  const mint = (policy.mint_status ?? "").toUpperCase();
+  if (mint === "MINTED") {
+    const isCanton = policy.ledger_type === "canton"
+      || (policy.blockchain_network?.toLowerCase().includes("canton") ?? false);
+    return isCanton ? "Minted on Canton" : "NFT minted";
+  }
+  if (mint === "PENDING_WALLET") return "Premium paid · Awaiting wallet link";
+  if (mint === "PENDING") return "Premium paid · Mint in progress";
+  if (mint === "FAILED") return "Premium paid · Mint failed — contact support";
+  return "Premium paid · Issued";
+}
+
+function policyCoverStatus(policy: CustomerPolicyRecord): string {
+  if (policy.payment_status === "paid" || policy.status === "active" || policy.status === "issued") {
+    return "Cover active";
+  }
+  return policy.status;
+}
+
+async function fetchMyPolicies(token: string): Promise<CustomerPolicyRecord[]> {
+  const res = await api.getMyPolicies(token);
+  return res.policies;
+}
+
 export function PoliciesPage() {
   const location = useLocation();
   const navigate = useNavigate();
@@ -54,6 +80,7 @@ export function PoliciesPage() {
   const [notice, setNotice] = useState<string | null>(null);
   const [savedQuotes, setSavedQuotes] = useState<QuoteEstimate[]>([]);
   const [policies, setPolicies] = useState<CustomerPolicyRecord[]>([]);
+  const [policiesLoading, setPoliciesLoading] = useState(false);
   const [issuedQuoteIds, setIssuedQuoteIds] = useState<string[]>([]);
   const [quotesLoading, setQuotesLoading] = useState(true);
   const [selectedQuoteId, setSelectedQuoteId] = useState<string | null>(null);
@@ -80,10 +107,27 @@ export function PoliciesPage() {
       setPolicies([]);
       return;
     }
-    void api.getMyPolicies(token)
-      .then((res) => setPolicies(res.policies))
-      .catch(() => setPolicies([]));
+    setPoliciesLoading(true);
+    void fetchMyPolicies(token)
+      .then((rows) => setPolicies(rows))
+      .catch(() => setPolicies([]))
+      .finally(() => setPoliciesLoading(false));
   }, [token, payment?.paid]);
+
+  useEffect(() => {
+    if (!token || !payment?.paid) return;
+    let attempts = 0;
+    const timer = window.setInterval(() => {
+      attempts += 1;
+      void fetchMyPolicies(token)
+        .then((rows) => setPolicies(rows))
+        .catch(() => undefined);
+      if (attempts >= 6) {
+        window.clearInterval(timer);
+      }
+    }, 2000);
+    return () => window.clearInterval(timer);
+  }, [token, payment?.paid, payment?.quote_id]);
 
   useEffect(() => {
     if (quote) saveQuoteToCompare(quote);
@@ -103,10 +147,9 @@ export function PoliciesPage() {
         let issuedPolicies: CustomerPolicyRecord[] = [];
         if (token) {
           try {
-            const res = await api.getMyPolicies(token);
+            issuedPolicies = await fetchMyPolicies(token);
             if (!alive) return;
-            issuedPolicies = res.policies;
-            setPolicies(res.policies);
+            setPolicies(issuedPolicies);
           } catch {
             issuedPolicies = [];
           }
@@ -159,7 +202,8 @@ export function PoliciesPage() {
         icon={<HeaderIconPolicies />}
         accent="teal"
         metrics={[
-          { label: "Saved quotes", value: displayQuotes.length, tone: "success" },
+          { label: "Your policies", value: policies.length, tone: "success" },
+          { label: "Saved quotes", value: displayQuotes.length },
           {
             label: "Ready to pay",
             value: displayQuotes.length,
@@ -189,27 +233,39 @@ export function PoliciesPage() {
             </div>
           </section>
 
-          <CustomerPanel title="Your policy NFTs" description="Tokenized insurance certificates on Ethereum Sepolia" padding>
-            {policies.length > 0 ? (
+          <CustomerPanel title="Your policies" description="All policies linked to your account — premium paid, minting, and active cover" padding>
+            {policiesLoading ? (
+              <p className="muted" style={{ margin: 0 }}>Loading your policies…</p>
+            ) : policies.length > 0 ? (
               <div className="stack" style={{ gap: 12 }}>
-                {policies.map((policy) => (
+                {policies.map((policy) => {
+                  const isCanton = policy.ledger_type === "canton"
+                    || (policy.blockchain_network?.toLowerCase().includes("canton") ?? false);
+                  const mintLabel = policyMintStatusLabel(policy);
+                  const coverLabel = policyCoverStatus(policy);
+                  return (
                   <div className="quote-card" key={policy.policy_id}>
                     <span className="muted">
-                      Premium paid
-                      {policy.payment_status === "paid" || policy.status === "active" || policy.status === "issued"
-                        ? " · Cover active"
-                        : ""}
+                      {coverLabel}
                       {" · "}
-                      {policy.mint_status === "MINTED" ? "NFT minted" : policy.mint_status ?? "Pending mint"}
+                      {mintLabel}
                     </span>
                     <strong>{policy.product_title ?? policy.policy_number}</strong>
                     <p className="muted" style={{ margin: "4px 0 0" }}>
                       Policy {policy.policy_number} · {policy.status}
+                      {policy.mint_status && policy.mint_status !== "MINTED"
+                        ? ` · ${policy.mint_status.replace(/_/g, " ").toLowerCase()}`
+                        : ""}
                     </p>
                     {policy.token_id ? (
                       <p className="muted" style={{ margin: "4px 0 0" }}>
-                        Token #{policy.token_id}
+                        {isCanton ? "Contract" : "Token"} #{policy.token_id}
                         {policy.wallet_address ? ` · ${policy.wallet_address.slice(0, 10)}…` : ""}
+                      </p>
+                    ) : null}
+                    {policy.transaction_hash && isCanton ? (
+                      <p className="muted" style={{ margin: "4px 0 0", fontSize: "0.85rem" }}>
+                        Ledger update: {policy.transaction_hash.slice(0, 18)}…
                       </p>
                     ) : null}
                     {policy.explorer_url ? (
@@ -218,11 +274,12 @@ export function PoliciesPage() {
                       </a>
                     ) : null}
                   </div>
-                ))}
+                )})}
               </div>
             ) : (
               <p className="muted" style={{ margin: 0 }}>
-                No tokenized policies yet. Complete payment after linking your wallet to mint your policy NFT.
+                No policies yet. Pay your quote premium to issue cover — it will appear here with status
+                (issued, minting, or active on Canton).
               </p>
             )}
           </CustomerPanel>
@@ -370,6 +427,10 @@ export function PoliciesPage() {
   );
 }
 
+function formatClaimStatus(status: string) {
+  return status.replace(/_/g, " ");
+}
+
 export function ClaimsPage() {
   const { user, token } = useSession();
   const [tab, setTab] = useState<"new" | "track">("new");
@@ -409,10 +470,11 @@ export function ClaimsPage() {
 
     async function loadPolicies() {
       const mine = await loadIssuedCustomerPolicies(token ?? undefined, user?.email);
+      const claimable = mine.filter(isClaimablePolicy);
       if (!alive) return;
-      setPolicies(mine);
-      if (mine.length > 0) {
-        const first = mine[0];
+      setPolicies(claimable);
+      if (claimable.length > 0) {
+        const first = claimable[0];
         setSelectedQuoteId(first.quote_id);
         setPolicyRef(first.policy_ref);
         setCategory(first.category || "Property");
@@ -484,11 +546,13 @@ export function ClaimsPage() {
       const claim = await api.createClaim({
         policy_ref: policyRef.trim() || selectedPolicy?.policy_ref || "POL-HOME-001",
         customer_name: user?.full_name || "Customer",
+        customer_id: user?.id,
+        customer_email: user?.email,
         category,
         amount_claimed: Number(amount) || 0,
         description: description.trim() || "Claim submitted from the app",
       });
-      setNotice(`Claim ${claim.id} submitted.`);
+      setNotice(`Claim ${claim.id} submitted — pending admin approval.`);
       setDescription("");
       await loadClaims();
     } catch (err) {
@@ -540,7 +604,7 @@ export function ClaimsPage() {
 
           {policies.length === 0 ? (
             <p className="manage-notice" role="status">
-              No policies yet — get a quote from the marketplace first, then return here to
+              No Canton-minted policies yet — complete quote, payment, and policy minting first, then return here to
               start a claim.
             </p>
           ) : (
@@ -660,11 +724,15 @@ export function ClaimsPage() {
               <article className="quote-card" key={claim.id}>
                 <strong>{claim.id}</strong>
                 <p className="muted" style={{ margin: "4px 0 0" }}>
-                  {claim.category} · {claim.status} · £
+                  {claim.category} · {formatClaimStatus(claim.status)} · £
                   {Number(claim.amount_claimed).toFixed(2)}
+                  {claim.approved_amount != null && claim.approved_amount !== claim.amount_claimed
+                    ? ` (approved £${Number(claim.approved_amount).toFixed(2)})`
+                    : ""}
                 </p>
                 <p className="muted" style={{ margin: "4px 0 0" }}>
                   {claim.policy_ref}
+                  {claim.payout_transaction_id ? ` · paid ${claim.payout_transaction_id}` : ""}
                   {claim.description ? ` · ${claim.description}` : ""}
                 </p>
               </article>

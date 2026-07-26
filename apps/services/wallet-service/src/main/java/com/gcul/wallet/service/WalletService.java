@@ -208,6 +208,140 @@ public class WalletService {
 	}
 
 	@Transactional
+	public Map<String, Object> creditClaimPayout(
+			String userId,
+			String email,
+			String walletAddress,
+			String claimId,
+			double amount) {
+		if (claimId == null || claimId.isBlank()) {
+			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "claim_id is required");
+		}
+		if (amount <= 0) {
+			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Payout amount must be greater than zero");
+		}
+
+		var existing = transactions.findByReferenceAndType(claimId, "claim_payout");
+		if (existing.isPresent()) {
+			CustomerWallet wallet = resolveWallet(userId, email, walletAddress);
+			Map<String, Object> response = toResponse(wallet);
+			response.put("transaction", toTransactionResponse(existing.get()));
+			response.put("reused", true);
+			return response;
+		}
+
+		CustomerWallet wallet = resolveWallet(userId, email, walletAddress);
+		if (!wallet.isConnected()) {
+			throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+					"Customer wallet not connected — create or link a wallet before claim payout");
+		}
+
+		double credit = roundMoney(amount);
+		wallet.setBalanceGbp(roundMoney(wallet.getBalanceGbp() + credit));
+		wallet.setUpdatedAt(Instant.now());
+		wallet = repository.saveAndFlush(wallet);
+
+		WalletTransaction tx = new WalletTransaction();
+		tx.setId("CLM-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase(Locale.ROOT));
+		tx.setUserId(wallet.getUserId());
+		tx.setType("claim_payout");
+		tx.setAmount(credit);
+		tx.setCurrency(wallet.getCurrency() == null ? "GBP" : wallet.getCurrency());
+		tx.setStatus("completed");
+		tx.setReference(claimId);
+		tx.setCreatedAt(Instant.now());
+		tx = transactions.saveAndFlush(tx);
+
+		walletEvents.walletClaimPaid(wallet.getUserId(), wallet, tx, claimId);
+
+		Map<String, Object> response = toResponse(wallet);
+		response.put("transaction", toTransactionResponse(tx));
+		response.put("reused", false);
+		return response;
+	}
+
+	public Map<String, Object> getWalletByAddress(String address) {
+		return repository.findByAddressIgnoreCase(normalizeAddress(address))
+				.map(this::toResponse)
+				.orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Wallet not found for address"));
+	}
+
+	private CustomerWallet resolveWallet(String userId, String email, String walletAddress) {
+		if (isKnown(walletAddress)) {
+			var byAddress = repository.findByAddressIgnoreCase(normalizeAddress(walletAddress));
+			if (byAddress.isPresent()) {
+				return byAddress.get();
+			}
+		}
+
+		if (isKnown(userId)) {
+			var byId = repository.findByUserId(userId.trim());
+			if (byId.isPresent()) {
+				return byId.get();
+			}
+		}
+
+		if (isKnown(email)) {
+			var byEmail = repository.findByUserEmailIgnoreCase(email.trim().toLowerCase(Locale.ROOT));
+			if (byEmail.isPresent()) {
+				return byEmail.get();
+			}
+		}
+
+		if (isKnown(userId) && userId.contains("@")) {
+			var byEmail = repository.findByUserEmailIgnoreCase(userId.trim().toLowerCase(Locale.ROOT));
+			if (byEmail.isPresent()) {
+				return byEmail.get();
+			}
+		}
+
+		if (isKnown(walletAddress)) {
+			return provisionWalletForClaimPayout(walletAddress, userId, email);
+		}
+
+		throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+				"Wallet not found for customer — link a wallet or ensure policy wallet_address is set");
+	}
+
+	private CustomerWallet provisionWalletForClaimPayout(String walletAddress, String userId, String email) {
+		String normalizedAddress = normalizeAddress(walletAddress);
+		CustomerWallet wallet = new CustomerWallet();
+		wallet.setUserId(isKnown(userId) ? userId.trim() : isKnown(email)
+				? email.trim().toLowerCase(Locale.ROOT)
+				: "wallet:" + normalizedAddress.substring(2, 12));
+		if (isKnown(email)) {
+			wallet.setUserEmail(email.trim().toLowerCase(Locale.ROOT));
+		}
+		wallet.setAddress(normalizedAddress);
+		wallet.setStatus("connected");
+		wallet.setProvider("secure_wallet");
+		wallet.setMode("demo");
+		wallet.setNote("Auto-provisioned for parametric claim payout");
+		wallet.setCurrency("GBP");
+		wallet.setBalanceGbp(0.0);
+		wallet.setUpdatedAt(Instant.now());
+		wallet = repository.saveAndFlush(wallet);
+		walletEvents.walletLinked(wallet.getUserId(), wallet);
+		return wallet;
+	}
+
+	private static boolean isKnown(String value) {
+		if (value == null || value.isBlank()) {
+			return false;
+		}
+		String normalized = value.trim().toLowerCase(Locale.ROOT);
+		return !normalized.equals("unknown") && !normalized.equals("n/a") && !normalized.equals("-");
+	}
+
+	private static String normalizeAddress(String address) {
+		return address == null ? "" : address.trim().toLowerCase(Locale.ROOT);
+	}
+
+	private CustomerWallet resolveWallet(String userId, String email) {
+		return resolveWallet(userId, email, null);
+	}
+
+	@Transactional
 	public Map<String, Object> payForPremium(String userId, String quoteId, double amount) {
 		if (quoteId == null || quoteId.isBlank()) {
 			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "quote_id is required");

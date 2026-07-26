@@ -69,6 +69,17 @@ public class PolicyRecordService {
 	}
 
 	@Transactional
+	public PolicyRecord resetMintForRetry(String policyId) {
+		PolicyRecord record = repository.findById(policyId).orElseThrow();
+		if ("MINTED".equalsIgnoreCase(record.getMintStatus())) {
+			return record;
+		}
+		record.setMintStatus("PENDING");
+		record.setStatus("issued");
+		return repository.save(record);
+	}
+
+	@Transactional
 	public PolicyRecord markMintFailed(String policyId, String reason) {
 		PolicyRecord record = repository.findById(policyId).orElseThrow();
 		record.setMintStatus("FAILED");
@@ -94,14 +105,42 @@ public class PolicyRecordService {
 		return repository.findByQuoteId(quoteId);
 	}
 
-	public List<PolicyRecord> listForCustomer(String customerId, String email) {
-		if (customerId != null && !customerId.isBlank()) {
-			List<PolicyRecord> byId = repository.findByCustomerIdOrderByIssuedAtDesc(customerId);
-			if (!byId.isEmpty()) {
-				return byId;
+	public List<PolicyRecord> listForCustomer(String customerId, String email, String walletAddress) {
+		java.util.LinkedHashMap<String, PolicyRecord> merged = new java.util.LinkedHashMap<>();
+
+		if (isKnown(customerId)) {
+			for (PolicyRecord record : repository.findByCustomerIdOrderByIssuedAtDesc(customerId.trim())) {
+				merged.put(record.getPolicyId(), record);
 			}
 		}
-		return repository.findByCustomerEmailOrderByIssuedAtDesc(email == null ? "" : email.toLowerCase());
+
+		if (isKnown(email)) {
+			String normalizedEmail = email.trim().toLowerCase(java.util.Locale.ROOT);
+			for (PolicyRecord record : repository.findByCustomerEmailOrderByIssuedAtDesc(normalizedEmail)) {
+				merged.put(record.getPolicyId(), record);
+			}
+		}
+
+		if (isKnown(walletAddress)) {
+			for (PolicyRecord record : repository.findByWalletAddressIgnoreCaseOrderByIssuedAtDesc(
+					walletAddress.trim().toLowerCase(java.util.Locale.ROOT))) {
+				merged.put(record.getPolicyId(), record);
+			}
+		}
+
+		return merged.values().stream()
+				.sorted(java.util.Comparator.comparing(
+						PolicyRecord::getIssuedAt,
+						java.util.Comparator.nullsLast(java.util.Comparator.reverseOrder())))
+				.toList();
+	}
+
+	private static boolean isKnown(String value) {
+		if (value == null || value.isBlank()) {
+			return false;
+		}
+		String normalized = value.trim().toLowerCase(java.util.Locale.ROOT);
+		return !normalized.equals("unknown") && !normalized.equals("n/a") && !normalized.equals("-");
 	}
 
 	public List<PolicyRecord> listPendingMint() {
@@ -147,12 +186,30 @@ public class PolicyRecordService {
 		map.put("issued_at", record.getIssuedAt() == null ? null : record.getIssuedAt().toString());
 		map.put("activated_at", record.getActivatedAt() == null ? null : record.getActivatedAt().toString());
 		map.put("explorer_url", buildExplorerUrl(record));
+		map.put("ledger_type", ledgerType(record));
 		return map;
 	}
 
+	private static String ledgerType(PolicyRecord record) {
+		String network = record.getBlockchainNetwork() == null ? "" : record.getBlockchainNetwork().toLowerCase();
+		if (network.contains("canton")) {
+			return "canton";
+		}
+		if (record.getTransactionHash() != null && record.getTransactionHash().startsWith("0xsim")) {
+			return "simulated";
+		}
+		return "ethereum";
+	}
+
 	private static String buildExplorerUrl(PolicyRecord record) {
-		if (record.getTransactionHash() == null || record.getTransactionHash().isBlank()
-				|| record.getTransactionHash().startsWith("0xsim")) {
+		if (record.getTransactionHash() == null || record.getTransactionHash().isBlank()) {
+			return null;
+		}
+		if (record.getTransactionHash().startsWith("0xsim")) {
+			return null;
+		}
+		String network = record.getBlockchainNetwork() == null ? "" : record.getBlockchainNetwork().toLowerCase();
+		if (network.contains("canton")) {
 			return null;
 		}
 		return "https://sepolia.etherscan.io/tx/" + record.getTransactionHash();
