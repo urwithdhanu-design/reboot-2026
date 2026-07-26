@@ -85,6 +85,10 @@ public class PolicyLookupClient {
 	}
 
 	public static String derivePolicyExpiry(Map<String, Object> policy) {
+		String explicit = str(policy.get("cover_expires_at"));
+		if (!explicit.isBlank()) {
+			return explicit;
+		}
 		String activated = str(policy.get("activated_at"));
 		if (!activated.isBlank()) {
 			try {

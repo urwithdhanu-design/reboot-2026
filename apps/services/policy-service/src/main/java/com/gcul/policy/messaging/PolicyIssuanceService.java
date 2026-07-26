@@ -17,6 +17,8 @@ import com.gcul.policy.client.KycInternalClient;
 import com.gcul.policy.client.WalletLookupClient;
 import com.gcul.policy.client.WalletLookupClient.WalletLookup;
 import com.gcul.policy.model.PolicyRecord;
+import com.gcul.policy.policy.PolicyCoverageResolver;
+import com.gcul.policy.policy.PolicyCoverageSnapshot;
 import com.gcul.policy.policy.PolicyRecordService;
 import com.gcul.policy.policy.PolicyReferenceHasher;
 import com.gcul.policy.quote.QuoteService;
@@ -34,6 +36,7 @@ public class PolicyIssuanceService {
 	private final KycInternalClient kycInternalClient;
 	private final PolicyRecordService policyRecords;
 	private final TravelParametricProvisioner travelParametricProvisioner;
+	private final PolicyCoverageResolver coverageResolver;
 
 	public PolicyIssuanceService(
 			QuoteService quotes,
@@ -42,7 +45,8 @@ public class PolicyIssuanceService {
 			WalletLookupClient walletLookupClient,
 			KycInternalClient kycInternalClient,
 			PolicyRecordService policyRecords,
-			TravelParametricProvisioner travelParametricProvisioner) {
+			TravelParametricProvisioner travelParametricProvisioner,
+			PolicyCoverageResolver coverageResolver) {
 		this.quotes = quotes;
 		this.publisher = publisher;
 		this.blockchainMintClient = blockchainMintClient;
@@ -50,6 +54,7 @@ public class PolicyIssuanceService {
 		this.kycInternalClient = kycInternalClient;
 		this.policyRecords = policyRecords;
 		this.travelParametricProvisioner = travelParametricProvisioner;
+		this.coverageResolver = coverageResolver;
 	}
 
 	public void onPremiumPaid(Map<String, Object> payload) {
@@ -94,6 +99,7 @@ public class PolicyIssuanceService {
 		String productTitle = String.valueOf(quote.getOrDefault("product_title", "Insurance"));
 		String policyReferenceHash = PolicyReferenceHasher.hash(policyId, policyNumber, customerId, quoteId);
 		String metadataUri = "ipfs://gcul-policy/" + policyId;
+		PolicyCoverageSnapshot coverage = coverageResolver.resolvePendingFromQuote(quote);
 
 		PolicyRecord record = policyRecords.createIssuedPolicy(
 				policyId,
@@ -104,7 +110,8 @@ public class PolicyIssuanceService {
 				productTitle,
 				walletAddress,
 				policyReferenceHash,
-				metadataUri);
+				metadataUri,
+				coverage);
 
 		Map<String, Object> created = new LinkedHashMap<>();
 		created.put("eventType", "PolicyCreated");
@@ -180,8 +187,32 @@ public class PolicyIssuanceService {
 
 	public Map<String, Object> getPolicy(String policyId) {
 		return policyRecords.findByPolicyId(policyId)
+				.map(this::ensureCoverageOnRecord)
 				.map(policyRecords::toResponse)
 				.orElse(null);
+	}
+
+	private PolicyRecord ensureCoverageOnRecord(PolicyRecord record) {
+		if ("MINTED".equalsIgnoreCase(record.getMintStatus())) {
+			return policyRecords.ensureMintActivatedCoverage(record);
+		}
+		if (record.getCoverageLimitGbp() != null) {
+			return record;
+		}
+		if (!StringUtils.hasText(record.getQuoteId())) {
+			return policyRecords.saveWithCoverage(record,
+					coverageResolver.resolveFallback(record.getProductCategory(), record.getProductTitle(), null));
+		}
+		try {
+			Map<String, Object> quote = quotes.getQuote(record.getQuoteId());
+			PolicyCoverageSnapshot coverage = coverageResolver.resolvePendingFromQuote(quote);
+			return policyRecords.saveWithCoverage(record, coverage);
+		}
+		catch (Exception ex) {
+			log.debug("Could not backfill coverage for {}: {}", record.getPolicyId(), ex.getMessage());
+			return policyRecords.saveWithCoverage(record,
+					coverageResolver.resolveFallback(record.getProductCategory(), record.getProductTitle(), null));
+		}
 	}
 
 	public java.util.Optional<Map<String, Object>> findPolicyByQuote(String quoteId) {
@@ -205,6 +236,7 @@ public class PolicyIssuanceService {
 			}
 		}
 		return policyRecords.listForCustomer(customerId, email, walletAddress).stream()
+				.map(this::ensureCoverageOnRecord)
 				.map(policyRecords::toResponse)
 				.toList();
 	}
@@ -313,7 +345,11 @@ public class PolicyIssuanceService {
 				record.getWalletAddress(),
 				record.getPolicyReferenceHash(),
 				record.getMetadataUri(),
-				record.getProductTitle());
+				record.getProductTitle(),
+				record.getProductCategory(),
+				record.getCoverageSummary(),
+				record.getCoverExpiresAt() == null ? null : record.getCoverExpiresAt().toString(),
+				record.getCoverageLimitGbp());
 	}
 
 	private WalletLookup resolveWallet(String customerEmail, Object eventWallet) {

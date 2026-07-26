@@ -85,10 +85,23 @@ public class BlockchainMintClient {
 		request.put("metadataURI", policy.metadataUri());
 		request.put("kycVerified", kycVerified);
 		request.put("policyEligible", true);
-		request.put("metadata", Map.of(
-				"productTitle", policy.productTitle() == null ? "" : policy.productTitle(),
-				"quoteId", policy.quoteId(),
-				"source", "policy-service"));
+		Map<String, Object> metadata = new LinkedHashMap<>();
+		metadata.put("productTitle", policy.productTitle() == null ? "" : policy.productTitle());
+		metadata.put("quoteId", policy.quoteId());
+		metadata.put("source", "policy-service");
+		if (policy.productCategory() != null && !policy.productCategory().isBlank()) {
+			metadata.put("productCategory", policy.productCategory());
+		}
+		if (policy.coverageSummary() != null && !policy.coverageSummary().isBlank()) {
+			metadata.put("coverageSummary", policy.coverageSummary());
+		}
+		if (policy.coverExpiresAt() != null && !policy.coverExpiresAt().isBlank()) {
+			metadata.put("coverExpiresAt", policy.coverExpiresAt());
+		}
+		if (policy.coverageLimitGbp() != null) {
+			metadata.put("coverageLimitGbp", policy.coverageLimitGbp());
+		}
+		request.put("metadata", metadata);
 		return request;
 	}
 
@@ -100,6 +113,10 @@ public class BlockchainMintClient {
 			String walletAddress,
 			String policyReferenceHash,
 			String metadataUri,
-			String productTitle) {
+			String productTitle,
+			String productCategory,
+			String coverageSummary,
+			String coverExpiresAt,
+			Double coverageLimitGbp) {
 	}
 }

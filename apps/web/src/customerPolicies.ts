@@ -14,6 +14,14 @@ export type CustomerPolicy = {
   mint_status?: string;
   token_id?: string | null;
   ledger_type?: string;
+  product_category?: string;
+  cover_start_at?: string | null;
+  cover_expires_at?: string | null;
+  coverage_limit_gbp?: number | null;
+  coverage_summary?: string | null;
+  coverage_expired?: boolean;
+  coverage_active?: boolean;
+  coverage_pending_mint?: boolean;
 };
 
 /** Matches policy-service admin numbering: POL-{quoteId without Q- prefix}. */
@@ -63,11 +71,29 @@ export function issuedPolicyToCustomerPolicy(
     mint_status: policy.mint_status,
     token_id: policy.token_id,
     ledger_type: policy.ledger_type,
+    product_category: policy.product_category ?? quote?.category ?? "",
+    cover_start_at: policy.cover_start_at,
+    cover_expires_at: policy.cover_expires_at,
+    coverage_limit_gbp: policy.coverage_limit_gbp,
+    coverage_summary: policy.coverage_summary,
+    coverage_expired: policy.coverage_expired,
+    coverage_active: policy.coverage_active,
+    coverage_pending_mint: policy.coverage_pending_mint,
   };
 }
 
 export function isClaimablePolicy(policy: CustomerPolicy): boolean {
-  return policy.mint_status === "MINTED" || Boolean(policy.token_id);
+  if (policy.mint_status !== "MINTED" && !policy.token_id) return false;
+  if (policy.coverage_pending_mint) return false;
+  if (policy.coverage_expired) return false;
+  if (policy.cover_expires_at) {
+    try {
+      if (new Date(policy.cover_expires_at).getTime() < Date.now()) return false;
+    } catch {
+      // ignore parse errors
+    }
+  }
+  return policy.coverage_active !== false;
 }
 
 export async function fetchIssuedPolicies(token: string): Promise<CustomerPolicyRecord[]> {

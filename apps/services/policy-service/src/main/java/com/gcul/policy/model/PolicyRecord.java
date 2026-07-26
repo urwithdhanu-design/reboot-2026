@@ -54,6 +54,20 @@ public class PolicyRecord {
 
 	private Instant activatedAt;
 
+	private String productCategory;
+
+	private Instant coverStartAt;
+
+	private Instant coverExpiresAt;
+
+	private Double coverageLimitGbp;
+
+	@Column(length = 512)
+	private String coverageSummary;
+
+	@Column(length = 4000)
+	private String coverageDetailsJson;
+
 	public String getPolicyId() {
 		return policyId;
 	}
@@ -196,5 +210,53 @@ public class PolicyRecord {
 
 	public void setActivatedAt(Instant activatedAt) {
 		this.activatedAt = activatedAt;
+	}
+
+	public String getProductCategory() {
+		return productCategory;
+	}
+
+	public void setProductCategory(String productCategory) {
+		this.productCategory = productCategory;
+	}
+
+	public Instant getCoverStartAt() {
+		return coverStartAt;
+	}
+
+	public void setCoverStartAt(Instant coverStartAt) {
+		this.coverStartAt = coverStartAt;
+	}
+
+	public Instant getCoverExpiresAt() {
+		return coverExpiresAt;
+	}
+
+	public void setCoverExpiresAt(Instant coverExpiresAt) {
+		this.coverExpiresAt = coverExpiresAt;
+	}
+
+	public Double getCoverageLimitGbp() {
+		return coverageLimitGbp;
+	}
+
+	public void setCoverageLimitGbp(Double coverageLimitGbp) {
+		this.coverageLimitGbp = coverageLimitGbp;
+	}
+
+	public String getCoverageSummary() {
+		return coverageSummary;
+	}
+
+	public void setCoverageSummary(String coverageSummary) {
+		this.coverageSummary = coverageSummary;
+	}
+
+	public String getCoverageDetailsJson() {
+		return coverageDetailsJson;
+	}
+
+	public void setCoverageDetailsJson(String coverageDetailsJson) {
+		this.coverageDetailsJson = coverageDetailsJson;
 	}
 }

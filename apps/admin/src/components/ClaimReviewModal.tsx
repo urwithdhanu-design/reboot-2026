@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { ExternalLink, FileText, MessageSquare, X } from 'lucide-react';
-import { adminApi, type AdminClaimRow, type ClaimDocumentRow, type ClaimQueryRow } from '../api';
+import { adminApi, type AdminClaimRow, type ClaimDocumentRow, type ClaimQueryRow, type InternalPolicyRecord } from '../api';
 import { Badge, Button } from './ui';
 
 type Props = {
@@ -47,6 +47,7 @@ export function ClaimReviewModal({
   const [queryMessage, setQueryMessage] = useState('');
   const [requiresDocuments, setRequiresDocuments] = useState(true);
   const [sendingQuery, setSendingQuery] = useState(false);
+  const [policyCoverage, setPolicyCoverage] = useState<InternalPolicyRecord | null>(null);
 
   useEffect(() => {
     if (!open || !claim) return;
@@ -57,6 +58,12 @@ export function ClaimReviewModal({
     setRequiresDocuments(true);
     setLoadingDocs(true);
     setLoadingQueries(true);
+    setPolicyCoverage(null);
+
+    adminApi
+      .getInternalPolicy(claim.policy_ref)
+      .then((res) => setPolicyCoverage(res))
+      .catch(() => setPolicyCoverage(null));
 
     adminApi
       .listClaimDocuments(claim.id)
@@ -131,6 +138,22 @@ export function ClaimReviewModal({
             <div>
               <p className="text-sm font-semibold text-lbg-black mb-1">Customer description</p>
               <p className="text-sm text-lbg-gray-600 bg-lbg-gray-50 rounded-lg p-3">{claim.description}</p>
+            </div>
+          ) : null}
+
+          {policyCoverage?.coverage_summary ? (
+            <div className="bg-lbg-green-light/40 border border-lbg-green/20 rounded-lg p-3">
+              <p className="text-sm font-semibold text-lbg-black mb-1">Policy coverage</p>
+              <p className="text-sm text-lbg-gray-600">{policyCoverage.coverage_summary}</p>
+              <p className="text-xs text-lbg-gray-500 mt-1">
+                {policyCoverage.cover_expires_at
+                  ? `Expires ${formatWhen(policyCoverage.cover_expires_at)}`
+                  : null}
+                {policyCoverage.coverage_limit_gbp != null
+                  ? ` · Limit £${Number(policyCoverage.coverage_limit_gbp).toLocaleString('en-GB')}`
+                  : null}
+                {policyCoverage.coverage_expired ? ' · EXPIRED' : ''}
+              </p>
             </div>
           ) : null}
 
@@ -268,14 +291,16 @@ export function ClaimReviewModal({
                 Reject
               </Button>
               <Button
-                disabled={busy || (isManual && !hasDocuments) || hasOpenQueries}
+                disabled={busy || (isManual && !hasDocuments) || hasOpenQueries || policyCoverage?.coverage_expired}
                 onClick={() => void onApprove()}
                 title={
-                  hasOpenQueries
-                    ? 'Resolve open customer queries before approving'
-                    : isManual && !hasDocuments
-                      ? 'Upload documents required before approval'
-                      : undefined
+                  policyCoverage?.coverage_expired
+                    ? 'Policy coverage has expired'
+                    : hasOpenQueries
+                      ? 'Resolve open customer queries before approving'
+                      : isManual && !hasDocuments
+                        ? 'Upload documents required before approval'
+                        : undefined
                 }
               >
                 {busy ? 'Processing…' : 'Approve & pay'}

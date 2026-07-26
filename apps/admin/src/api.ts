@@ -111,6 +111,24 @@ export type AdminPolicyRow = {
   policy_ref?: string;
   mint_status?: string;
   token_id?: string | null;
+  product_category?: string;
+  cover_start_at?: string | null;
+  cover_expires_at?: string | null;
+  coverage_limit_gbp?: number | null;
+  coverage_summary?: string | null;
+};
+
+export type InternalPolicyRecord = {
+  policy_id: string;
+  product_category?: string;
+  cover_start_at?: string | null;
+  cover_expires_at?: string | null;
+  coverage_limit_gbp?: number | null;
+  coverage_summary?: string | null;
+  coverage_items?: Array<{ code?: string; label?: string; limit_gbp?: number }>;
+  coverage_expired?: boolean;
+  mint_status?: string;
+  status?: string;
 };
 
 export type TokenRegistryRow = {
@@ -127,6 +145,10 @@ export type TokenRegistryRow = {
   explorer_url?: string | null;
   minted_at?: string;
   wallet_address?: string;
+  product_category?: string;
+  coverage_summary?: string;
+  cover_expires_at?: string;
+  coverage_limit_gbp?: number;
 };
 
 export type TokenMintQueueRow = {
@@ -138,6 +160,10 @@ export type TokenMintQueueRow = {
   customer_email: string;
   product_title: string;
   requested_at?: string;
+  product_category?: string;
+  coverage_summary?: string;
+  cover_expires_at?: string;
+  coverage_limit_gbp?: number;
 };
 
 export type TokenStandardRow = {
@@ -638,6 +664,9 @@ export const adminApi = {
     adminRequest<{ documents: ClaimDocumentRow[]; count: number }>(
       `/api/claims/${encodeURIComponent(claimId)}/documents`,
     ),
+
+  getInternalPolicy: (policyRef: string) =>
+    adminRequest<InternalPolicyRecord>(`/api/internal/policies/${encodeURIComponent(policyRef)}`),
 
   claimDocumentContentUrl: (claimId: string, docId: string) =>
     `/api/claims/${encodeURIComponent(claimId)}/documents/${encodeURIComponent(docId)}/content`,

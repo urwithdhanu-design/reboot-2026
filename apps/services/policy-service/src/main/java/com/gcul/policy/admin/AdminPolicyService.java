@@ -9,6 +9,8 @@ import org.springframework.stereotype.Service;
 
 import com.gcul.policy.cache.AdminViewCache;
 import com.gcul.policy.model.PolicyRecord;
+import com.gcul.policy.policy.PolicyCoverageResolver;
+import com.gcul.policy.policy.PolicyCoverageSnapshot;
 import com.gcul.policy.policy.PolicyRecordService;
 import com.gcul.policy.quote.QuoteService;
 
@@ -18,14 +20,17 @@ public class AdminPolicyService {
 	private final QuoteService quoteService;
 	private final PolicyRecordService policyRecords;
 	private final AdminViewCache adminCache;
+	private final PolicyCoverageResolver coverageResolver;
 
 	public AdminPolicyService(
 			QuoteService quoteService,
 			PolicyRecordService policyRecords,
-			AdminViewCache adminCache) {
+			AdminViewCache adminCache,
+			PolicyCoverageResolver coverageResolver) {
 		this.quoteService = quoteService;
 		this.policyRecords = policyRecords;
 		this.adminCache = adminCache;
+		this.coverageResolver = coverageResolver;
 	}
 
 	public Map<String, Object> listPolicies() {
@@ -35,9 +40,10 @@ public class AdminPolicyService {
 			byQuoteId.put(quoteId, toPolicyRow(quote));
 		}
 		for (PolicyRecord issued : policyRecords.listAllIssued()) {
-			String quoteId = issued.getQuoteId();
-			Map<String, Object> row = byQuoteId.computeIfAbsent(quoteId, id -> toPolicyRowFromRecord(issued));
-			overlayIssuedPolicy(row, issued);
+			PolicyRecord enriched = ensureCoverage(issued);
+			String quoteId = enriched.getQuoteId();
+			Map<String, Object> row = byQuoteId.computeIfAbsent(quoteId, id -> toPolicyRowFromRecord(enriched));
+			overlayIssuedPolicy(row, enriched);
 		}
 		List<Map<String, Object>> policies = new ArrayList<>(byQuoteId.values());
 		Map<String, Object> result = Map.of("policies", policies, "count", policies.size());
@@ -62,6 +68,14 @@ public class AdminPolicyService {
 		row.put("mint_status", issued.getMintStatus());
 		row.put("token_id", issued.getTokenId());
 		row.put("status", "active".equalsIgnoreCase(issued.getStatus()) ? "active" : "issued");
+		if (issued.getProductCategory() != null && !issued.getProductCategory().isBlank()) {
+			row.put("category", issued.getProductCategory());
+		}
+		row.put("product_category", issued.getProductCategory());
+		row.put("cover_start_at", issued.getCoverStartAt() == null ? null : issued.getCoverStartAt().toString());
+		row.put("cover_expires_at", issued.getCoverExpiresAt() == null ? null : issued.getCoverExpiresAt().toString());
+		row.put("coverage_limit_gbp", issued.getCoverageLimitGbp());
+		row.put("coverage_summary", issued.getCoverageSummary());
 		if (issued.getProductTitle() != null && !issued.getProductTitle().isBlank()) {
 			row.put("product_title", issued.getProductTitle());
 		}
@@ -90,6 +104,24 @@ public class AdminPolicyService {
 		row.put("token_id", issued.getTokenId());
 		row.put("created_at", issued.getIssuedAt() == null ? "" : issued.getIssuedAt().toString());
 		return row;
+	}
+
+	private PolicyRecord ensureCoverage(PolicyRecord issued) {
+		if ("MINTED".equalsIgnoreCase(issued.getMintStatus())) {
+			return policyRecords.ensureMintActivatedCoverage(issued);
+		}
+		if (issued.getCoverageLimitGbp() != null) {
+			return issued;
+		}
+		try {
+			Map<String, Object> quote = quoteService.getQuote(issued.getQuoteId());
+			PolicyCoverageSnapshot coverage = coverageResolver.resolvePendingFromQuote(quote);
+			return policyRecords.saveWithCoverage(issued, coverage);
+		}
+		catch (Exception ex) {
+			return policyRecords.saveWithCoverage(issued,
+					coverageResolver.resolveFallback(issued.getProductCategory(), issued.getProductTitle(), null));
+		}
 	}
 
 	@SuppressWarnings("unchecked")

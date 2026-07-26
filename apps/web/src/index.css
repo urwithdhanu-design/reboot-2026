@@ -837,6 +837,66 @@ a.link-quiet:hover {
   width: fit-content;
 }
 
+.claim-query-upload {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.claim-query-file-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: fit-content;
+  padding: 10px 16px;
+  border-radius: 10px;
+  border: 1.5px solid var(--lbg-green-deep, #006a4d);
+  background: #fff;
+  color: var(--lbg-green-deep, #006a4d);
+  font-size: 0.88rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.claim-query-file-btn:hover {
+  background: #eef8f3;
+}
+
+.claim-query-file-btn--disabled {
+  opacity: 0.55;
+  pointer-events: none;
+  cursor: not-allowed;
+}
+
+.claim-query-upload-hint {
+  margin: 0;
+  font-size: 0.82rem;
+}
+
+.policy-coverage-summary {
+  font-size: 0.86rem;
+  color: var(--lbg-green-deep);
+  font-weight: 600;
+}
+
+.policy-coverage-dates {
+  line-height: 1.4;
+}
+
+.policy-coverage-panel {
+  margin: 12px 0;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: #eef8f3;
+  border: 1px solid #c8e6d8;
+}
+
+.policy-coverage-panel p {
+  margin: 6px 0 0;
+  font-size: 0.88rem;
+  line-height: 1.45;
+}
+
 .claim-attachments-list {
   list-style: none;
   margin: 0;

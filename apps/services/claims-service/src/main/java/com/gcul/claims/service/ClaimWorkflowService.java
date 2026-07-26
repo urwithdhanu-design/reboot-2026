@@ -43,6 +43,7 @@ public class ClaimWorkflowService {
 	private final WalletPayoutClient walletClient;
 	private final ClaimDocumentService claimDocuments;
 	private final ClaimQueryService claimQueries;
+	private final ClaimCoverageValidator coverageValidator;
 
 	public ClaimWorkflowService(
 			ClaimRepository repo,
@@ -51,7 +52,8 @@ public class ClaimWorkflowService {
 			BlockchainValidationClient blockchainClient,
 			WalletPayoutClient walletClient,
 			ClaimDocumentService claimDocuments,
-			ClaimQueryService claimQueries) {
+			ClaimQueryService claimQueries,
+			ClaimCoverageValidator coverageValidator) {
 		this.repo = repo;
 		this.claimEvents = claimEvents;
 		this.policyClient = policyClient;
@@ -59,6 +61,7 @@ public class ClaimWorkflowService {
 		this.walletClient = walletClient;
 		this.claimDocuments = claimDocuments;
 		this.claimQueries = claimQueries;
+		this.coverageValidator = coverageValidator;
 	}
 
 	@Transactional
@@ -74,6 +77,8 @@ public class ClaimWorkflowService {
 
 		Map<String, Object> policy = policyClient.fetchPolicy(policyRef);
 		policyClient.assertEligibleForClaim(policy);
+		String claimCategory = firstNonBlank(str(body.get("category")), str(policy.get("product_category")), "General");
+		coverageValidator.assertClaimAllowed(policy, claimCategory, amount);
 
 		String policyReferenceHash = str(policy.get("policy_reference_hash"));
 		Map<String, Object> canton = blockchainClient.verifyCantonPolicy(policyRef, policyReferenceHash);
@@ -95,12 +100,12 @@ public class ClaimWorkflowService {
 		claim.setCustomerEmail(knownIdentity(firstNonBlank(str(body.get("customer_email")), str(policy.get("customer_email")))));
 		claim.setPolicyReferenceHash(policyReferenceHash);
 		claim.setCantonContractId(str(canton.get("contractId")));
-		claim.setCategory(firstNonBlank(str(body.get("category")), "General"));
+		claim.setCategory(claimCategory);
 		claim.setAmountClaimed(amount);
 		claim.setDescription(str(body.get("description")));
 		claim.setSource(firstNonBlank(str(body.get("source")), "manual"));
 		claim.setStatus(ClaimStatus.SUBMITTED);
-		claim.setValidationNotes("Policy verified on Canton ledger");
+		claim.setValidationNotes("Policy verified on Canton ledger · within coverage limits");
 		claim.setCreatedAt(Instant.now());
 		claim.setUpdatedAt(Instant.now());
 
@@ -120,7 +125,10 @@ public class ClaimWorkflowService {
 	@Transactional
 	public Map<String, Object> createParametricAutoSettle(Map<String, Object> body) {
 		body.put("source", "parametric");
-		body.put("category", firstNonBlank(str(body.get("category")), "Travel"));
+		String defaultCategory = "trip_cancellation".equalsIgnoreCase(str(body.get("parametric_event_type")))
+				? "Trip cancellation"
+				: "Flight delay";
+		body.put("category", firstNonBlank(str(body.get("category")), defaultCategory));
 
 		String policyRef = str(body.get("policy_ref"));
 		if (policyRef.isBlank()) {
@@ -133,6 +141,8 @@ public class ClaimWorkflowService {
 
 		Map<String, Object> policy = policyClient.fetchPolicy(policyRef);
 		policyClient.assertEligibleForClaim(policy);
+		String claimCategory = firstNonBlank(str(body.get("category")), defaultCategory);
+		coverageValidator.assertClaimAllowed(policy, claimCategory, amount, true);
 
 		String policyReferenceHash = str(policy.get("policy_reference_hash"));
 		Map<String, Object> canton = blockchainClient.verifyCantonPolicy(policyRef, policyReferenceHash);
@@ -205,12 +215,17 @@ public class ClaimWorkflowService {
 
 		claimQueries.assertNoOpenQueries(id);
 
+		Map<String, Object> policy = policyClient.fetchPolicy(claim.getPolicyRef());
+		boolean parametric = "parametric".equalsIgnoreCase(claim.getSource());
+		coverageValidator.assertClaimAllowed(policy, claim.getCategory(), claim.getAmountClaimed(), parametric);
+
 		Double approvedAmount = body == null ? null : optionalAmount(body.get("approved_amount"));
-		if (approvedAmount != null && approvedAmount > 0) {
-			claim.setApprovedAmount(approvedAmount);
-		}
-		else {
-			claim.setApprovedAmount(claim.getAmountClaimed());
+		double requested = approvedAmount != null && approvedAmount > 0 ? approvedAmount : claim.getAmountClaimed();
+		double capped = coverageValidator.resolveApprovedAmount(policy, claim.getPolicyRef(), requested);
+		claim.setApprovedAmount(capped);
+		if (capped < requested) {
+			claim.setValidationNotes(appendNote(claim.getValidationNotes(),
+					String.format(Locale.ROOT, "Approved amount capped to £%,.2f within policy coverage", capped)));
 		}
 
 		validatePolicyLink(claim);
@@ -226,8 +241,8 @@ public class ClaimWorkflowService {
 		claimEvents.claimPaymentPending(claim);
 
 		double payout = claim.getApprovedAmount() == null ? claim.getAmountClaimed() : claim.getApprovedAmount();
-		Map<String, Object> policy = policyClient.fetchPolicy(claim.getPolicyRef());
-		String walletAddress = str(policy.get("wallet_address"));
+		Map<String, Object> policyForPayout = policyClient.fetchPolicy(claim.getPolicyRef());
+		String walletAddress = str(policyForPayout.get("wallet_address"));
 		Map<String, Object> walletResult = walletClient.creditClaimPayout(
 				knownIdentity(claim.getCustomerId()),
 				knownIdentity(claim.getCustomerEmail()),

@@ -191,6 +191,8 @@ export function TokenizationPage() {
               { key: 'standard', label: 'Standard', sortable: true },
               { key: 'type', label: 'Type', sortable: true },
               { key: 'owner', label: 'Owner', sortable: true },
+              { key: 'coverage_summary', label: 'Coverage', sortable: true },
+              { key: 'cover_expires_at', label: 'Expires', sortable: true },
               { key: 'wallet_address', label: 'Wallet', sortable: true },
               { key: 'status', label: 'Status', sortable: true },
               { key: 'contract_address', label: 'Contract', sortable: true },
@@ -215,6 +217,15 @@ export function TokenizationPage() {
                 <td className="py-3 px-4"><Badge variant="info">{t.standard}</Badge></td>
                 <td className="py-3 px-4"><Badge variant={typeBadge[t.type]}>{t.type.replace('_', ' ')}</Badge></td>
                 <td className="py-3 px-4 text-sm">{t.owner}</td>
+                <td className="py-3 px-4 text-xs text-lbg-gray-600 max-w-[200px]">
+                  <p className="line-clamp-2">{t.coverage_summary ?? '—'}</p>
+                  {t.coverage_limit_gbp != null ? (
+                    <p className="text-[10px] text-lbg-gray-400 mt-1">
+                      £{Number(t.coverage_limit_gbp).toLocaleString('en-GB')} limit
+                    </p>
+                  ) : null}
+                </td>
+                <td className="py-3 px-4 text-xs text-lbg-gray-500">{formatWhen(t.cover_expires_at)}</td>
                 <td className="py-3 px-4 font-mono text-xs text-lbg-gray-500">{t.wallet_address || '—'}</td>
                 <td className="py-3 px-4"><Badge variant={statusBadge[t.status]}>{t.status}</Badge></td>
                 <td className="py-3 px-4 font-mono text-xs text-lbg-gray-400">{t.contract_address || '—'}</td>
@@ -269,7 +280,13 @@ export function TokenizationPage() {
                 <p className="text-sm text-lbg-gray-600 mt-1">
                   {m.customer_name} · {m.product_title}
                 </p>
-                <p className="text-xs text-lbg-gray-400 mt-1">Issued {formatWhen(m.requested_at)}</p>
+                {m.coverage_summary ? (
+                  <p className="text-xs text-lbg-gray-500 mt-1">{m.coverage_summary}</p>
+                ) : null}
+                <p className="text-xs text-lbg-gray-400 mt-1">
+                  Issued {formatWhen(m.requested_at)}
+                  {m.cover_expires_at ? ` · Cover expires ${formatWhen(m.cover_expires_at)}` : ''}
+                </p>
               </div>
               {(m.status === 'pending' || m.status === 'failed') && (
                 <div className="flex gap-2 shrink-0">

@@ -150,6 +150,15 @@ export type CustomerPolicyRecord = {
   issued_at?: string;
   activated_at?: string | null;
   explorer_url?: string | null;
+  product_category?: string | null;
+  cover_start_at?: string | null;
+  cover_expires_at?: string | null;
+  coverage_limit_gbp?: number | null;
+  coverage_summary?: string | null;
+  coverage_items?: Array<{ code?: string; label?: string; limit_gbp?: number }>;
+  coverage_expired?: boolean;
+  coverage_active?: boolean;
+  coverage_pending_mint?: boolean;
 };
 
 export type ChatbotAskResponse = {
@@ -432,11 +441,18 @@ export const api = {
       }
     }
     if (!res.ok) {
-      const body = data as { detail?: string; message?: string; error?: string };
-      throw new Error(body.detail ?? body.message ?? body.error ?? res.statusText);
+      const body = data as { detail?: string; message?: string; error?: string; title?: string };
+      throw new Error(
+        body.detail ?? body.message ?? body.error ?? body.title ?? text.slice(0, 200) ?? res.statusText,
+      );
     }
     return data as ClaimDocumentRow;
   },
+
+  listClaimDocuments: (claimId: string) =>
+    request<{ documents: ClaimDocumentRow[]; count: number }>(
+      `/api/claims/${encodeURIComponent(claimId)}/documents`,
+    ),
 
   listClaimQueries: (claimId: string) =>
     request<{ queries: ClaimQueryRow[]; count: number; open_count: number }>(

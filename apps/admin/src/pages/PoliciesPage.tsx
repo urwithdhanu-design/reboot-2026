@@ -123,6 +123,7 @@ export function PoliciesPage() {
               { key: 'premium', label: 'Premium', sortable: true },
               { key: 'payment_status', label: 'Payment', sortable: true },
               { key: 'mint_status', label: 'Mint', sortable: true },
+              { key: 'cover_expires_at', label: 'Cover expires', sortable: true },
               { key: 'status', label: 'Status', sortable: true },
               { key: 'created_at', label: 'Created', sortable: true },
             ]}
@@ -175,6 +176,17 @@ export function PoliciesPage() {
                   ) : (
                     <span className="text-xs text-lbg-gray-400">—</span>
                   )}
+                </td>
+                <td className="py-3 px-4 text-lbg-gray-400 text-sm">
+                  {p.cover_expires_at ? formatDate(p.cover_expires_at) : '—'}
+                  {p.coverage_limit_gbp != null ? (
+                    <p className="text-[10px] text-lbg-gray-400 mt-1">
+                      £{Number(p.coverage_limit_gbp).toLocaleString('en-GB')} limit
+                    </p>
+                  ) : null}
+                  {p.coverage_summary ? (
+                    <p className="text-[10px] text-lbg-gray-500 mt-1 line-clamp-2">{p.coverage_summary}</p>
+                  ) : null}
                 </td>
                 <td className="py-3 px-4">
                   <Badge variant={statusBadge[p.status] ?? 'neutral'}>{p.status}</Badge>

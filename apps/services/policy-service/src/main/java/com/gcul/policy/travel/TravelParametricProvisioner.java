@@ -55,6 +55,7 @@ public class TravelParametricProvisioner {
 		String flightNumber = str(answers.get("flight_number"));
 		String travelDate = str(answers.get("departure_date"));
 		String customerEmail = record.getCustomerEmail();
+		String policyExpiresAt = record.getCoverExpiresAt() == null ? "" : record.getCoverExpiresAt().toString();
 
 		if (isYes(answers.get("coverage_flight_delay"))) {
 			createRule(
@@ -66,7 +67,8 @@ public class TravelParametricProvisioner {
 					250,
 					flightNumber,
 					travelDate,
-					customerEmail);
+					customerEmail,
+					policyExpiresAt);
 		}
 
 		if (isYes(answers.get("coverage_cancellation"))) {
@@ -79,7 +81,8 @@ public class TravelParametricProvisioner {
 					150,
 					flightNumber,
 					travelDate,
-					customerEmail);
+					customerEmail,
+					policyExpiresAt);
 		}
 	}
 
@@ -92,7 +95,8 @@ public class TravelParametricProvisioner {
 			double payout,
 			String flightNumber,
 			String travelDate,
-			String customerEmail) {
+			String customerEmail,
+			String policyExpiresAt) {
 		Map<String, Object> body = new LinkedHashMap<>();
 		body.put("policy_ref", policyRef);
 		body.put("name", name);
@@ -105,6 +109,9 @@ public class TravelParametricProvisioner {
 		body.put("travel_date", travelDate);
 		body.put("product_category", "Travel");
 		body.put("customer_email", customerEmail);
+		if (!policyExpiresAt.isBlank()) {
+			body.put("policy_expires_at", policyExpiresAt);
+		}
 		try {
 			Map<String, Object> created = parametricRules.createRule(body);
 			log.info("Provisioned {} parametric rule {} for policy {}", ruleType, created.get("id"), policyRef);

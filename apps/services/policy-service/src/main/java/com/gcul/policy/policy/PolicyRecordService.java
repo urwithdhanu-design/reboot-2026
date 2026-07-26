@@ -1,6 +1,7 @@
 package com.gcul.policy.policy;
 
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -8,17 +9,26 @@ import java.util.Optional;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 
 import com.gcul.policy.model.PolicyRecord;
+import com.gcul.policy.quote.QuoteService;
 import com.gcul.policy.repository.PolicyRecordRepository;
 
 @Service
 public class PolicyRecordService {
 
 	private final PolicyRecordRepository repository;
+	private final PolicyCoverageResolver coverageResolver;
+	private final QuoteService quoteService;
 
-	public PolicyRecordService(PolicyRecordRepository repository) {
+	public PolicyRecordService(
+			PolicyRecordRepository repository,
+			PolicyCoverageResolver coverageResolver,
+			QuoteService quoteService) {
 		this.repository = repository;
+		this.coverageResolver = coverageResolver;
+		this.quoteService = quoteService;
 	}
 
 	@Transactional
@@ -31,7 +41,8 @@ public class PolicyRecordService {
 			String productTitle,
 			String walletAddress,
 			String policyReferenceHash,
-			String metadataUri) {
+			String metadataUri,
+			PolicyCoverageSnapshot coverage) {
 		if (repository.findByQuoteId(quoteId).isPresent()) {
 			return repository.findByQuoteId(quoteId).orElseThrow();
 		}
@@ -48,6 +59,29 @@ public class PolicyRecordService {
 		record.setStatus("issued");
 		record.setMintStatus(walletAddress == null || walletAddress.isBlank() ? "PENDING_WALLET" : "PENDING");
 		record.setIssuedAt(Instant.now());
+		applyCoverage(record, coverage);
+		return repository.save(record);
+	}
+
+	@Transactional
+	public PolicyRecord applyCoverage(PolicyRecord record, PolicyCoverageSnapshot coverage) {
+		if (coverage == null) {
+			return record;
+		}
+		record.setProductCategory(PolicyCoverageResolver.normalizeProductCategory(
+				coverage.productCategory(),
+				record.getProductTitle()));
+		record.setCoverStartAt(coverage.coverStartAt());
+		record.setCoverExpiresAt(coverage.coverExpiresAt());
+		record.setCoverageLimitGbp(coverage.coverageLimitGbp());
+		record.setCoverageSummary(coverage.coverageSummary());
+		record.setCoverageDetailsJson(coverageResolver.serializeCoverageItems(coverage.coverageItems()));
+		return record;
+	}
+
+	@Transactional
+	public PolicyRecord saveWithCoverage(PolicyRecord record, PolicyCoverageSnapshot coverage) {
+		applyCoverage(record, coverage);
 		return repository.save(record);
 	}
 
@@ -64,7 +98,47 @@ public class PolicyRecordService {
 			record.setBlockNumber(number.longValue());
 		}
 		record.setStatus("active");
-		record.setActivatedAt(Instant.now());
+		Instant activatedAt = Instant.now();
+		record.setActivatedAt(activatedAt);
+		activateCoverageOnMint(record, activatedAt);
+		return repository.save(record);
+	}
+
+	private void activateCoverageOnMint(PolicyRecord record, Instant activatedAt) {
+		if (!StringUtils.hasText(record.getQuoteId())) {
+			applyCoverage(record, coverageResolver.activateFallback(
+					record.getProductCategory(), record.getProductTitle(), activatedAt));
+			return;
+		}
+		try {
+			Map<String, Object> quote = quoteService.getQuote(record.getQuoteId());
+			applyCoverage(record, coverageResolver.activateOnMint(quote, activatedAt));
+		}
+		catch (Exception ex) {
+			applyCoverage(record, coverageResolver.activateFallback(
+					record.getProductCategory(), record.getProductTitle(), activatedAt));
+		}
+	}
+
+	@Transactional
+	public PolicyRecord ensureMintActivatedCoverage(PolicyRecord record) {
+		if (!"MINTED".equalsIgnoreCase(record.getMintStatus())) {
+			return record;
+		}
+		Instant activated = record.getActivatedAt() == null ? Instant.now() : record.getActivatedAt();
+		if (record.getActivatedAt() == null) {
+			record.setActivatedAt(activated);
+		}
+		String normalized = PolicyCoverageResolver.normalizeProductCategory(
+				record.getProductCategory(),
+				record.getProductTitle());
+		if (!normalized.equals(record.getProductCategory())) {
+			record.setProductCategory(normalized);
+		}
+		if (record.getCoverStartAt() != null && !record.getCoverStartAt().isBefore(activated.minus(1, ChronoUnit.HOURS))) {
+			return repository.save(record);
+		}
+		activateCoverageOnMint(record, activated);
 		return repository.save(record);
 	}
 
@@ -187,7 +261,42 @@ public class PolicyRecordService {
 		map.put("activated_at", record.getActivatedAt() == null ? null : record.getActivatedAt().toString());
 		map.put("explorer_url", buildExplorerUrl(record));
 		map.put("ledger_type", ledgerType(record));
+		map.put("product_category", PolicyCoverageResolver.normalizeProductCategory(
+				record.getProductCategory(),
+				record.getProductTitle()));
+		map.put("cover_start_at", record.getCoverStartAt() == null ? null : record.getCoverStartAt().toString());
+		map.put("cover_expires_at", record.getCoverExpiresAt() == null ? null : record.getCoverExpiresAt().toString());
+		map.put("coverage_limit_gbp", record.getCoverageLimitGbp());
+		map.put("coverage_summary", record.getCoverageSummary());
+		map.put("coverage_items", coverageResolver.parseCoverageItems(record.getCoverageDetailsJson()));
+		map.put("coverage_expired", isCoverageExpired(record));
+		map.put("coverage_active", isCoverageActive(record));
+		map.put("coverage_pending_mint", isCoveragePendingMint(record));
 		return map;
+	}
+
+	private static boolean isCoverageActive(PolicyRecord record) {
+		if (!"MINTED".equalsIgnoreCase(record.getMintStatus())) {
+			return false;
+		}
+		if (record.getCoverStartAt() == null) {
+			return false;
+		}
+		if (Instant.now().isBefore(record.getCoverStartAt())) {
+			return false;
+		}
+		return !isCoverageExpired(record);
+	}
+
+	private static boolean isCoveragePendingMint(PolicyRecord record) {
+		return !"MINTED".equalsIgnoreCase(record.getMintStatus()) || record.getCoverStartAt() == null;
+	}
+
+	private static boolean isCoverageExpired(PolicyRecord record) {
+		if (record.getCoverExpiresAt() == null) {
+			return false;
+		}
+		return Instant.now().isAfter(record.getCoverExpiresAt());
 	}
 
 	private static String ledgerType(PolicyRecord record) {

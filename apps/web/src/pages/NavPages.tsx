@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { api, type AuthUser, type ClaimQueryRow, type CustomerPolicyRecord, type InsuranceClaim, type QuoteEstimate } from "../api";
+import { api, type AuthUser, type ClaimDocumentRow, type ClaimQueryRow, type CustomerPolicyRecord, type InsuranceClaim, type QuoteEstimate } from "../api";
 import { buildClaimDemoForPolicy, sleep } from "../claimsDemoFill";
 import { saveQuoteToCompare } from "../compareBasket";
 import {
@@ -54,10 +54,32 @@ function policyMintStatusLabel(policy: CustomerPolicyRecord): string {
 }
 
 function policyCoverStatus(policy: CustomerPolicyRecord): string {
-  if (policy.payment_status === "paid" || policy.status === "active" || policy.status === "issued") {
+  const mint = (policy.mint_status ?? "").toUpperCase();
+  if (mint !== "MINTED") return "Awaiting mint";
+  if (policy.coverage_pending_mint || !policy.cover_start_at) {
+    return "Awaiting cover activation";
+  }
+  if (policy.coverage_expired) return "Cover expired";
+  if (policy.cover_expires_at) {
+    try {
+      if (new Date(policy.cover_expires_at).getTime() < Date.now()) return "Cover expired";
+    } catch {
+      // ignore
+    }
+  }
+  if (policy.coverage_active || policy.cover_start_at) {
     return "Cover active";
   }
   return policy.status;
+}
+
+function formatPolicyDate(iso?: string | null) {
+  if (!iso) return "—";
+  try {
+    return new Date(iso).toLocaleDateString("en-GB", { dateStyle: "medium" });
+  } catch {
+    return iso;
+  }
 }
 
 async function fetchMyPolicies(token: string): Promise<CustomerPolicyRecord[]> {
@@ -275,6 +297,28 @@ export function PoliciesPage() {
                         View on Sepolia explorer
                       </a>
                     ) : null}
+                    {policy.coverage_summary ? (
+                      <p className="policy-coverage-summary" style={{ margin: "8px 0 0" }}>
+                        {policy.coverage_summary}
+                      </p>
+                    ) : null}
+                    {(policy.cover_start_at || policy.cover_expires_at || policy.coverage_limit_gbp != null) ? (
+                      <p className="muted policy-coverage-dates" style={{ margin: "4px 0 0", fontSize: "0.85rem" }}>
+                        {policy.cover_start_at
+                          ? `Cover from ${formatPolicyDate(policy.cover_start_at)}`
+                          : policy.mint_status === "MINTED"
+                            ? "Cover activating…"
+                            : "Cover starts when policy is minted"}
+                        {policy.cover_expires_at ? ` · Expires ${formatPolicyDate(policy.cover_expires_at)}` : null}
+                        {policy.coverage_limit_gbp != null
+                          ? ` · Limit £${Number(policy.coverage_limit_gbp).toLocaleString("en-GB")}`
+                          : null}
+                      </p>
+                    ) : policy.coverage_summary ? (
+                      <p className="muted policy-coverage-dates" style={{ margin: "4px 0 0", fontSize: "0.85rem" }}>
+                        Cover starts when policy is minted and approved
+                      </p>
+                    ) : null}
                   </div>
                 )})}
               </div>
@@ -443,6 +487,10 @@ function formatParametricEventLabel(eventType?: string | null, description?: str
 
 const CLAIMS_REFRESH_MS = 15_000;
 
+function queryRequiresDocuments(query: ClaimQueryRow): boolean {
+  return query.requires_documents === true || String(query.requires_documents) === "true";
+}
+
 function ClaimQueryReplyPanel({
   claim,
   onReplied,
@@ -454,9 +502,11 @@ function ClaimQueryReplyPanel({
   const [queries, setQueries] = useState<ClaimQueryRow[]>(claim.queries ?? []);
   const [loading, setLoading] = useState(false);
   const [replyText, setReplyText] = useState<Record<string, string>>({});
-  const [queryFiles, setQueryFiles] = useState<Record<string, File[]>>({});
+  const [uploadedDocs, setUploadedDocs] = useState<Record<string, ClaimDocumentRow[]>>({});
+  const [uploadingCount, setUploadingCount] = useState<Record<string, number>>({});
   const [submitting, setSubmitting] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const fileInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
 
   const openQueries = queries.filter((q) => q.status === "open");
   const openCount = claim.open_query_count ?? openQueries.length;
@@ -466,16 +516,31 @@ function ClaimQueryReplyPanel({
     setQueries(claim.queries ?? []);
   }, [claim.id, claim.queries, claim.open_query_count]);
 
+  async function refreshUploadedDocs(queryId: string) {
+    try {
+      const res = await api.listClaimDocuments(claim.id);
+      const forQuery = res.documents.filter((d) => d.query_id === queryId);
+      setUploadedDocs((prev) => ({ ...prev, [queryId]: forQuery }));
+    } catch {
+      // keep existing state
+    }
+  }
+
   useEffect(() => {
     if (!expanded) return;
     let alive = true;
     setLoading(true);
     api
       .listClaimQueries(claim.id)
-      .then((res) => {
+      .then(async (res) => {
         if (!alive) return;
         setQueries(res.queries);
         setError(null);
+        for (const query of res.queries) {
+          if (query.status === "open") {
+            await refreshUploadedDocs(query.id);
+          }
+        }
       })
       .catch((err) => {
         if (!alive) return;
@@ -491,34 +556,68 @@ function ClaimQueryReplyPanel({
 
   if (!hasQueries) return null;
 
-  function onFilesSelected(queryId: string, files: FileList | null) {
+  function docsForQuery(query: ClaimQueryRow) {
+    const uploaded = uploadedDocs[query.id] ?? [];
+    if (uploaded.length > 0) return uploaded.length;
+    return query.document_count ?? 0;
+  }
+
+  async function onFilesSelected(query: ClaimQueryRow, files: FileList | null) {
     if (!files?.length) return;
-    setQueryFiles((prev) => {
-      const next = [...(prev[queryId] ?? [])];
-      for (const file of Array.from(files)) {
-        if (next.length >= 5) break;
-        next.push(file);
+    setError(null);
+    const selected = Array.from(files).slice(0, 5);
+    setUploadingCount((prev) => ({
+      ...prev,
+      [query.id]: (prev[query.id] ?? 0) + selected.length,
+    }));
+    for (const file of selected) {
+      try {
+        const doc = await api.uploadClaimDocument(claim.id, file, file.name, query.id);
+        setUploadedDocs((prev) => ({
+          ...prev,
+          [query.id]: [...(prev[query.id] ?? []), doc],
+        }));
+      } catch (err) {
+        setError(
+          `${file.name}: ${err instanceof Error ? err.message : "upload failed"}`,
+        );
+      } finally {
+        setUploadingCount((prev) => ({
+          ...prev,
+          [query.id]: Math.max(0, (prev[query.id] ?? 1) - 1),
+        }));
       }
-      return { ...prev, [queryId]: next };
-    });
+    }
   }
 
   async function submitReply(query: ClaimQueryRow) {
     const message = (replyText[query.id] ?? "").trim();
-    if (!message) {
+    const docCount = docsForQuery(query);
+    const stillUploading = (uploadingCount[query.id] ?? 0) > 0;
+
+    if (stillUploading) {
+      setError("Please wait for document uploads to finish.");
+      return;
+    }
+    if (queryRequiresDocuments(query) && docCount < 1) {
+      setError("Attach at least one document before submitting your reply.");
+      return;
+    }
+    if (!message && !queryRequiresDocuments(query)) {
       setError("Enter a reply message before submitting.");
       return;
     }
+
     setSubmitting(query.id);
     setError(null);
     try {
-      const files = queryFiles[query.id] ?? [];
-      for (const file of files) {
-        await api.uploadClaimDocument(claim.id, file, undefined, query.id);
-      }
-      await api.replyToClaimQuery(claim.id, query.id, message);
+      await api.replyToClaimQuery(
+        claim.id,
+        query.id,
+        message || "Please find the requested documents attached.",
+      );
       setReplyText((prev) => ({ ...prev, [query.id]: "" }));
-      setQueryFiles((prev) => ({ ...prev, [query.id]: [] }));
+      setUploadedDocs((prev) => ({ ...prev, [query.id]: [] }));
       const res = await api.listClaimQueries(claim.id);
       setQueries(res.queries);
       onReplied();
@@ -552,7 +651,11 @@ function ClaimQueryReplyPanel({
               {error}
             </p>
           ) : null}
-          {queries.map((query) => (
+          {queries.map((query) => {
+            const attached = uploadedDocs[query.id] ?? [];
+            const uploading = (uploadingCount[query.id] ?? 0) > 0;
+            const docCount = attached.length > 0 ? attached.length : (query.document_count ?? 0);
+            return (
             <div
               key={query.id}
               className={`claim-query-card${query.status === "open" ? " claim-query-card--open" : ""}`}
@@ -560,8 +663,10 @@ function ClaimQueryReplyPanel({
               <p className="claim-query-admin">
                 <strong>Admin:</strong> {query.admin_message}
               </p>
-              {query.requires_documents ? (
-                <p className="claim-query-docs-hint">Please attach the requested documents below.</p>
+              {queryRequiresDocuments(query) ? (
+                <p className="claim-query-docs-hint">
+                  Please attach the requested documents (PDF or images, max 8 MB each).
+                </p>
               ) : null}
               {query.customer_reply ? (
                 <p className="claim-query-reply">
@@ -577,30 +682,48 @@ function ClaimQueryReplyPanel({
                       onChange={(e) =>
                         setReplyText((prev) => ({ ...prev, [query.id]: e.target.value }))
                       }
-                      placeholder="Explain or provide the information requested…"
-                      disabled={submitting === query.id}
+                      placeholder={
+                        queryRequiresDocuments(query)
+                          ? "Optional note to accompany your documents…"
+                          : "Explain or provide the information requested…"
+                      }
+                      disabled={submitting === query.id || uploading}
                     />
                   </label>
-                  {query.requires_documents ? (
-                    <label>
-                      Attach documents
-                      <input
-                        type="file"
-                        multiple
-                        accept=".pdf,image/jpeg,image/png,image/gif,image/webp"
-                        onChange={(e) => {
-                          onFilesSelected(query.id, e.target.files);
-                          e.target.value = "";
-                        }}
-                        disabled={submitting === query.id}
-                      />
+                  <div className="claim-query-upload">
+                    <label
+                      htmlFor={`query-file-${query.id}`}
+                      className={`claim-query-file-btn${submitting === query.id || uploading ? " claim-query-file-btn--disabled" : ""}`}
+                    >
+                      {uploading ? "Uploading…" : "Choose files to attach"}
                     </label>
-                  ) : null}
-                  {(queryFiles[query.id]?.length ?? 0) > 0 ? (
+                    <input
+                      ref={(el) => {
+                        fileInputRefs.current[query.id] = el;
+                      }}
+                      id={`query-file-${query.id}`}
+                      type="file"
+                      className="sr-only"
+                      multiple
+                      accept="application/pdf,image/jpeg,image/png,image/gif,image/webp,.pdf"
+                      onChange={(e) => {
+                        void onFilesSelected(query, e.target.files);
+                        e.target.value = "";
+                      }}
+                      disabled={submitting === query.id || uploading}
+                    />
+                    <p className="claim-query-upload-hint muted">
+                      {queryRequiresDocuments(query)
+                        ? `${docCount} document(s) attached${docCount < 1 ? " — at least 1 required" : ""}`
+                        : `${docCount} document(s) attached (optional)`}
+                    </p>
+                  </div>
+                  {attached.length > 0 ? (
                     <ul className="claim-attachments-list">
-                      {(queryFiles[query.id] ?? []).map((file, index) => (
-                        <li key={`${file.name}-${index}`}>
-                          <span>{file.name}</span>
+                      {attached.map((doc) => (
+                        <li key={doc.id}>
+                          <span>{doc.label || doc.file_name}</span>
+                          <span className="muted" style={{ fontSize: "0.8rem" }}>Uploaded</span>
                         </li>
                       ))}
                     </ul>
@@ -608,7 +731,7 @@ function ClaimQueryReplyPanel({
                   <button
                     type="button"
                     className="btn-primary"
-                    disabled={submitting === query.id}
+                    disabled={submitting === query.id || uploading}
                     onClick={() => void submitReply(query)}
                   >
                     {submitting === query.id ? "Submitting…" : "Submit reply"}
@@ -616,7 +739,7 @@ function ClaimQueryReplyPanel({
                 </div>
               ) : null}
             </div>
-          ))}
+          );})}
         </div>
       ) : null}
     </div>
@@ -670,7 +793,7 @@ export function ClaimsPage() {
         const first = claimable[0];
         setSelectedQuoteId(first.quote_id);
         setPolicyRef(first.policy_ref);
-        setCategory(first.category || "Property");
+        setCategory(first.product_category || first.category || "Property");
       }
     }
 
@@ -683,8 +806,10 @@ export function ClaimsPage() {
   function applyPolicy(policy: CustomerPolicy) {
     setSelectedQuoteId(policy.quote_id);
     setPolicyRef(policy.policy_ref);
-    setCategory(policy.category);
+    setCategory(policy.product_category || policy.category || "Property");
   }
+
+  const claimAmountMax = selectedPolicy?.coverage_limit_gbp ?? undefined;
 
   async function loadClaims() {
     setLoading(true);
@@ -878,6 +1003,24 @@ export function ClaimsPage() {
             </div>
           )}
 
+          {selectedPolicy?.coverage_summary ? (
+            <div className="policy-coverage-panel" role="status">
+              <strong>Coverage on this policy</strong>
+              <p>{selectedPolicy.coverage_summary}</p>
+              <p className="muted" style={{ margin: 0, fontSize: "0.85rem" }}>
+                {selectedPolicy.cover_start_at
+                  ? `Cover active from ${formatPolicyDate(selectedPolicy.cover_start_at)}`
+                  : "Cover starts when the policy is minted and approved"}
+                {selectedPolicy.cover_expires_at
+                  ? ` · Valid until ${formatPolicyDate(selectedPolicy.cover_expires_at)}`
+                  : ""}
+                {selectedPolicy.coverage_limit_gbp != null
+                  ? ` · Max claim £${Number(selectedPolicy.coverage_limit_gbp).toLocaleString("en-GB")}`
+                  : ""}
+              </p>
+            </div>
+          ) : null}
+
           <div className="claim-form">
             <label>
               Policy reference
@@ -912,12 +1055,18 @@ export function ClaimsPage() {
               <input
                 type="number"
                 min="0"
+                max={claimAmountMax}
                 step="1"
                 value={amount}
                 onChange={(e) => setAmount(e.target.value)}
                 aria-label="Amount claimed"
                 disabled={demoFilling}
               />
+              {claimAmountMax != null ? (
+                <span className="muted" style={{ display: "block", fontSize: "0.82rem", marginTop: 4 }}>
+                  Must not exceed policy coverage limit of £{claimAmountMax.toLocaleString("en-GB")}
+                </span>
+              ) : null}
             </label>
             <label>
               What happened
@@ -1014,7 +1163,7 @@ export function ClaimsPage() {
                   </p>
                 ) : null}
                 <p className="muted" style={{ margin: "4px 0 0" }}>
-                  {claim.category} · {formatClaimStatus(claim.status)} · £
+                  {isParametric && eventLabel ? eventLabel : claim.category} · {formatClaimStatus(claim.status)} · £
                   {Number(claim.amount_claimed).toFixed(2)}
                   {claim.approved_amount != null && claim.approved_amount !== claim.amount_claimed
                     ? ` (approved £${Number(claim.approved_amount).toFixed(2)})`

@@ -91,6 +91,10 @@ public class AdminTokenizationService {
 				? (record.getIssuedAt() == null ? null : record.getIssuedAt().toString())
 				: record.getActivatedAt().toString());
 		row.put("wallet_address", abbreviateAddress(record.getWalletAddress()));
+		row.put("product_category", record.getProductCategory());
+		row.put("coverage_summary", record.getCoverageSummary());
+		row.put("cover_expires_at", record.getCoverExpiresAt() == null ? null : record.getCoverExpiresAt().toString());
+		row.put("coverage_limit_gbp", record.getCoverageLimitGbp());
 		return row;
 	}
 
@@ -104,6 +108,10 @@ public class AdminTokenizationService {
 		row.put("customer_email", record.getCustomerEmail());
 		row.put("product_title", record.getProductTitle());
 		row.put("requested_at", record.getIssuedAt() == null ? null : record.getIssuedAt().toString());
+		row.put("product_category", record.getProductCategory());
+		row.put("coverage_summary", record.getCoverageSummary());
+		row.put("cover_expires_at", record.getCoverExpiresAt() == null ? null : record.getCoverExpiresAt().toString());
+		row.put("coverage_limit_gbp", record.getCoverageLimitGbp());
 		return row;
 	}
 
