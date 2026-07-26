@@ -9,6 +9,7 @@ import org.springframework.stereotype.Component;
 import com.gcul.messaging.EventTopics;
 import com.gcul.messaging.GculEventSubscriber;
 import com.gcul.messaging.GculEventSubscriberGroup;
+import com.gcul.messaging.LocalEventBus;
 import com.gcul.messaging.PubSubNames;
 import com.gcul.messaging.spring.GculPubSubProperties;
 
@@ -26,6 +27,10 @@ public class BlockchainPubSubBootstrap implements ApplicationRunner, AutoCloseab
 
 	@Override
 	public void run(ApplicationArguments args) throws Exception {
+		if (!properties.isEnabled()) {
+			LocalEventBus.register(EventTopics.POLICY, policyMintService::handle);
+			return;
+		}
 		GculEventSubscriber subscriber = new GculEventSubscriber(properties.isEnabled(), properties.getProjectId());
 		String subId = PubSubNames.subscriptionId(
 				properties.getTopicPrefix(), EventTopics.POLICY, properties.getServiceId());

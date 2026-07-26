@@ -25,6 +25,9 @@ public class PlatformAdminAuthFilter extends OncePerRequestFilter {
 		if (path.startsWith("/health") || path.startsWith("/error")) {
 			return true;
 		}
+		if ("/api/payment-ledger/premium-paid".equals(path)) {
+			return true;
+		}
 		return !path.startsWith("/api/payment-ledger");
 	}
 

@@ -8,24 +8,38 @@ import java.util.Map;
 import org.springframework.stereotype.Service;
 
 import com.gcul.policy.cache.AdminViewCache;
+import com.gcul.policy.model.PolicyRecord;
+import com.gcul.policy.policy.PolicyRecordService;
 import com.gcul.policy.quote.QuoteService;
 
 @Service
 public class AdminPolicyService {
 
 	private final QuoteService quoteService;
+	private final PolicyRecordService policyRecords;
 	private final AdminViewCache adminCache;
 
-	public AdminPolicyService(QuoteService quoteService, AdminViewCache adminCache) {
+	public AdminPolicyService(
+			QuoteService quoteService,
+			PolicyRecordService policyRecords,
+			AdminViewCache adminCache) {
 		this.quoteService = quoteService;
+		this.policyRecords = policyRecords;
 		this.adminCache = adminCache;
 	}
 
 	public Map<String, Object> listPolicies() {
-		List<Map<String, Object>> policies = new ArrayList<>();
+		LinkedHashMap<String, Map<String, Object>> byQuoteId = new LinkedHashMap<>();
 		for (Map<String, Object> quote : quoteService.listQuotes()) {
-			policies.add(toPolicyRow(quote));
+			String quoteId = str(quote.get("quote_id"));
+			byQuoteId.put(quoteId, toPolicyRow(quote));
 		}
+		for (PolicyRecord issued : policyRecords.listAllIssued()) {
+			String quoteId = issued.getQuoteId();
+			Map<String, Object> row = byQuoteId.computeIfAbsent(quoteId, id -> toPolicyRowFromRecord(issued));
+			overlayIssuedPolicy(row, issued);
+		}
+		List<Map<String, Object>> policies = new ArrayList<>(byQuoteId.values());
 		Map<String, Object> result = Map.of("policies", policies, "count", policies.size());
 		adminCache.store(AdminViewCache.DOC_POLICIES, result);
 		return result;
@@ -33,9 +47,49 @@ public class AdminPolicyService {
 
 	public Map<String, Object> stats() {
 		int quoteCount = quoteService.listQuotes().size();
+		long issuedCount = policyRecords.listAllIssued().size();
 		return Map.of(
 				"total_quotes", quoteCount,
-				"total_applications", quoteCount);
+				"total_applications", quoteCount,
+				"issued_policies", issuedCount,
+				"minted_nfts", policyRecords.countByMintStatus("MINTED"));
+	}
+
+	private void overlayIssuedPolicy(Map<String, Object> row, PolicyRecord issued) {
+		row.put("policy_number", issued.getPolicyNumber());
+		row.put("policy_ref", issued.getPolicyId());
+		row.put("payment_status", "paid");
+		row.put("mint_status", issued.getMintStatus());
+		row.put("token_id", issued.getTokenId());
+		row.put("status", "active".equalsIgnoreCase(issued.getStatus()) ? "active" : "issued");
+		if (issued.getProductTitle() != null && !issued.getProductTitle().isBlank()) {
+			row.put("product_title", issued.getProductTitle());
+		}
+		if (issued.getCustomerEmail() != null && !issued.getCustomerEmail().isBlank()) {
+			row.put("customer_email", issued.getCustomerEmail());
+		}
+	}
+
+	private Map<String, Object> toPolicyRowFromRecord(PolicyRecord issued) {
+		Map<String, Object> row = new LinkedHashMap<>();
+		row.put("id", issued.getQuoteId());
+		row.put("quote_id", issued.getQuoteId());
+		row.put("policy_number", issued.getPolicyNumber());
+		row.put("policy_ref", issued.getPolicyId());
+		row.put("product_id", "");
+		row.put("product_title", issued.getProductTitle());
+		row.put("category", "");
+		row.put("premium", 0);
+		row.put("price_unit", "month");
+		row.put("currency", "gbp");
+		row.put("customer_name", issued.getCustomerEmail());
+		row.put("customer_email", issued.getCustomerEmail());
+		row.put("status", "issued");
+		row.put("payment_status", "paid");
+		row.put("mint_status", issued.getMintStatus());
+		row.put("token_id", issued.getTokenId());
+		row.put("created_at", issued.getIssuedAt() == null ? "" : issued.getIssuedAt().toString());
+		return row;
 	}
 
 	@SuppressWarnings("unchecked")

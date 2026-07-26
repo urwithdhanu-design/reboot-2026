@@ -71,6 +71,34 @@ gcul.ethereum.contract-address=${POLICY_NFT_CONTRACT_ADDRESS}
 
 3. Restart blockchain-orchestrator. `GET /health` shows `ethereum.live=true`.
 
+### Live Sepolia mint via GCP Blockchain Node Engine
+
+For production on Google Cloud, provision a managed Sepolia node instead of Alchemy:
+
+```powershell
+$env:GCP_PROJECT = "insure360-83a36"
+$env:GCP_BLOCKCHAIN_NODE_API_KEY = "<your-gcp-api-key>"
+.\deploy\setup-blockchain-node.ps1
+```
+
+This writes `deploy/blockchain-node.json` and stores the JSON-RPC URL in Secret Manager (`gcul-blockchain-node-rpc-url`). The orchestrator reads it via `GCP_BLOCKCHAIN_NODE_RPC_URL` (falls back to `ALCHEMY_RPC_URL` locally).
+
+Then deploy with Ethereum secrets:
+
+```powershell
+$env:GCUL_USE_CLOUD_SQL = "true"
+$env:GCUL_USE_PUBSUB = "true"
+.\deploy\deploy-cloud-run.ps1
+```
+
+Required Secret Manager entries:
+
+| Secret | Purpose |
+|--------|---------|
+| `gcul-blockchain-node-rpc-url` | `https://json-rpc.*.blockchainnodeengine.com/?key=...` |
+| `gcul-insurer-mint-private-key` | Insurer hot wallet for `mintPolicy` txs |
+| `gcul-policy-nft-contract-address` | Deployed `InsurancePolicyNFT` on Sepolia |
+
 The insurer backend signs `mintPolicy(to, policyId, tokenURI)` with the hot wallet and sends the NFT directly to the customer's verified `0x…` address.
 
 ### Internal API (insurer-only)

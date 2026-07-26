@@ -55,7 +55,8 @@ public class PolicyIssuanceService {
 			return;
 		}
 		if (policyRecords.findByQuoteId(quoteId).isPresent()) {
-			log.debug("Policy already issued for quote {}", quoteId);
+			log.debug("Policy already issued for quote {} — checking mint retry", quoteId);
+			maybeRetryMint(policyRecords.findByQuoteId(quoteId).orElseThrow(), payload);
 			return;
 		}
 
@@ -119,6 +120,12 @@ public class PolicyIssuanceService {
 			return;
 		}
 		policyRecords.findByPolicyId(policyId).ifPresent(record -> {
+			if ("MINTED".equalsIgnoreCase(record.getMintStatus())
+					&& record.getTokenId() != null
+					&& record.getTokenId().equals(str(payload.get("tokenId")))) {
+				log.debug("Policy {} already minted with token {}", policyId, record.getTokenId());
+				return;
+			}
 			policyRecords.applyMintResult(policyId, payload);
 			Map<String, Object> activated = new LinkedHashMap<>();
 			activated.put("eventType", "PolicyActivated");
@@ -169,10 +176,37 @@ public class PolicyIssuanceService {
 				.toList();
 	}
 
+	private void maybeRetryMint(PolicyRecord record, Map<String, Object> payload) {
+		if ("MINTED".equalsIgnoreCase(record.getMintStatus())) {
+			return;
+		}
+		String customerEmail = record.getCustomerEmail();
+		WalletLookup wallet = resolveWallet(customerEmail, payload.get("walletAddress"));
+		if (!wallet.connected() || wallet.address().isBlank()) {
+			return;
+		}
+		PolicyRecord current = record;
+		if (current.getWalletAddress() == null || current.getWalletAddress().isBlank()) {
+			current = policyRecords.attachWallet(record.getPolicyId(), wallet.address());
+		}
+		String customerId = firstNonBlank(current.getCustomerId(), wallet.userId(), customerEmail);
+		if (!kycInternalClient.isVerified(customerId)) {
+			return;
+		}
+		requestBlockchainMint(current, true);
+	}
+
 	private void requestBlockchainMint(PolicyRecord record, boolean kycVerified) {
+		if ("MINTED".equalsIgnoreCase(record.getMintStatus())) {
+			return;
+		}
+		Map<String, Object> mintRequest = blockchainMintClient.buildMintRequest(toView(record), kycVerified);
+		Map<String, Object> requested = new LinkedHashMap<>(mintRequest);
+		requested.put("eventType", "PolicyMintRequested");
+		publisher.publish(EventTopics.POLICY, requested);
+
 		try {
-			Map<String, Object> mintResult = blockchainMintClient.mintPolicyNft(
-					blockchainMintClient.buildMintRequest(toView(record), kycVerified));
+			Map<String, Object> mintResult = blockchainMintClient.mintPolicyNft(mintRequest);
 			onPolicyMinted(mintResult);
 		}
 		catch (Exception ex) {

@@ -69,6 +69,29 @@ public class PaymentLedgerService {
 		return toMap(repo.save(record));
 	}
 
+	public Map<String, Object> recordPremiumPaid(Map<String, Object> body) {
+		String quoteId = str(body.get("quote_id"));
+		if (quoteId.isBlank()) {
+			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "quote_id is required");
+		}
+		PaymentRecord record = repo.findTopByQuoteIdOrderByCreatedAtDesc(quoteId).orElseGet(PaymentRecord::new);
+		if (record.getId() == null || record.getId().isBlank()) {
+			record.setId("PAY-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase(Locale.ROOT));
+			record.setCreatedAt(Instant.now());
+		}
+		record.setQuoteId(quoteId);
+		record.setPolicyRef(firstNonBlank(str(body.get("policy_ref")), "POL-" + quoteId.replace("Q-", "")));
+		record.setCustomerEmail(str(body.get("customer_email")));
+		record.setAmount(num(body.get("amount"), 0));
+		record.setCurrency(firstNonBlank(str(body.get("currency")), "GBP"));
+		record.setProvider(firstNonBlank(str(body.get("provider")), "stripe"));
+		record.setStatus("paid");
+		record.setUpdatedAt(Instant.now());
+		PaymentRecord saved = repo.save(record);
+		list(null);
+		return toMap(saved);
+	}
+
 	private Map<String, Object> toMap(PaymentRecord r) {
 		Map<String, Object> map = new LinkedHashMap<>();
 		map.put("id", r.getId());

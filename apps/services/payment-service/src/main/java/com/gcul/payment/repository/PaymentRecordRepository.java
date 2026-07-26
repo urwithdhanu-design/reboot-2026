@@ -9,4 +9,5 @@ import com.gcul.payment.model.PaymentRecord;
 public interface PaymentRecordRepository extends JpaRepository<PaymentRecord, String> {
 	List<PaymentRecord> findByQuoteIdOrderByCreatedAtDesc(String quoteId);
 	List<PaymentRecord> findAllByOrderByCreatedAtDesc();
+	java.util.Optional<PaymentRecord> findTopByQuoteIdOrderByCreatedAtDesc(String quoteId);
 }

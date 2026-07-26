@@ -14,7 +14,29 @@ const statusBadge: Record<string, 'success' | 'warning' | 'error' | 'neutral' | 
   cancelled: 'neutral',
   paid: 'success',
   pending: 'warning',
+  minted: 'success',
+  failed: 'error',
+  pending_wallet: 'warning',
 };
+
+function formatMintStatus(status?: string) {
+  if (!status) return null;
+  if (status === 'MINTED') return 'minted';
+  if (status === 'PENDING_WALLET') return 'pending_wallet';
+  if (status === 'FAILED') return 'failed';
+  if (status === 'PENDING') return 'pending';
+  return status.toLowerCase();
+}
+
+function mintStatusLabel(status?: string) {
+  const key = formatMintStatus(status);
+  if (!key) return '—';
+  if (key === 'pending_wallet') return 'awaiting wallet';
+  if (key === 'minted') return 'minted';
+  if (key === 'failed') return 'failed';
+  if (key === 'pending') return 'pending';
+  return key;
+}
 
 function formatGBP(amount: number, unit?: string) {
   const suffix = unit === 'trip' ? '/trip' : unit === 'month' ? '/mo' : '';
@@ -68,6 +90,7 @@ export function PoliciesPage() {
           { label: 'Applications', value: policies.length },
           { label: 'Paid', value: policies.filter((p) => p.payment_status === 'paid').length, tone: 'success' },
           { label: 'Active', value: policies.filter((p) => p.status === 'active').length, tone: 'success' },
+          { label: 'Minted NFTs', value: policies.filter((p) => p.mint_status === 'MINTED').length, tone: 'success' },
           { label: 'Pending pay', value: policies.filter((p) => (p.payment_status ?? 'pending') !== 'paid').length, tone: 'warning' },
         ]}
         actions={
@@ -99,6 +122,7 @@ export function PoliciesPage() {
               { key: 'category', label: 'Category', sortable: true },
               { key: 'premium', label: 'Premium', sortable: true },
               { key: 'payment_status', label: 'Payment', sortable: true },
+              { key: 'mint_status', label: 'Mint', sortable: true },
               { key: 'status', label: 'Status', sortable: true },
               { key: 'created_at', label: 'Created', sortable: true },
             ]}
@@ -109,6 +133,7 @@ export function PoliciesPage() {
             getSortValue={(row, key) => {
               if (key === 'premium') return Number(row.premium);
               if (key === 'payment_status') return row.payment_status ?? 'pending';
+              if (key === 'mint_status') return row.mint_status ?? '';
               return (row as Record<string, string | number>)[key];
             }}
             emptyMessage="No quotes yet. Customer quotes appear here after estimate."
@@ -136,6 +161,20 @@ export function PoliciesPage() {
                   <Badge variant={statusBadge[p.payment_status ?? 'pending'] ?? 'neutral'}>
                     {p.payment_status ?? 'not paid'}
                   </Badge>
+                </td>
+                <td className="py-3 px-4">
+                  {p.mint_status ? (
+                    <div>
+                      <Badge variant={statusBadge[formatMintStatus(p.mint_status) ?? 'neutral'] ?? 'neutral'}>
+                        {mintStatusLabel(p.mint_status)}
+                      </Badge>
+                      {p.token_id ? (
+                        <p className="text-xs font-mono text-lbg-gray-400 mt-1">{p.token_id}</p>
+                      ) : null}
+                    </div>
+                  ) : (
+                    <span className="text-xs text-lbg-gray-400">—</span>
+                  )}
                 </td>
                 <td className="py-3 px-4">
                   <Badge variant={statusBadge[p.status] ?? 'neutral'}>{p.status}</Badge>

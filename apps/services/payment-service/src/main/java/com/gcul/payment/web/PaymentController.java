@@ -64,6 +64,11 @@ public class PaymentController {
 		return payments.confirm(id);
 	}
 
+	@PostMapping("/premium-paid")
+	public Map<String, Object> recordPremiumPaid(@RequestBody Map<String, Object> body) {
+		return payments.recordPremiumPaid(body);
+	}
+
 	/** Service identity — Stripe checkout remains on policy-service /api/payments for now. */
 	@GetMapping("/info")
 	public Map<String, Object> info() {

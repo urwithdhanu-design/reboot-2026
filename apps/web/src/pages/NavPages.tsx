@@ -195,6 +195,11 @@ export function PoliciesPage() {
                 {policies.map((policy) => (
                   <div className="quote-card" key={policy.policy_id}>
                     <span className="muted">
+                      Premium paid
+                      {policy.payment_status === "paid" || policy.status === "active" || policy.status === "issued"
+                        ? " · Cover active"
+                        : ""}
+                      {" · "}
                       {policy.mint_status === "MINTED" ? "NFT minted" : policy.mint_status ?? "Pending mint"}
                     </span>
                     <strong>{policy.product_title ?? policy.policy_number}</strong>

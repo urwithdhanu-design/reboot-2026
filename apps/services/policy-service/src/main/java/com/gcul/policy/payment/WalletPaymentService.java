@@ -7,8 +7,6 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
-import com.gcul.messaging.EventTopics;
-import com.gcul.messaging.GculEventPublisher;
 import com.gcul.policy.client.WalletClient;
 import com.gcul.policy.mail.MailService;
 import com.gcul.policy.messaging.PolicyIssuanceService;
@@ -21,19 +19,19 @@ public class WalletPaymentService {
 	private final WalletClient walletClient;
 	private final PolicyIssuanceService issuance;
 	private final MailService mail;
-	private final GculEventPublisher eventPublisher;
+	private final PremiumPaymentCoordinator premiumPayments;
 
 	public WalletPaymentService(
 			QuoteService quotes,
 			WalletClient walletClient,
 			PolicyIssuanceService issuance,
 			MailService mail,
-			GculEventPublisher eventPublisher) {
+			PremiumPaymentCoordinator premiumPayments) {
 		this.quotes = quotes;
 		this.walletClient = walletClient;
 		this.issuance = issuance;
 		this.mail = mail;
-		this.eventPublisher = eventPublisher;
+		this.premiumPayments = premiumPayments;
 	}
 
 	public Map<String, Object> payWithWallet(String userId, String userEmail, String quoteId, String bearerToken) {
@@ -53,6 +51,7 @@ public class WalletPaymentService {
 		payload.put("currency", String.valueOf(quote.getOrDefault("currency", "gbp")));
 		payload.put("paymentStatus", "paid");
 		payload.put("customerId", userId);
+		payload.put("customerEmail", userEmail);
 		payload.put("walletAddress", walletAddress.isBlank() ? null : walletAddress);
 		payload.put("paymentMethod", "wallet");
 		Object tx = walletResult.get("transaction");
@@ -60,8 +59,7 @@ public class WalletPaymentService {
 			payload.put("walletTransactionId", txMap.get("id"));
 		}
 
-		issuance.onPremiumPaid(payload);
-		eventPublisher.publish(EventTopics.PAYMENT, payload);
+		premiumPayments.completePremiumPayment(payload, "wallet");
 
 		String email = extractEmail(quote, userEmail);
 		if (!email.isBlank()) {

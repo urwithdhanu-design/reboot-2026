@@ -117,6 +117,10 @@ public class PolicyRecordService {
 		return repository.findByMintStatusOrderByIssuedAtDesc("MINTED");
 	}
 
+	public List<PolicyRecord> listAllIssued() {
+		return repository.findAllByOrderByIssuedAtDesc();
+	}
+
 	public long countByMintStatus(String mintStatus) {
 		return repository.countByMintStatus(mintStatus);
 	}
@@ -139,6 +143,7 @@ public class PolicyRecordService {
 		map.put("block_number", record.getBlockNumber());
 		map.put("blockchain_network", record.getBlockchainNetwork());
 		map.put("mint_status", record.getMintStatus());
+		map.put("payment_status", "paid");
 		map.put("issued_at", record.getIssuedAt() == null ? null : record.getIssuedAt().toString());
 		map.put("activated_at", record.getActivatedAt() == null ? null : record.getActivatedAt().toString());
 		map.put("explorer_url", buildExplorerUrl(record));

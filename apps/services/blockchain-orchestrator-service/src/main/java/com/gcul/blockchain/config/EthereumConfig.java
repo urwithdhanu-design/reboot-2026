@@ -22,7 +22,8 @@ public class EthereumConfig {
 	@ConditionalOnProperty(name = "gcul.ethereum.enabled", havingValue = "true")
 	Web3j web3j(EthereumProperties props) {
 		if (!StringUtils.hasText(props.getRpcUrl())) {
-			throw new IllegalStateException("gcul.ethereum.enabled=true requires gcul.ethereum.rpc-url (Alchemy HTTPS URL)");
+			throw new IllegalStateException(
+					"gcul.ethereum.enabled=true requires gcul.ethereum.rpc-url (GCP Blockchain Node Engine or Alchemy HTTPS URL)");
 		}
 		log.info("Ethereum web3j client enabled (chainId={})", props.getChainId());
 		return Web3j.build(new HttpService(props.getRpcUrl()));

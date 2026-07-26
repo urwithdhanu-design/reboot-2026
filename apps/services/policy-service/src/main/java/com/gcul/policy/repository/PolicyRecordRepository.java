@@ -22,5 +22,7 @@ public interface PolicyRecordRepository extends JpaRepository<PolicyRecord, Stri
 
 	List<PolicyRecord> findByMintStatusOrderByIssuedAtDesc(String mintStatus);
 
+	List<PolicyRecord> findAllByOrderByIssuedAtDesc();
+
 	long countByMintStatus(String mintStatus);
 }

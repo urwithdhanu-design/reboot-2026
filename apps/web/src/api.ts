@@ -112,6 +112,7 @@ export type CustomerPolicyRecord = {
   block_number?: number | null;
   blockchain_network?: string | null;
   mint_status?: string;
+  payment_status?: string;
   issued_at?: string;
   activated_at?: string | null;
   explorer_url?: string | null;

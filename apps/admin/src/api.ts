@@ -109,6 +109,8 @@ export type AdminPolicyRow = {
   created_at?: string;
   payment_status?: string;
   policy_ref?: string;
+  mint_status?: string;
+  token_id?: string | null;
 };
 
 export type TokenRegistryRow = {
@@ -486,12 +488,13 @@ export function enrichPoliciesWithPayments(
   }
   return policies.map((row) => {
     const pay = byQuote.get(row.quote_id);
-    if (!pay) return row;
+    const paymentStatus = pay?.status ?? row.payment_status;
+    if (!paymentStatus) return row;
     return {
       ...row,
-      payment_status: pay.status,
-      policy_ref: pay.policy_ref,
-      status: pay.status === 'paid' ? 'active' : row.status,
+      payment_status: paymentStatus,
+      policy_ref: pay?.policy_ref ?? row.policy_ref,
+      status: paymentStatus === 'paid' ? 'active' : row.status,
     };
   });
 }

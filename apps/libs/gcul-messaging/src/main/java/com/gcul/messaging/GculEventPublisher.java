@@ -40,7 +40,7 @@ public class GculEventPublisher implements AutoCloseable {
 
 	public void publish(String topicSuffix, Map<String, Object> payload) {
 		if (!enabled) {
-			log.debug("Pub/Sub disabled; skip publish to {} eventType={}", topicSuffix, payload.get("eventType"));
+			LocalEventBus.dispatch(topicSuffix, payload, publisherServiceId);
 			return;
 		}
 		if (projectId == null || projectId.isBlank()) {

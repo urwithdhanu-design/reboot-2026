@@ -11,8 +11,6 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
-import com.gcul.messaging.EventTopics;
-import com.gcul.messaging.GculEventPublisher;
 import com.gcul.policy.config.StripeProperties;
 import com.gcul.policy.mail.MailService;
 import com.gcul.policy.quote.QuoteService;
@@ -31,7 +29,7 @@ public class StripePaymentService {
 	private final StripeProperties properties;
 	private final QuoteService quotes;
 	private final MailService mail;
-	private final GculEventPublisher eventPublisher;
+	private final PremiumPaymentCoordinator premiumPayments;
 	private final Set<String> paymentEmailsSent = ConcurrentHashMap.newKeySet();
 	private final Set<String> premiumPaidPublished = ConcurrentHashMap.newKeySet();
 	private final Map<String, DemoCheckoutSession> demoSessions = new ConcurrentHashMap<>();
@@ -40,11 +38,11 @@ public class StripePaymentService {
 			StripeProperties properties,
 			QuoteService quotes,
 			MailService mail,
-			GculEventPublisher eventPublisher) {
+			PremiumPaymentCoordinator premiumPayments) {
 		this.properties = properties;
 		this.quotes = quotes;
 		this.mail = mail;
-		this.eventPublisher = eventPublisher;
+		this.premiumPayments = premiumPayments;
 	}
 
 	@PostConstruct
@@ -237,7 +235,9 @@ public class StripePaymentService {
 		payload.put("paymentStatus", "paid");
 		payload.put("customerId", quoteId);
 		payload.put("mode", isDemoSession(sessionId) ? "demo" : "stripe");
-		eventPublisher.publish(EventTopics.PAYMENT, payload);
+		payload.put("paymentMethod", isDemoSession(sessionId) ? "demo" : "stripe");
+		String provider = isDemoSession(sessionId) ? "demo" : "stripe";
+		premiumPayments.completePremiumPayment(payload, provider);
 	}
 
 	private static boolean isDemoSession(String sessionId) {

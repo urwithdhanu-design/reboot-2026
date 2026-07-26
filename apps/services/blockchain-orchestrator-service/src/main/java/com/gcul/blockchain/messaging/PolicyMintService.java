@@ -49,7 +49,14 @@ public class PolicyMintService {
 			return false;
 		}
 		String policyId = str(payload.get("policyId"));
-		if (policyId.isBlank() || !mintedPolicies.add(policyId)) {
+		if (policyId.isBlank()) {
+			return true;
+		}
+		if (policyNftMintService.findByPolicyId(policyId).isPresent()) {
+			log.debug("Policy {} already minted on-chain — skip event handler", policyId);
+			return true;
+		}
+		if (!mintedPolicies.add(policyId)) {
 			return true;
 		}
 

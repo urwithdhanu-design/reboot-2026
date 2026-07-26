@@ -7,6 +7,7 @@ import org.springframework.stereotype.Component;
 import com.gcul.messaging.EventTopics;
 import com.gcul.messaging.GculEventSubscriber;
 import com.gcul.messaging.GculEventSubscriberGroup;
+import com.gcul.messaging.LocalEventBus;
 import com.gcul.messaging.PubSubNames;
 import com.gcul.messaging.spring.GculPubSubProperties;
 
@@ -24,6 +25,12 @@ public class PolicyPubSubBootstrap implements ApplicationRunner, AutoCloseable {
 
 	@Override
 	public void run(ApplicationArguments args) throws Exception {
+		if (!properties.isEnabled()) {
+			LocalEventBus.register(EventTopics.PAYMENT, handlers::handlePayment);
+			LocalEventBus.register(EventTopics.BLOCKCHAIN, handlers::handleBlockchain);
+			LocalEventBus.register(EventTopics.WALLET, handlers::handleWallet);
+			return;
+		}
 		startSub(EventTopics.PAYMENT, handlers::handlePayment);
 		startSub(EventTopics.BLOCKCHAIN, handlers::handleBlockchain);
 		startSub(EventTopics.WALLET, handlers::handleWallet);
