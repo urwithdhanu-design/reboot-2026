@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
 
 import com.gcul.wallet.service.WalletService;
+import com.gcul.wallet.web.LinkWalletRequest;
 import com.gcul.wallet.web.PayRequest;
 import com.gcul.wallet.web.RechargeRequest;
 
@@ -29,6 +30,16 @@ public class WalletController {
 	@GetMapping
 	public Map<String, Object> getWallet(HttpServletRequest request) {
 		return walletService.getWallet(requireUserId(request));
+	}
+
+	@PostMapping("/link")
+	public Map<String, Object> linkWallet(HttpServletRequest request, @RequestBody LinkWalletRequest body) {
+		String token = requireBearer(request);
+		return walletService.linkWallet(
+				requireUserId(request),
+				(String) request.getAttribute("userEmail"),
+				body.address(),
+				token);
 	}
 
 	@PostMapping("/create")

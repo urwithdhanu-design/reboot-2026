@@ -111,6 +111,66 @@ export type AdminPolicyRow = {
   policy_ref?: string;
 };
 
+export type TokenRegistryRow = {
+  id: string;
+  token_id?: string;
+  name: string;
+  policy_number: string;
+  standard: string;
+  type: 'policy_nft';
+  owner: string;
+  status: 'active' | 'minting' | 'frozen';
+  contract_address: string;
+  transaction_hash?: string;
+  explorer_url?: string | null;
+  minted_at?: string;
+  wallet_address?: string;
+};
+
+export type TokenMintQueueRow = {
+  id: string;
+  policy_number: string;
+  standard: string;
+  status: 'pending' | 'pending_wallet' | 'failed';
+  customer_name: string;
+  customer_email: string;
+  product_title: string;
+  requested_at?: string;
+};
+
+export type TokenStandardRow = {
+  standard: string;
+  symbol: string;
+  name: string;
+  description: string;
+  total_supply: number;
+  circulating: number;
+  enabled: boolean;
+  contract_address: string;
+};
+
+export type TokenizationView = {
+  registry: TokenRegistryRow[];
+  mint_queue: TokenMintQueueRow[];
+  stats: {
+    policy_nfts: number;
+    pending_mints: number;
+    pending_wallet: number;
+    failed_mints: number;
+    total_issued: number;
+  };
+  blockchain: {
+    network_name: string;
+    chain_id: number;
+    mode: string;
+    live: boolean;
+    contract_address: string;
+    enabled: boolean;
+  };
+  standards: TokenStandardRow[];
+  count: number;
+};
+
 export type PaymentLedgerRow = {
   id: string;
   quote_id: string;
@@ -314,6 +374,9 @@ export const adminApi = {
 
   policyStats: () =>
     adminRequest<{ total_quotes: number; total_applications: number }>('/api/admin/policy-stats'),
+
+  tokenizationView: () =>
+    adminRequest<TokenizationView>('/api/admin/tokenization'),
 
   listPayments: () =>
     adminRequest<{ payments: PaymentLedgerRow[]; count: number }>('/api/payment-ledger'),

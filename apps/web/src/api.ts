@@ -96,6 +96,28 @@ export type WalletInfo = {
   note?: string;
   provider?: string;
 };
+
+export type CustomerPolicyRecord = {
+  policy_id: string;
+  policy_number: string;
+  quote_id: string;
+  product_title?: string;
+  status: string;
+  wallet_address?: string | null;
+  policy_reference_hash?: string;
+  metadata_uri?: string;
+  token_id?: string | null;
+  transaction_hash?: string | null;
+  contract_address?: string | null;
+  block_number?: number | null;
+  blockchain_network?: string | null;
+  mint_status?: string;
+  issued_at?: string;
+  activated_at?: string | null;
+  explorer_url?: string | null;
+};
+
+export type ChatbotAskResponse = {
   answer: string;
   sources: {
     title?: string;
@@ -235,6 +257,20 @@ export const api = {
   getWalletTransactions: (token: string) =>
     request<{ transactions: WalletTransaction[]; count: number }>(
       "/api/wallet/transactions",
+      {},
+      token,
+    ),
+
+  linkWallet: (token: string, address: string) =>
+    request<WalletInfo & { linked?: boolean }>(
+      "/api/wallet/link",
+      { method: "POST", body: JSON.stringify({ address }) },
+      token,
+    ),
+
+  getMyPolicies: (token: string) =>
+    request<{ policies: CustomerPolicyRecord[]; count: number }>(
+      "/api/policies/me",
       {},
       token,
     ),

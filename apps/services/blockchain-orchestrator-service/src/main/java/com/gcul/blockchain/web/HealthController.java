@@ -7,6 +7,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.gcul.blockchain.ethereum.PolicyNftMintService;
 import com.gcul.blockchain.service.BlockchainOrchestratorService;
 
 @RestController
@@ -19,12 +20,16 @@ public class HealthController {
 	private boolean cloudSqlEnabled;
 
 	private final BlockchainOrchestratorService orchestrator;
+	private final PolicyNftMintService policyNftMintService;
 
 	@Value("${gcul.services.target:local}")
 	private String servicesTarget;
 
-	public HealthController(BlockchainOrchestratorService orchestrator) {
+	public HealthController(
+			BlockchainOrchestratorService orchestrator,
+			PolicyNftMintService policyNftMintService) {
 		this.orchestrator = orchestrator;
+		this.policyNftMintService = policyNftMintService;
 	}
 
 	@GetMapping("/health")
@@ -36,6 +41,7 @@ public class HealthController {
 		body.put("servicesTarget", servicesTarget);
 		body.put("database", cloudSqlEnabled ? "cloud-sql-postgresql" : "h2");
 		body.put("gcul_sidecar", orchestrator.sidecarHealth());
+		body.put("ethereum", policyNftMintService.status());
 		return body;
 	}
 }

@@ -9,6 +9,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.gcul.policy.admin.AdminPolicyService;
+import com.gcul.policy.admin.AdminTokenizationService;
 import com.gcul.policy.cache.AdminViewCache;
 import com.gcul.policy.cache.FirestoreCacheProperties;
 
@@ -17,14 +18,17 @@ import com.gcul.policy.cache.FirestoreCacheProperties;
 public class AdminController {
 
 	private final AdminPolicyService admin;
+	private final AdminTokenizationService tokenization;
 	private final AdminViewCache adminCache;
 	private final FirestoreCacheProperties firestoreProps;
 
 	public AdminController(
 			AdminPolicyService admin,
+			AdminTokenizationService tokenization,
 			AdminViewCache adminCache,
 			FirestoreCacheProperties firestoreProps) {
 		this.admin = admin;
+		this.tokenization = tokenization;
 		this.adminCache = adminCache;
 		this.firestoreProps = firestoreProps;
 	}
@@ -37,6 +41,11 @@ public class AdminController {
 	@GetMapping("/policy-stats")
 	public Map<String, Object> stats() {
 		return admin.stats();
+	}
+
+	@GetMapping("/tokenization")
+	public Map<String, Object> tokenization() {
+		return tokenization.view();
 	}
 
 	@PostMapping("/policies/refresh-cache")

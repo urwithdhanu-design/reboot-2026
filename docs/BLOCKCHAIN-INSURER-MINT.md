@@ -37,6 +37,61 @@ Stripe checkout  ──►  policy-service (payment confirmed)
 
 ## Path A — Ethereum testnet (Alchemy + MetaMask + web3j)
 
+**Status: implemented in `blockchain-orchestrator-service`** (simulated mode by default; live Sepolia when configured).
+
+### Quick start (local simulated mint)
+
+```powershell
+# From repo root — starts blockchain-orchestrator on :8088
+local-dev.cmd apis
+
+# Mint a test policy NFT (simulated Sepolia)
+powershell -File scripts/local/test-policy-nft-mint.ps1
+```
+
+### Live Sepolia mint
+
+1. Deploy the ERC-721 contract:
+
+```powershell
+cd contracts
+copy .env.example .env   # add ALCHEMY_RPC_URL + INSURER_MINT_PRIVATE_KEY
+npm install
+npm run deploy:sepolia
+```
+
+2. Configure `blockchain-orchestrator-service`:
+
+```properties
+gcul.ethereum.enabled=true
+gcul.ethereum.rpc-url=${ALCHEMY_RPC_URL}
+gcul.ethereum.insurer-private-key=${INSURER_MINT_PRIVATE_KEY}
+gcul.ethereum.contract-address=${POLICY_NFT_CONTRACT_ADDRESS}
+```
+
+3. Restart blockchain-orchestrator. `GET /health` shows `ethereum.live=true`.
+
+The insurer backend signs `mintPolicy(to, policyId, tokenURI)` with the hot wallet and sends the NFT directly to the customer's verified `0x…` address.
+
+### Internal API (insurer-only)
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/api/blockchain/internal/policy-nft/status` | Ethereum / contract status |
+| POST | `/api/blockchain/internal/policy-nft/mint` | Mint policy NFT to customer wallet |
+| GET | `/api/blockchain/internal/policy-nft/{policyId}` | Lookup mint record |
+
+### End-to-end flow (payment → mint → active)
+
+```text
+Customer pays (Stripe) → policy-service issues policy
+  → wallet-service provides verified 0x address (internal lookup)
+  → policy-service POST /api/blockchain/internal/policy-nft/mint
+  → orchestrator signs tx with insurer key (or simulated mode)
+  → PolicyMinted event + policy_nft_records row
+  → policy-service activates policy with tokenId + txHash
+```
+
 ### 1. Alchemy (RPC URL)
 
 1. Register at [alchemy.com](https://www.alchemy.com/).

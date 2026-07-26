@@ -19,7 +19,7 @@ foreach ($app in $UiApps) {
 
   $appDir = Join-Path $RepoRoot $app.dir
   if (-not (Test-Path (Join-Path $appDir "node_modules"))) {
-    Write-Host "Missing node_modules in $($app.dir) — run: local-dev.cmd setup"
+    Write-Host "Missing node_modules in $($app.dir) - run: local-dev.cmd setup"
     Push-Location $appDir
     try {
       npm install --no-fund --no-audit
@@ -31,7 +31,9 @@ foreach ($app in $UiApps) {
 
   $log = Join-Path $LogDir "$($app.id).log"
   if (Test-Path $log) { Remove-Item $log -Force }
-  $cmd = "cd /d `"$appDir`" && npm run dev > `"$log`" 2>&1"
+  # Build this for cmd.exe without nested PowerShell quote escapes.  The
+  # previous form was parsed as an operator by Windows PowerShell 5.1.
+  $cmd = 'cd /d "' + $appDir + '" && npm run dev > "' + $log + '" 2>&1'
   Start-Process -FilePath "cmd.exe" -ArgumentList "/c", $cmd -WindowStyle Hidden
   Write-Host "Started $($app.id) on :$port -> $log"
 }

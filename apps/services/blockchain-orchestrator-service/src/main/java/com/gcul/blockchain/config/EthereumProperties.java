@@ -13,6 +13,10 @@ public class EthereumProperties {
 
 	private String insurerPrivateKey = "";
 
+	private String contractAddress = "";
+
+	private String tokenUriBase = "";
+
 	public boolean isEnabled() {
 		return enabled;
 	}
@@ -43,5 +47,21 @@ public class EthereumProperties {
 
 	public void setInsurerPrivateKey(String insurerPrivateKey) {
 		this.insurerPrivateKey = insurerPrivateKey;
+	}
+
+	public String getContractAddress() {
+		return contractAddress;
+	}
+
+	public void setContractAddress(String contractAddress) {
+		this.contractAddress = contractAddress;
+	}
+
+	public String getTokenUriBase() {
+		return tokenUriBase;
+	}
+
+	public void setTokenUriBase(String tokenUriBase) {
+		this.tokenUriBase = tokenUriBase;
 	}
 }

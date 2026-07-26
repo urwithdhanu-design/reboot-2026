@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { api, type AuthUser, type QuoteEstimate } from "../api";
+import { api, type AuthUser, type CustomerPolicyRecord, type QuoteEstimate } from "../api";
 import { buildClaimDemoForPolicy, sleep } from "../claimsDemoFill";
 import { saveQuoteToCompare, readCompareQuotes } from "../compareBasket";
 import { getCustomerPolicies, quoteToPolicyRef, type CustomerPolicy } from "../customerPolicies";
@@ -31,7 +31,7 @@ const ACTION_MESSAGES: Record<string, string> = {
 export function PoliciesPage() {
   const location = useLocation();
   const navigate = useNavigate();
-  const { user } = useSession();
+  const { user, token } = useSession();
   const [tab, setTab] = useState<"manage" | "quotes">("manage");
   const quote = (location.state as { quote?: QuoteEstimate } | null)?.quote;
   const demoSubmitted = Boolean(
@@ -42,6 +42,14 @@ export function PoliciesPage() {
   )?.payment;
   const [notice, setNotice] = useState<string | null>(null);
   const [savedQuotes, setSavedQuotes] = useState<QuoteEstimate[]>([]);
+  const [policies, setPolicies] = useState<CustomerPolicyRecord[]>([]);
+
+  useEffect(() => {
+    if (!token) return;
+    void api.getMyPolicies(token)
+      .then((res) => setPolicies(res.policies))
+      .catch(() => setPolicies([]));
+  }, [token, payment?.paid]);
 
   useEffect(() => {
     if (quote) saveQuoteToCompare(quote);
@@ -96,6 +104,39 @@ export function PoliciesPage() {
               </p>
             </div>
           </section>
+
+          <CustomerPanel title="Your policy NFTs" description="Tokenized insurance certificates on Ethereum Sepolia" padding>
+            {policies.length > 0 ? (
+              <div className="stack" style={{ gap: 12 }}>
+                {policies.map((policy) => (
+                  <div className="quote-card" key={policy.policy_id}>
+                    <span className="muted">
+                      {policy.mint_status === "MINTED" ? "NFT minted" : policy.mint_status ?? "Pending mint"}
+                    </span>
+                    <strong>{policy.product_title ?? policy.policy_number}</strong>
+                    <p className="muted" style={{ margin: "4px 0 0" }}>
+                      Policy {policy.policy_number} · {policy.status}
+                    </p>
+                    {policy.token_id ? (
+                      <p className="muted" style={{ margin: "4px 0 0" }}>
+                        Token #{policy.token_id}
+                        {policy.wallet_address ? ` · ${policy.wallet_address.slice(0, 10)}…` : ""}
+                      </p>
+                    ) : null}
+                    {policy.explorer_url ? (
+                      <a className="btn-link" href={policy.explorer_url} target="_blank" rel="noreferrer">
+                        View on Sepolia explorer
+                      </a>
+                    ) : null}
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="muted" style={{ margin: 0 }}>
+                No tokenized policies yet. Complete payment after linking your wallet to mint your policy NFT.
+              </p>
+            )}
+          </CustomerPanel>
 
           <CustomerPanel title="What would you like to do today?" padding>
             <div className="manage-btn-grid">
