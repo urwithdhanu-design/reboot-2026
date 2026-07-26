@@ -2,9 +2,18 @@ import { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { api, type AuthUser, type CustomerPolicyRecord, type QuoteEstimate } from "../api";
 import { buildClaimDemoForPolicy, sleep } from "../claimsDemoFill";
-import { saveQuoteToCompare, readCompareQuotes } from "../compareBasket";
-import { getCustomerPolicies, quoteToPolicyRef, type CustomerPolicy } from "../customerPolicies";
+import { saveQuoteToCompare } from "../compareBasket";
+import {
+  buildIssuedQuoteIdSet,
+  getUnpaidSavedQuotes,
+  loadIssuedCustomerPolicies,
+  markQuotePaid,
+  quoteToPolicyRef,
+  readPaidQuoteIds,
+  type CustomerPolicy,
+} from "../customerPolicies";
 import { AssistantBar, BottomNav, CustomerPageHeader, CustomerPanel, CustomerTabs, HeaderIconClaims, HeaderIconPolicies, HeaderIconProfile } from "../components";
+import { PayQuoteButton } from "../components/PayQuoteButton";
 import { useSession } from "../session";
 
 const PRIMARY_ACTIONS: { id: string; label: string; to?: string }[] = [
@@ -38,14 +47,39 @@ export function PoliciesPage() {
     (location.state as { demoSubmitted?: boolean } | null)?.demoSubmitted,
   );
   const payment = (
-    location.state as { payment?: { paid?: boolean; session_id?: string } } | null
+    location.state as {
+      payment?: { paid?: boolean; session_id?: string; quote_id?: string };
+    } | null
   )?.payment;
   const [notice, setNotice] = useState<string | null>(null);
   const [savedQuotes, setSavedQuotes] = useState<QuoteEstimate[]>([]);
   const [policies, setPolicies] = useState<CustomerPolicyRecord[]>([]);
+  const [issuedQuoteIds, setIssuedQuoteIds] = useState<string[]>([]);
+  const [quotesLoading, setQuotesLoading] = useState(true);
+  const [selectedQuoteId, setSelectedQuoteId] = useState<string | null>(null);
+
+  const displayQuotes = useMemo(() => {
+    const issued = new Set(issuedQuoteIds);
+    const byId = new Map<string, QuoteEstimate>();
+    for (const q of savedQuotes) {
+      if (!issued.has(q.quote_id)) byId.set(q.quote_id, q);
+    }
+    if (quote && !issued.has(quote.quote_id) && !byId.has(quote.quote_id)) {
+      byId.set(quote.quote_id, quote);
+    }
+    return Array.from(byId.values());
+  }, [savedQuotes, quote, issuedQuoteIds]);
+
+  const selectedQuote = useMemo(
+    () => displayQuotes.find((q) => q.quote_id === selectedQuoteId) ?? displayQuotes[0] ?? null,
+    [displayQuotes, selectedQuoteId],
+  );
 
   useEffect(() => {
-    if (!token) return;
+    if (!token) {
+      setPolicies([]);
+      return;
+    }
     void api.getMyPolicies(token)
       .then((res) => setPolicies(res.policies))
       .catch(() => setPolicies([]));
@@ -56,12 +90,58 @@ export function PoliciesPage() {
   }, [quote]);
 
   useEffect(() => {
-    const mine = getCustomerPolicies(user?.email);
-    setSavedQuotes(mine.map((p) => {
-      const all = readCompareQuotes();
-      return all.find((q) => q.quote_id === p.quote_id)!;
-    }).filter(Boolean));
-  }, [user?.email, quote]);
+    let alive = true;
+
+    async function loadQuotes() {
+      setQuotesLoading(true);
+      try {
+        const localPaid = readPaidQuoteIds();
+        if (payment?.paid && payment.quote_id) {
+          markQuotePaid(payment.quote_id);
+        }
+
+        let issuedPolicies: CustomerPolicyRecord[] = [];
+        if (token) {
+          try {
+            const res = await api.getMyPolicies(token);
+            if (!alive) return;
+            issuedPolicies = res.policies;
+            setPolicies(res.policies);
+          } catch {
+            issuedPolicies = [];
+          }
+        }
+
+        const issuedSet = buildIssuedQuoteIdSet(issuedPolicies, localPaid);
+        if (payment?.paid && payment.quote_id) {
+          issuedSet.add(payment.quote_id);
+        }
+
+        if (!alive) return;
+        setIssuedQuoteIds(Array.from(issuedSet));
+        setSavedQuotes(getUnpaidSavedQuotes(user?.email, issuedSet));
+      } finally {
+        if (alive) setQuotesLoading(false);
+      }
+    }
+
+    void loadQuotes();
+    return () => {
+      alive = false;
+    };
+  }, [user?.email, token, quote, payment?.paid, payment?.quote_id]);
+
+  useEffect(() => {
+    if (displayQuotes.length === 0) {
+      setSelectedQuoteId(null);
+      return;
+    }
+    setSelectedQuoteId((current) => {
+      if (current && displayQuotes.some((q) => q.quote_id === current)) return current;
+      if (quote && displayQuotes.some((q) => q.quote_id === quote.quote_id)) return quote.quote_id;
+      return displayQuotes[0].quote_id;
+    });
+  }, [displayQuotes, quote]);
 
   function onAction(id: string, to?: string) {
     if (to) {
@@ -79,8 +159,12 @@ export function PoliciesPage() {
         icon={<HeaderIconPolicies />}
         accent="teal"
         metrics={[
-          { label: "Saved quotes", value: savedQuotes.length, tone: "success" },
-          { label: "Status", value: payment?.paid ? "Paid" : "Active" },
+          { label: "Saved quotes", value: displayQuotes.length, tone: "success" },
+          {
+            label: "Ready to pay",
+            value: displayQuotes.length,
+            tone: "warning",
+          },
         ]}
       />
 
@@ -177,7 +261,7 @@ export function PoliciesPage() {
       {tab === "quotes" && (
         <CustomerPanel
           title="Your quotes"
-          description="Saved quotes linked to your account"
+          description="Unpaid quotes linked to your account"
           toolbar={
             <button type="button" className="btn-link" onClick={() => navigate("/marketplace")}>
               Browse products
@@ -192,54 +276,68 @@ export function PoliciesPage() {
           {payment?.paid ? (
             <p className="manage-notice" role="status">
               Payment received{payment.session_id ? ` · ${payment.session_id}` : ""}. Your
-              cover can now be treated as paid for this demo.
+              policy has been issued and moved out of this list.
             </p>
           ) : null}
-          {savedQuotes.length > 0 ? (
+          {quotesLoading ? (
+            <p className="muted" style={{ margin: 0 }}>
+              Loading your quotes…
+            </p>
+          ) : displayQuotes.length > 0 ? (
             <div className="stack" style={{ gap: 12 }}>
-              {savedQuotes.map((q) => (
-                <div className="quote-card" key={q.quote_id}>
-                  <span className="muted">
-                    Saved quote
-                    {quote?.quote_id === q.quote_id ? " · Just added" : ""}
-                    {payment?.paid && quote?.quote_id === q.quote_id ? " · Paid" : ""}
-                  </span>
-                  <strong>{q.product_title}</strong>
-                  <p className="muted" style={{ margin: "4px 0 0" }}>
-                    {q.category} · £{q.estimated_premium.toFixed(2)} / {q.price_unit}
-                  </p>
-                  <p className="muted" style={{ margin: "4px 0 0" }}>
-                    Ref: {quoteToPolicyRef(q.quote_id)} · ID: {q.quote_id}
-                  </p>
-                </div>
-              ))}
-            </div>
-          ) : quote ? (
-            <div className="quote-card">
-              <span className="muted">Saved quote{payment?.paid ? " · Paid" : ""}</span>
-              <strong>{quote.product_title}</strong>
-              <p className="muted" style={{ margin: "4px 0 0" }}>
-                {quote.category} · £{quote.estimated_premium.toFixed(2)} / {quote.price_unit}
-              </p>
-              <p className="muted" style={{ margin: "4px 0 0" }}>
-                Ref: {quoteToPolicyRef(quote.quote_id)} · ID: {quote.quote_id}
-              </p>
-              <button
-                type="button"
-                className="btn-link"
-                style={{ marginTop: 8 }}
-                onClick={() => navigate("/compare")}
-              >
-                Compare with other quotes
-              </button>
+              {displayQuotes.map((q) => {
+                const isSelected = selectedQuote?.quote_id === q.quote_id;
+                return (
+                  <button
+                    type="button"
+                    key={q.quote_id}
+                    className={`quote-card quote-card-selectable${isSelected ? " quote-card-selected" : ""}`}
+                    onClick={() => setSelectedQuoteId(q.quote_id)}
+                    aria-pressed={isSelected}
+                  >
+                    <span className="muted">
+                      {isSelected ? "Selected quote" : "Saved quote"}
+                      {quote?.quote_id === q.quote_id ? " · Just added" : ""}
+                    </span>
+                    <strong>{q.product_title}</strong>
+                    <p className="muted" style={{ margin: "4px 0 0" }}>
+                      {q.category} · £{q.estimated_premium.toFixed(2)} / {q.price_unit}
+                    </p>
+                    <p className="muted" style={{ margin: "4px 0 0" }}>
+                      Ref: {quoteToPolicyRef(q.quote_id)} · ID: {q.quote_id}
+                    </p>
+                  </button>
+                );
+              })}
             </div>
           ) : (
             <p className="muted" style={{ margin: 0 }}>
-              No saved quote yet. Browse the marketplace to get started.
+              No unpaid quotes. Browse the marketplace for a new quote, or check the Manage tab
+              for active cover.
             </p>
           )}
 
-          {savedQuotes.length > 0 ? (
+          {selectedQuote ? (
+            <div style={{ marginTop: 14 }}>
+              <CustomerPanel
+                title="Pay first premium"
+                description={`Complete payment for ${selectedQuote.product_title} using your wallet or Stripe.`}
+                padding
+              >
+                <PayQuoteButton quote={selectedQuote} label="Pay first premium with Stripe" />
+                <button
+                  type="button"
+                  className="btn-link"
+                  style={{ marginTop: 10 }}
+                  onClick={() => navigate(`/quote/${selectedQuote.product_id}`)}
+                >
+                  Review quote details
+                </button>
+              </CustomerPanel>
+            </div>
+          ) : null}
+
+          {displayQuotes.length > 0 ? (
             <button
               type="button"
               className="btn-link"
@@ -268,7 +366,7 @@ export function PoliciesPage() {
 }
 
 export function ClaimsPage() {
-  const { user } = useSession();
+  const { user, token } = useSession();
   const [tab, setTab] = useState<"new" | "track">("new");
   const [claims, setClaims] = useState<
     Awaited<ReturnType<typeof api.listClaims>>["claims"]
@@ -302,15 +400,25 @@ export function ClaimsPage() {
   }, [claims, policies, myPolicyRefs]);
 
   useEffect(() => {
-    const mine = getCustomerPolicies(user?.email);
-    setPolicies(mine);
-    if (mine.length > 0) {
-      const first = mine[0];
-      setSelectedQuoteId(first.quote_id);
-      setPolicyRef(first.policy_ref);
-      setCategory(first.category);
+    let alive = true;
+
+    async function loadPolicies() {
+      const mine = await loadIssuedCustomerPolicies(token ?? undefined, user?.email);
+      if (!alive) return;
+      setPolicies(mine);
+      if (mine.length > 0) {
+        const first = mine[0];
+        setSelectedQuoteId(first.quote_id);
+        setPolicyRef(first.policy_ref);
+        setCategory(first.category || "Property");
+      }
     }
-  }, [user?.email]);
+
+    void loadPolicies();
+    return () => {
+      alive = false;
+    };
+  }, [user?.email, token]);
 
   function applyPolicy(policy: CustomerPolicy) {
     setSelectedQuoteId(policy.quote_id);

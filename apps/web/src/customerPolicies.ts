@@ -1,4 +1,4 @@
-import type { QuoteEstimate } from "./api";
+import { api, type CustomerPolicyRecord, type QuoteEstimate } from "./api";
 import { readCompareQuotes } from "./compareBasket";
 
 const PAID_QUOTES_KEY = "gcul_paid_quotes";
@@ -45,6 +45,47 @@ function quoteMatchesUser(quote: QuoteEstimate, userEmail?: string): boolean {
   return qEmail === email || !qEmail;
 }
 
+export function issuedPolicyToCustomerPolicy(
+  policy: CustomerPolicyRecord,
+  quote?: QuoteEstimate,
+): CustomerPolicy {
+  return {
+    quote_id: policy.quote_id,
+    policy_ref: policy.policy_id || quoteToPolicyRef(policy.quote_id),
+    product_title: policy.product_title || quote?.product_title || "Insurance policy",
+    category: quote?.category ?? "",
+    premium: quote?.estimated_premium ?? 0,
+    price_unit: quote?.price_unit ?? "month",
+    paid: true,
+  };
+}
+
+export async function fetchIssuedPolicies(token: string): Promise<CustomerPolicyRecord[]> {
+  const res = await api.getMyPolicies(token);
+  return res.policies;
+}
+
+export function buildIssuedQuoteIdSet(
+  issuedPolicies: CustomerPolicyRecord[],
+  extraQuoteIds: string[] = [],
+): Set<string> {
+  const ids = new Set(extraQuoteIds);
+  for (const policy of issuedPolicies) {
+    if (policy.quote_id) ids.add(policy.quote_id);
+  }
+  return ids;
+}
+
+/** Unpaid saved quotes for the Policies page (excludes issued/premium-paid policies). */
+export function getUnpaidSavedQuotes(
+  userEmail: string | undefined,
+  issuedQuoteIds: Set<string>,
+): QuoteEstimate[] {
+  return readCompareQuotes().filter(
+    (q) => quoteMatchesUser(q, userEmail) && !issuedQuoteIds.has(q.quote_id),
+  );
+}
+
 /** Saved quotes for this customer — treated as policies they can claim on. */
 export function getCustomerPolicies(userEmail?: string): CustomerPolicy[] {
   const paid = new Set(readPaidQuoteIds());
@@ -59,4 +100,25 @@ export function getCustomerPolicies(userEmail?: string): CustomerPolicy[] {
       price_unit: q.price_unit,
       paid: paid.has(q.quote_id),
     }));
+}
+
+export async function loadIssuedCustomerPolicies(
+  token: string | undefined,
+  userEmail?: string,
+): Promise<CustomerPolicy[]> {
+  if (!token) {
+    return getCustomerPolicies(userEmail).filter((policy) => policy.paid);
+  }
+
+  try {
+    const issued = await fetchIssuedPolicies(token);
+    const quotesById = new Map(
+      readCompareQuotes().map((quote) => [quote.quote_id, quote] as const),
+    );
+    return issued.map((policy) =>
+      issuedPolicyToCustomerPolicy(policy, quotesById.get(policy.quote_id)),
+    );
+  } catch {
+    return getCustomerPolicies(userEmail).filter((policy) => policy.paid);
+  }
 }
