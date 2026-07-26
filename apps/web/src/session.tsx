@@ -1,5 +1,6 @@
 import {
   createContext,
+  useCallback,
   useContext,
   useMemo,
   useState,
@@ -28,28 +29,34 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     return raw ? (JSON.parse(raw) as AuthUser) : null;
   });
 
+  const setSession = useCallback((nextToken: string, nextUser: AuthUser) => {
+    localStorage.setItem(TOKEN_KEY, nextToken);
+    localStorage.setItem(USER_KEY, JSON.stringify(nextUser));
+    setToken(nextToken);
+    setUser(nextUser);
+  }, []);
+
+  const clear = useCallback(() => {
+    localStorage.removeItem(TOKEN_KEY);
+    localStorage.removeItem(USER_KEY);
+    setToken(null);
+    setUser(null);
+  }, []);
+
+  const updateUser = useCallback((nextUser: AuthUser) => {
+    localStorage.setItem(USER_KEY, JSON.stringify(nextUser));
+    setUser(nextUser);
+  }, []);
+
   const value = useMemo<Session>(
     () => ({
       token,
       user,
-      setSession: (nextToken, nextUser) => {
-        localStorage.setItem(TOKEN_KEY, nextToken);
-        localStorage.setItem(USER_KEY, JSON.stringify(nextUser));
-        setToken(nextToken);
-        setUser(nextUser);
-      },
-      clear: () => {
-        localStorage.removeItem(TOKEN_KEY);
-        localStorage.removeItem(USER_KEY);
-        setToken(null);
-        setUser(null);
-      },
-      updateUser: (nextUser) => {
-        localStorage.setItem(USER_KEY, JSON.stringify(nextUser));
-        setUser(nextUser);
-      },
+      setSession,
+      clear,
+      updateUser,
     }),
-    [token, user],
+    [token, user, setSession, clear, updateUser],
   );
 
   return (

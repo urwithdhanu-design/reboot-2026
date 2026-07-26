@@ -390,6 +390,93 @@ export type ChainObservabilityResponse = {
   throughput_24h: Array<{ hour: string; count: number }>;
 };
 
+export type CantonStatus = {
+  enabled?: boolean;
+  live?: boolean;
+  reachable?: boolean;
+  network?: string;
+  jsonApiUrl?: string;
+  insurerPartyHint?: string;
+  mode?: string;
+  templateId?: string;
+  chainId?: number | string;
+  contractAddress?: string;
+  ledgerBackend?: string;
+};
+
+export type CantonPolicyRecord = {
+  policyId: string;
+  policyNumber?: string;
+  customerId?: string;
+  walletAddress?: string;
+  tokenId?: string;
+  contractId?: string;
+  updateId?: string;
+  templateId?: string;
+  network?: string;
+  mintStatus?: string;
+  mintedAt?: string;
+};
+
+export type BlockchainLedgerTx = {
+  id: string;
+  type?: string;
+  from_wallet?: string;
+  to_wallet?: string;
+  amount?: number;
+  asset?: string;
+  status?: string;
+  reference?: string;
+  created_at?: string;
+};
+
+export type WalletOpsTransactionRow = {
+  id: string;
+  user_id: string;
+  customer_email?: string | null;
+  customer_name?: string | null;
+  wallet_address?: string | null;
+  type: string;
+  amount: number;
+  currency: string;
+  status: string;
+  reference?: string | null;
+  method?: string;
+  blockchain_tx?: string | null;
+  created_at: string;
+};
+
+export type WalletOpsWalletRow = {
+  user_id: string;
+  email?: string | null;
+  address?: string | null;
+  status: string;
+  provider?: string | null;
+  mode?: string | null;
+  balance_gbp: number;
+  currency: string;
+  updated_at?: string | null;
+};
+
+export type WalletOpsView = {
+  stats: {
+    connected_wallets: number;
+    disconnected_wallets: number;
+    total_wallets: number;
+    total_balance_gbp: number;
+    transaction_count: number;
+    total_volume_gbp: number;
+    claim_payouts_gbp: number;
+    premium_volume_gbp: number;
+    recharge_volume_gbp: number;
+  };
+  wallets: WalletOpsWalletRow[];
+  transactions: WalletOpsTransactionRow[];
+  count: number;
+  transaction_count: number;
+  generated_at: string;
+};
+
 export const adminApi = {
   adminLogin: (identifier: string, password: string) =>
     request<AdminAuthResponse>('/api/auth/admin/login', {
@@ -580,6 +667,20 @@ export const adminApi = {
     request<{ capabilities: Record<string, unknown> }>('/api/blockchain/chain/capabilities'),
 
   chainObservability: () => request<ChainObservabilityResponse>('/api/blockchain/observability'),
+
+  cantonStatus: () => request<CantonStatus>('/api/blockchain/canton/status'),
+
+  cantonPolicies: () =>
+    request<{ records: CantonPolicyRecord[]; count: number; live: boolean }>(
+      '/api/blockchain/canton/policies',
+    ),
+
+  gculSidecarHealth: () => request<Record<string, unknown>>('/api/blockchain/gcul/health'),
+
+  listBlockchainTransactions: () =>
+    request<{ transactions: BlockchainLedgerTx[]; count: number }>('/api/blockchain/transactions'),
+
+  walletOpsView: () => adminRequest<WalletOpsView>('/api/admin/wallet-ops'),
 
   listVendors: (status?: string) => {
     const qs = status ? `?status=${encodeURIComponent(status)}` : '';

@@ -78,7 +78,7 @@ export function AssistantBar({ screen }: { screen: string }) {
 }
 
 const NAV_ROUTES: Record<string, string> = {
-  home: "/marketplace",
+  home: "/",
   policies: "/policies",
   claims: "/claims",
   wallet: "/wallet",

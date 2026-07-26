@@ -10,6 +10,8 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import org.springframework.web.filter.CorsFilter;
 
 import com.gcul.wallet.security.JwtAuthFilter;
+import com.gcul.wallet.security.JwtService;
+import com.gcul.wallet.security.PlatformAdminAuthFilter;
 
 @Configuration
 public class WebConfig {
@@ -25,6 +27,15 @@ public class WebConfig {
 		UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
 		source.registerCorsConfiguration("/**", config);
 		return new CorsFilter(source);
+	}
+
+	@Bean
+	FilterRegistrationBean<PlatformAdminAuthFilter> platformAdminAuthFilter(JwtService jwtService) {
+		FilterRegistrationBean<PlatformAdminAuthFilter> registration = new FilterRegistrationBean<>();
+		registration.setFilter(new PlatformAdminAuthFilter(jwtService));
+		registration.addUrlPatterns("/api/admin/*");
+		registration.setOrder(0);
+		return registration;
 	}
 
 	@Bean

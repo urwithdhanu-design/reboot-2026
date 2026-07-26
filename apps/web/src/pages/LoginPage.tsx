@@ -28,7 +28,7 @@ export function LoginPage() {
       const res = await api.login({ identifier, password });
       setSession(res.access_token, res.user);
       const next = params.get("next");
-      navigate(next && next.startsWith("/") ? next : "/kyc");
+      navigate(next && next.startsWith("/") ? next : "/");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Login failed");
     } finally {

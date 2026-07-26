@@ -50,7 +50,7 @@ export function RegisterPage() {
         password,
       });
       setSession(res.access_token, res.user);
-      navigate("/kyc", {
+      navigate("/", {
         state: {
           registrationNote: res.emailed
             ? `Welcome email sent to ${email}. Check your inbox (and spam folder).`

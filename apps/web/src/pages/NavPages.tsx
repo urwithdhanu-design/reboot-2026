@@ -14,7 +14,9 @@ import {
   type CustomerPolicy,
 } from "../customerPolicies";
 import { AssistantBar, BottomNav, CustomerPageHeader, CustomerPanel, CustomerTabs, HeaderIconClaims, HeaderIconPolicies, HeaderIconProfile } from "../components";
+import { KycOnboardingPrompt } from "../components/KycOnboardingPrompt";
 import { PayQuoteButton } from "../components/PayQuoteButton";
+import { needsKycAttention } from "../kycStatus";
 import { useSession } from "../session";
 
 const PRIMARY_ACTIONS: { id: string; label: string; to?: string }[] = [
@@ -555,6 +557,7 @@ export function ClaimsPage() {
       setNotice(`Claim ${claim.id} submitted — pending admin approval.`);
       setDescription("");
       await loadClaims();
+      setTab("track");
     } catch (err) {
       setSubmitError(err instanceof Error ? err.message : "Could not submit claim");
     } finally {
@@ -593,6 +596,12 @@ export function ClaimsPage() {
           { value: "track", label: "Track claims" },
         ]}
       />
+
+      {notice ? (
+        <p className="manage-notice claims-notice" role="status">
+          {notice}
+        </p>
+      ) : null}
 
       {tab === "new" && (
         <CustomerPanel title="Claims centre" description="Submit a claim against your saved policies">
@@ -688,11 +697,6 @@ export function ClaimsPage() {
           {submitError ? (
             <p className="error" role="alert">
               {submitError}
-            </p>
-          ) : null}
-          {notice ? (
-            <p className="manage-notice" role="status">
-              {notice}
             </p>
           ) : null}
 
@@ -873,7 +877,11 @@ export function ProfilePage() {
       {profile ? (
         <>
           {tab === "account" && (
-            <CustomerPanel title="Account details" description="Personal information linked to your cover">
+            <>
+              {needsKycAttention(profile.kyc_status) ? (
+                <KycOnboardingPrompt status={profile.kyc_status} variant="card" />
+              ) : null}
+              <CustomerPanel title="Account details" description="Personal information linked to your cover">
               <dl className="profile-dl">
                 <div>
                   <dt>Full name</dt>
@@ -893,6 +901,7 @@ export function ProfilePage() {
                 </div>
               </dl>
             </CustomerPanel>
+            </>
           )}
 
           {tab === "wallet" && (

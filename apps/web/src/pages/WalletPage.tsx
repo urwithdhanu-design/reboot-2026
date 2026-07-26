@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { api, type WalletTransaction } from "../api";
 import {
   AssistantBar,
@@ -9,6 +9,7 @@ import {
   CustomerTabs,
   HeaderIconWallet,
 } from "../components";
+import { KycOnboardingPrompt, KycRequiredAlert } from "../components/KycOnboardingPrompt";
 import {
   IconBank,
   IconChevron,
@@ -17,6 +18,7 @@ import {
   IconShield,
   IconWallet,
 } from "../icons";
+import { isKycRequiredMessage, needsKycAttention } from "../kycStatus";
 import { useSession } from "../session";
 
 const RECHARGE_PRESETS = [25, 50, 100, 250];
@@ -99,6 +101,10 @@ export function WalletPage() {
   useEffect(() => {
     if (!token) return;
     void loadWallet().catch(() => undefined);
+    void api
+      .me(token)
+      .then((res) => updateUser(res))
+      .catch(() => undefined);
   }, [token]);
 
   useEffect(() => {
@@ -204,6 +210,9 @@ export function WalletPage() {
     void rechargeWallet(amount);
   }
 
+  const kycStatus = user?.kyc_status;
+  const kycBlocksWallet = needsKycAttention(kycStatus);
+
   return (
     <div className="screen has-nav screen-customer">
       <CustomerPageHeader
@@ -237,7 +246,16 @@ export function WalletPage() {
 
       {tab === "setup" && (
         <CustomerPanel title="Set up your digital account" description="We'll use this to store policy details and receive payouts">
-          <button className="customer-wallet-3d" type="button" onClick={createWallet} disabled={loading}>
+          {kycBlocksWallet ? (
+            <KycOnboardingPrompt status={kycStatus} variant="card" className="wallet-kyc-prompt" />
+          ) : null}
+
+          <button
+            className="customer-wallet-3d"
+            type="button"
+            onClick={createWallet}
+            disabled={loading || kycBlocksWallet}
+          >
             <div style={{ width: "100%" }}>
               <span className="tag">Recommended</span>
               <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
@@ -263,10 +281,23 @@ export function WalletPage() {
               value={linkAddress}
               onChange={(e) => setLinkAddress(e.target.value)}
             />
-            <button type="button" className="btn-secondary" onClick={() => void linkExistingWallet()} disabled={loading}>
+            <button
+              type="button"
+              className="btn-secondary"
+              onClick={() => void linkExistingWallet()}
+              disabled={loading || kycBlocksWallet}
+            >
               Link wallet address
             </button>
           </div>
+
+          {kycBlocksWallet ? (
+            <p className="muted wallet-kyc-hint">
+              Need help?{" "}
+              <Link to="/kyc">Go to KYC verification</Link>
+              {" "}to upload your documents and unlock wallet setup.
+            </p>
+          ) : null}
 
           <p className="options-label" style={{ marginTop: 16 }}>Other options</p>
           <div className="options-grid">
@@ -326,9 +357,13 @@ export function WalletPage() {
 
           {note ? <p className="muted" style={{ fontSize: "0.8rem", margin: "0 0 12px" }}>{note}</p> : null}
           {error ? (
-            <p className="error" role="alert">
-              {error}
-            </p>
+            isKycRequiredMessage(error) ? (
+              <KycRequiredAlert message={error} />
+            ) : (
+              <p className="error" role="alert">
+                {error}
+              </p>
+            )
           ) : null}
 
           <div className="wallet-actions">
@@ -430,17 +465,25 @@ export function WalletPage() {
           )}
 
           {error ? (
-            <p className="error" role="alert">
-              {error}
-            </p>
+            isKycRequiredMessage(error) ? (
+              <KycRequiredAlert message={error} />
+            ) : (
+              <p className="error" role="alert">
+                {error}
+              </p>
+            )
           ) : null}
         </CustomerPanel>
       )}
 
       {tab === "setup" && error ? (
-        <p className="error" role="alert">
-          {error}
-        </p>
+        isKycRequiredMessage(error) ? (
+          <KycRequiredAlert message={error} />
+        ) : (
+          <p className="error" role="alert">
+            {error}
+          </p>
+        )
       ) : null}
 
       <AssistantBar screen="wallet" />

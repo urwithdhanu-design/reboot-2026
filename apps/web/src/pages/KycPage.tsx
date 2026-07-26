@@ -1,8 +1,9 @@
-import { useMemo, useState, type FormEvent } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { api } from "../api";
-import { AssistantBar, StepHeader } from "../components";
+import { AssistantBar, BottomNav, StepHeader } from "../components";
 import { IconDoc } from "../icons";
+import { formatKycStatus, isKycVerified } from "../kycStatus";
 import { useSession } from "../session";
 
 const STEPS = ["Identity", "Verify", "Liveness", "Complete"] as const;
@@ -17,16 +18,42 @@ export function KycPage() {
   const [uploaded, setUploaded] = useState(true);
   const [selfie, setSelfie] = useState(true);
   const [loading, setLoading] = useState(false);
+  const [refreshing, setRefreshing] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const kycStatus = user?.kyc_status ?? "not_started";
+
+  useEffect(() => {
+    if (!token) {
+      setRefreshing(false);
+      return;
+    }
+    let alive = true;
+    void api
+      .me(token)
+      .then((res) => {
+        if (!alive) return;
+        updateUser(res);
+        if (isKycVerified(res.kyc_status)) {
+          navigate("/wallet", { replace: true });
+        }
+      })
+      .catch(() => undefined)
+      .finally(() => {
+        if (alive) setRefreshing(false);
+      });
+    return () => {
+      alive = false;
+    };
+  }, [token, navigate, updateUser]);
 
   const progress = useMemo(
     () => ({
-      Identity: "done",
-      Verify: uploaded ? "done" : "pending",
-      Liveness: selfie ? "pending" : "pending",
-      Complete: "pending",
+      Identity: kycStatus === "not_started" ? "pending" : "done",
+      Verify: kycStatus === "in_progress" || isKycVerified(kycStatus) ? "done" : uploaded ? "done" : "pending",
+      Liveness: kycStatus === "in_progress" || isKycVerified(kycStatus) ? "done" : selfie ? "pending" : "pending",
+      Complete: isKycVerified(kycStatus) ? "done" : kycStatus === "in_progress" ? "submitted" : "pending",
     }),
-    [uploaded, selfie],
+    [uploaded, selfie, kycStatus],
   );
 
   async function onSubmit(e: FormEvent) {
@@ -46,7 +73,11 @@ export function KycPage() {
       if (user) {
         updateUser({ ...user, kyc_status: res.status });
       }
-      navigate("/wallet", { state: { kycPendingReview: true } });
+      if (res.status === "verified") {
+        navigate("/wallet", { replace: true });
+        return;
+      }
+      navigate("/", { state: { kycSubmitted: true } });
     } catch (err) {
       setError(err instanceof Error ? err.message : "KYC failed");
     } finally {
@@ -54,8 +85,63 @@ export function KycPage() {
     }
   }
 
+  if (refreshing) {
+    return (
+      <div className="screen has-nav screen-customer">
+        <StepHeader title="KYC Verification" />
+        <p className="muted">Loading verification status…</p>
+        <BottomNav active="profile" />
+      </div>
+    );
+  }
+
+  if (kycStatus === "in_progress") {
+    return (
+      <div className="screen has-nav screen-customer kyc-screen">
+        <StepHeader title="KYC Verification" />
+        <section className="kyc-pending-panel" aria-labelledby="kyc-pending-title">
+          <p className="kyc-onboarding-eyebrow">Verification in progress</p>
+          <h2 id="kyc-pending-title">Your documents are being reviewed</h2>
+          <p>
+            We have received your identity check and our team is reviewing it. Wallet setup will unlock
+            once verification is approved.
+          </p>
+          <p className="kyc-onboarding-status">
+            Current status: <strong>{formatKycStatus(kycStatus)}</strong>
+          </p>
+          <div className="progress-block">
+            <h3>KYC Progress</h3>
+            <div className="progress-track">
+              {STEPS.map((label, index) => {
+                const done = progress[label] === "done" || progress[label] === "submitted" || index < 3;
+                return (
+                  <div className="progress-step" key={label}>
+                    <div className={`progress-dot${done ? " done" : ""}`}>
+                      {done ? "✓" : index + 1}
+                    </div>
+                    <span>{label}</span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+          <div className="kyc-onboarding-actions">
+            <Link to="/" className="kyc-onboarding-cta">
+              Back to home
+            </Link>
+            <Link to="/wallet" className="kyc-onboarding-secondary">
+              Go to wallet
+            </Link>
+          </div>
+        </section>
+        <AssistantBar screen="kyc" />
+        <BottomNav active="profile" />
+      </div>
+    );
+  }
+
   return (
-    <div className="screen">
+    <div className="screen has-nav screen-customer kyc-screen">
       <StepHeader title="KYC Verification" />
 
       {registrationNote ? (
@@ -64,8 +150,17 @@ export function KycPage() {
         </p>
       ) : null}
 
+      {kycStatus === "rejected" ? (
+        <div className="kyc-required-alert" role="alert">
+          <p>Your previous verification was not approved. Please upload your documents again.</p>
+        </div>
+      ) : null}
+
       <div className="progress-block">
         <h3>KYC Progress</h3>
+        <p className="kyc-onboarding-status" style={{ marginBottom: 12 }}>
+          Current status: <strong>{formatKycStatus(kycStatus)}</strong>
+        </p>
         <div className="progress-track">
           {STEPS.map((label, index) => {
             const done = progress[label] === "done" || index < 2;
@@ -143,11 +238,12 @@ export function KycPage() {
         ) : null}
 
         <button className="btn-primary" type="submit" disabled={loading}>
-          {loading ? "Submitting…" : "Continue"}
+          {loading ? "Submitting…" : kycStatus === "rejected" ? "Resubmit verification" : "Continue"}
         </button>
       </form>
 
       <AssistantBar screen="kyc" />
+      <BottomNav active="profile" />
     </div>
   );
 }
