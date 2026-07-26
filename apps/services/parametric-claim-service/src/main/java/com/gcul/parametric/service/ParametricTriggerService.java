@@ -77,7 +77,10 @@ public class ParametricTriggerService {
 		rule.setComparison(firstNonBlank(str(body.get("comparison")), "gte"));
 		rule.setPayoutAmount(num(body.get("payout_amount"), flightDelay ? 250 : tripCancellation ? 150 : 500));
 		rule.setPolicyRef(policyRef);
-		rule.setProductCategory(firstNonBlank(str(body.get("product_category")), str(policy.get("product_title")), "Travel"));
+		rule.setProductCategory(firstNonBlank(
+				str(body.get("product_category")),
+				str(policy.get("product_category")),
+				"Travel"));
 		rule.setFlightNumber(str(body.get("flight_number")));
 		rule.setTravelDate(str(body.get("travel_date")));
 		rule.setPolicyExpiresAt(firstNonBlank(

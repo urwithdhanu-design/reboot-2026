@@ -62,6 +62,13 @@ function formatParametricEventLabel(eventType?: string | null) {
   return 'Parametric';
 }
 
+function resolveClaimCategoryLabel(claim: AdminClaimRow, eventType?: string | null) {
+  if (claim.source === 'parametric' && eventType) {
+    return formatParametricEventLabel(eventType);
+  }
+  return claim.category;
+}
+
 function resolveParametricEventType(
   claim: AdminClaimRow,
   trigger?: ParametricTriggerRow,
@@ -247,15 +254,18 @@ export function ClaimsPage() {
               const isParametric = c.source === 'parametric';
               const eventType = resolveParametricEventType(c, trigger, triggerRule);
               const isCancellation = eventType === 'trip_cancellation';
+              const categoryLabel = resolveClaimCategoryLabel(c, eventType);
               return (
               <tr key={c.id} className="hover:bg-lbg-green-light/30 transition-colors">
                 <td className="py-3.5 px-4 font-mono text-sm font-semibold text-lbg-green-dark">{c.id}</td>
                 <td className="py-3.5 px-4 font-semibold text-lbg-black">{c.customer_name}</td>
                 <td className="py-3.5 px-4 font-mono text-xs text-lbg-gray-500">{c.policy_ref}</td>
                 <td className="py-3.5 px-4">
-                  <Badge variant={isCancellation ? 'warning' : 'info'}>{c.category}</Badge>
+                  <Badge variant={isCancellation ? 'warning' : isParametric ? 'success' : 'info'}>
+                    {categoryLabel}
+                  </Badge>
                   {isParametric && eventType ? (
-                    <p className="text-[10px] text-lbg-gray-400 mt-1">{formatParametricEventLabel(eventType)}</p>
+                    <p className="text-[10px] text-lbg-gray-400 mt-1">Auto-settled parametric</p>
                   ) : null}
                 </td>
                 <td className="py-3.5 px-4 font-bold text-lbg-black">{formatGBP(Number(c.amount_claimed))}</td>

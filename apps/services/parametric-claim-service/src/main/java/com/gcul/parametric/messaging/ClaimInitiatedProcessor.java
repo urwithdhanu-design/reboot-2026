@@ -80,6 +80,14 @@ public class ClaimInitiatedProcessor {
 			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Policy ref does not match rule");
 		}
 		policyRef = rule.getPolicyRef();
+		String effectiveTravelDate = firstNonBlank(travelDate, rule.getTravelDate());
+
+		if (!effectiveTravelDate.isBlank()
+				&& triggerLogs.existsByRuleIdAndTravelDateAndClaimCreatedTrue(rule.getId(), effectiveTravelDate)) {
+			return finishLog(rule, policyRef, flightNumber, travelDate, observed, false, null,
+					"already_settled", "Claim already auto-settled for this rule and travel date",
+					triggerSource, oracleProvider, flightStatus);
+		}
 
 		if (!travelDate.isBlank() && rule.getTravelDate() != null && !rule.getTravelDate().isBlank()
 				&& !travelDate.equals(rule.getTravelDate())) {
@@ -134,7 +142,7 @@ public class ClaimInitiatedProcessor {
 						+ " delayed " + observed + " min on " + firstNonBlank(travelDate, rule.getTravelDate());
 		String claimCategory = "trip_cancellation".equalsIgnoreCase(rule.getRuleType())
 				? "Trip cancellation"
-				: firstNonBlank(rule.getProductCategory(), "Travel");
+				: "Flight delay";
 
 		Map<String, Object> claimBody = claimsClient.buildClaimRequest(
 				policyRef,
@@ -148,7 +156,12 @@ public class ClaimInitiatedProcessor {
 				rule.getRuleType());
 
 		Map<String, Object> claim = claimsClient.createParametricAutoSettle(claimBody);
-		log.info("Parametric claim auto-settled {} for policy {} (delay {} min)", claim.get("id"), policyRef, observed);
+		if ("trip_cancellation".equalsIgnoreCase(rule.getRuleType())) {
+			log.info("Parametric trip cancellation claim auto-settled {} for policy {}", claim.get("id"), policyRef);
+		}
+		else {
+			log.info("Parametric flight delay claim auto-settled {} for policy {} ({} min)", claim.get("id"), policyRef, observed);
+		}
 
 		Map<String, Object> result = finishLog(rule, policyRef, flightNumber, travelDate, observed, true,
 				str(claim.get("id")), str(claim.get("status")), "Auto-approved and settled",

@@ -74,10 +74,16 @@ public class ClaimQueryService {
 		}
 
 		String reply = str(body.get("message"));
+		long docCount = documents.countByClaimIdAndQueryId(claimId, queryId);
 		if (reply.isBlank()) {
-			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "message is required");
+			if (query.isRequiresDocuments() && docCount >= 1) {
+				reply = "Please find the requested documents attached.";
+			}
+			else {
+				throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "message is required");
+			}
 		}
-		if (query.isRequiresDocuments() && documents.countByClaimIdAndQueryId(claimId, queryId) < 1) {
+		if (query.isRequiresDocuments() && docCount < 1) {
 			throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
 					"Attach at least one document before submitting your reply");
 		}

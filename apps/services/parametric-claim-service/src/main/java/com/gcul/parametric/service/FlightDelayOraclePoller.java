@@ -48,6 +48,12 @@ public class FlightDelayOraclePoller {
 
 	@Transactional
 	public Map<String, Object> pollRule(ParametricRule rule, boolean simulation) {
+		if ("trip_cancellation".equalsIgnoreCase(rule.getRuleType())
+				|| "trip_cancelled".equalsIgnoreCase(rule.getMetric())) {
+			throw new org.springframework.web.server.ResponseStatusException(
+					org.springframework.http.HttpStatus.BAD_REQUEST,
+					"Oracle polling applies to flight delay rules only — use trip cancellation simulation");
+		}
 		String flightNumber = rule.getFlightNumber();
 		String travelDate = rule.getTravelDate();
 		if (flightNumber == null || flightNumber.isBlank()) {

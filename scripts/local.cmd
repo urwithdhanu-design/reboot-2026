@@ -32,6 +32,7 @@ if /i "%CMD%"=="apis" goto apis
 if /i "%CMD%"=="ui" goto ui
 if /i "%CMD%"=="status" goto status
 if /i "%CMD%"=="stop" goto stop
+if /i "%CMD%"=="clean" goto clean
 if /i "%CMD%"=="target" goto target
 if /i "%CMD%"=="canton" goto canton
 echo Unknown command: %CMD%
@@ -71,6 +72,10 @@ if defined ONLY_UI (
 ) else (
   powershell -NoProfile -ExecutionPolicy Bypass -File "%LIB%\stop.ps1" %PY%
 )
+exit /b %ERRORLEVEL%
+
+:clean
+powershell -NoProfile -ExecutionPolicy Bypass -File "%LIB%\clean-test-data.ps1" %*
 exit /b %ERRORLEVEL%
 
 :target

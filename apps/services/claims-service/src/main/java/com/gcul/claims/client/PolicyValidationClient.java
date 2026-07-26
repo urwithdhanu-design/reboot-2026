@@ -58,6 +58,17 @@ public class PolicyValidationClient {
 					org.springframework.http.HttpStatus.BAD_REQUEST,
 					"Policy is not active — status: " + status);
 		}
+		if (Boolean.TRUE.equals(policy.get("coverage_pending_mint"))) {
+			throw new ResponseStatusException(
+					org.springframework.http.HttpStatus.BAD_REQUEST,
+					"Policy cover is not active yet — cover starts when the policy is minted");
+		}
+		if (!Boolean.TRUE.equals(policy.get("coverage_active"))
+				&& str(policy.get("cover_start_at")).isBlank()) {
+			throw new ResponseStatusException(
+					org.springframework.http.HttpStatus.BAD_REQUEST,
+					"Policy cover has not started — wait for mint approval to complete");
+		}
 	}
 
 	private static String str(Object value) {

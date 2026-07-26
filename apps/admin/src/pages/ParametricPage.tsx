@@ -177,6 +177,8 @@ export function ParametricPage() {
         setSuccess(
           `Manual simulation — claim ${result.claim_id} auto-settled (${result.status}).`,
         );
+      } else if (result.status === 'already_settled') {
+        setSuccess(result.message ?? 'Flight delay claim already settled for this rule and travel date');
       } else if (result.matched) {
         setSuccess(result.message ?? 'Threshold matched');
       } else {
@@ -239,6 +241,8 @@ export function ParametricPage() {
         setSuccess(
           `Trip cancellation auto-triggered — claim ${result.claim_id} auto-settled (${result.status}).`,
         );
+      } else if (result.status === 'already_settled') {
+        setSuccess(result.message ?? 'Trip cancellation claim already settled for this rule and travel date');
       } else if (result.matched) {
         setSuccess(result.message ?? 'Cancellation threshold matched');
       } else {
@@ -384,7 +388,7 @@ export function ParametricPage() {
                 onChange={(e) => setSelectedRuleId(e.target.value)}
               >
                 <option value="">Select rule…</option>
-                {rules.map((r) => (
+                {flightRules.map((r) => (
                   <option key={r.id} value={r.id}>
                     {r.name} · {r.policy_ref} (≥{r.threshold} min → {formatGBP(r.payout_amount)})
                   </option>
@@ -592,10 +596,10 @@ export function ParametricPage() {
               </thead>
               <tbody>
                 {triggers.map((t) => {
-                  const triggerRule = rules.find((r) => r.id === t.rule_id);
                   const isCancellation =
-                    triggerRule?.rule_type === 'trip_cancellation'
-                    || triggerRule?.metric === 'trip_cancelled';
+                    t.rule_type === 'trip_cancellation'
+                    || rules.find((r) => r.id === t.rule_id)?.rule_type === 'trip_cancellation'
+                    || rules.find((r) => r.id === t.rule_id)?.metric === 'trip_cancelled';
                   return (
                   <tr key={t.id} className="border-b border-lbg-gray-50">
                     <td className="py-3 pr-4 whitespace-nowrap">{formatWhen(t.triggered_at)}</td>
@@ -616,7 +620,7 @@ export function ParametricPage() {
                     </td>
                     <td className="py-3 pr-4">{isCancellation ? 'Trip cancelled' : `${t.observed_value} min`}</td>
                     <td className="py-3 pr-4">
-                      <Badge variant={t.claim_created ? 'success' : t.matched ? 'warning' : 'neutral'}>
+                      <Badge variant={t.claim_created ? 'success' : t.matched ? 'warning' : t.status === 'already_settled' ? 'info' : 'neutral'}>
                         {t.status}
                       </Badge>
                     </td>
