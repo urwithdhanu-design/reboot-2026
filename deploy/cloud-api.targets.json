@@ -11,6 +11,7 @@
                      "notification":  "https://gcul-notification-rncyb4dteq-uc.a.run.app",
                      "wallet":  "https://gcul-wallet-rncyb4dteq-uc.a.run.app",
                      "claims":  "https://gcul-claims-rncyb4dteq-uc.a.run.app",
+                     "blockchain":  "https://gcul-blockchain-orchestrator-rncyb4dteq-uc.a.run.app",
                      "kyc":  "https://gcul-kyc-rncyb4dteq-uc.a.run.app",
                      "policy":  "https://gcul-policy-rncyb4dteq-uc.a.run.app"
                  }

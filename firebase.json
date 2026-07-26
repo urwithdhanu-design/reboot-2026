@@ -150,6 +150,20 @@
                                                          "region":  "us-central1",
                                                          "serviceId":  "gcul-policy"
                                                      },
+                                             "source":  "/api/admin/tokenization"
+                                         },
+                                         {
+                                             "run":  {
+                                                         "region":  "us-central1",
+                                                         "serviceId":  "gcul-policy"
+                                                     },
+                                             "source":  "/api/admin/tokenization/**"
+                                         },
+                                         {
+                                             "run":  {
+                                                         "region":  "us-central1",
+                                                         "serviceId":  "gcul-policy"
+                                                     },
                                              "source":  "/api/products"
                                          },
                                          {
@@ -474,6 +488,20 @@
                                                          "serviceId":  "gcul-policy"
                                                      },
                                              "source":  "/api/admin/policy-stats"
+                                         },
+                                         {
+                                             "run":  {
+                                                         "region":  "us-central1",
+                                                         "serviceId":  "gcul-policy"
+                                                     },
+                                             "source":  "/api/admin/tokenization"
+                                         },
+                                         {
+                                             "run":  {
+                                                         "region":  "us-central1",
+                                                         "serviceId":  "gcul-policy"
+                                                     },
+                                             "source":  "/api/admin/tokenization/**"
                                          },
                                          {
                                              "run":  {
