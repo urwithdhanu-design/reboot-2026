@@ -96,6 +96,8 @@ export type WalletInfo = {
   note?: string;
   provider?: string;
 };
+
+export type ChatbotAskResponse = {
   answer: string;
   sources: {
     title?: string;
