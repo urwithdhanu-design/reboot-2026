@@ -64,6 +64,23 @@ gcloud config set project $ProjectId
 
 $deployedUrls = @{}
 
+function Get-DeployedServiceUrl {
+  param([string] $ServiceId)
+  if ($deployedUrls.ContainsKey($ServiceId) -and $deployedUrls[$ServiceId]) {
+    return $deployedUrls[$ServiceId]
+  }
+  $urlsFile = Join-Path $PSScriptRoot "cloud-run-urls.json"
+  if (Test-Path $urlsFile) {
+    $existing = Get-Content $urlsFile -Raw | ConvertFrom-Json
+    if ($existing.PSObject.Properties.Name -contains $ServiceId -and $existing.$ServiceId) {
+      return [string]$existing.$ServiceId
+    }
+  }
+  $url = gcloud run services describe $ServiceId --region $Region --project $ProjectId --format="value(status.url)" 2>$null
+  if ($LASTEXITCODE -eq 0 -and $url) { return $url.Trim() }
+  return $null
+}
+
 if ($ServiceIds.Count -eq 1 -and $ServiceIds[0] -match ',') {
   $ServiceIds = $ServiceIds[0].Split(',') | ForEach-Object { $_.Trim() } | Where-Object { $_ }
 }
@@ -97,7 +114,10 @@ foreach ($svc in $serviceList) {
     }
   }
 
-  $envPairs = @("SPRING_PROFILES_ACTIVE=cloud")
+  $envPairs = @()
+  if ($svc.dockerfile -eq "deploy/docker/Dockerfile.java") {
+    $envPairs += "SPRING_PROFILES_ACTIVE=cloud"
+  }
   if ($svc.env) {
     $svc.env.PSObject.Properties | ForEach-Object {
       $envPairs += "$($_.Name)=$($_.Value)"
@@ -146,6 +166,7 @@ foreach ($svc in $serviceList) {
     $envPairs += "GCUL_WALLET_SERVICE_URL=$($deployedUrls['gcul-wallet'])"
   }
 
+  $svcMinInst = if ($svc.minInstances -ne $null) { $svc.minInstances } else { $minInst }
   $deployArgs = @(
     "run", "deploy", $id,
     "--image", $image,
@@ -154,7 +175,7 @@ foreach ($svc in $serviceList) {
     "--allow-unauthenticated",
     "--port", "$($svc.port)",
     "--memory", $(if ($svc.memory) { $svc.memory } else { "512Mi" }),
-    "--min-instances", "$minInst",
+    "--min-instances", "$svcMinInst",
     "--max-instances", "$maxInst",
     "--concurrency", "$concurrency",
     "--project", $ProjectId,
@@ -162,6 +183,8 @@ foreach ($svc in $serviceList) {
   )
   if ($svc.cpu) { $deployArgs += @("--cpu", $svc.cpu) }
   if ($svc.timeout) { $deployArgs += @("--timeout", $svc.timeout) }
+  if ($svc.startupProbe) { $deployArgs += @("--startup-probe", $svc.startupProbe) }
+  if ($svc.noCpuThrottling) { $deployArgs += @("--no-cpu-throttling") }
   if ($dbName) {
     $deployArgs += @("--add-cloudsql-instances", $cloudSqlConn)
     $deployArgs += @("--set-secrets", "GCUL_DB_PASSWORD=${dbSecret}:latest")
@@ -182,15 +205,23 @@ foreach ($svc in $serviceList) {
 # Wire orchestrator to other Cloud Run services (full deploy only)
 $orchId = "gcul-blockchain-orchestrator"
 if ($ServiceIds.Count -eq 0 -and $deployedUrls.ContainsKey($orchId)) {
+  $cantonUrl = Get-DeployedServiceUrl "gcul-canton"
   Write-Host "`nLinking blockchain orchestrator to peer services ..." -ForegroundColor Cyan
   $orchEnv = @(
     "SPRING_PROFILES_ACTIVE=cloud",
-    "GCUL_SIDECAR_URL=$($deployedUrls['gcul-sidecar'])",
-    "GCUL_CLAIMS_SERVICE_URL=$($deployedUrls['gcul-claims'])",
-    "GCUL_NOTIFICATION_SERVICE_URL=$($deployedUrls['gcul-notification'])",
-    "GCUL_PAYMENT_SERVICE_URL=$($deployedUrls['gcul-payment'])",
+    "GCUL_SIDECAR_URL=$(Get-DeployedServiceUrl 'gcul-sidecar')",
+    "GCUL_CLAIMS_SERVICE_URL=$(Get-DeployedServiceUrl 'gcul-claims')",
+    "GCUL_NOTIFICATION_SERVICE_URL=$(Get-DeployedServiceUrl 'gcul-notification')",
+    "GCUL_PAYMENT_SERVICE_URL=$(Get-DeployedServiceUrl 'gcul-payment')",
     "GCUL_BLOCKCHAIN_SERVICE_URL=$($deployedUrls[$orchId])"
   )
+  if ($cantonUrl) {
+    $orchEnv += @(
+      "GCUL_LEDGER_BACKEND=canton",
+      "GCUL_CANTON_ENABLED=true",
+      "GCUL_CANTON_JSON_API_URL=$cantonUrl"
+    )
+  }
   if ($usePubSub) {
     $orchEnv += @(
       "GCUL_PUBSUB_ENABLED=true",
@@ -227,6 +258,18 @@ if ($deployedUrls.ContainsKey("gcul-policy") -and $deployedUrls.ContainsKey("gcu
     --project $ProjectId `
     --update-env-vars "GCUL_WALLET_SERVICE_URL=$($deployedUrls['gcul-wallet'])" `
     --quiet
+}
+
+if ($ServiceIds.Count -gt 0 -and $deployedUrls.ContainsKey("gcul-canton") -and $deployedUrls["gcul-canton"]) {
+  $orchUrl = Get-DeployedServiceUrl "gcul-blockchain-orchestrator"
+  if ($orchUrl) {
+    Write-Host "`nLinking orchestrator to Canton sandbox ..." -ForegroundColor Cyan
+    gcloud run services update gcul-blockchain-orchestrator `
+      --region $Region `
+      --project $ProjectId `
+      --update-env-vars "GCUL_LEDGER_BACKEND=canton,GCUL_CANTON_ENABLED=true,GCUL_CANTON_JSON_API_URL=$($deployedUrls['gcul-canton'])" `
+      --quiet
+  }
 }
 
 $outFile = Join-Path $PSScriptRoot "cloud-run-urls.json"

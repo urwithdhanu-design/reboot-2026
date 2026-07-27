@@ -73,13 +73,25 @@
       "env": {}
     },
     {
+      "id": "gcul-canton",
+      "dir": "canton",
+      "dockerfile": "deploy/docker/Dockerfile.canton",
+      "port": 8080,
+      "memory": "4Gi",
+      "cpu": "2",
+      "timeout": "3600",
+      "minInstances": 1,
+      "noCpuThrottling": true,
+      "startupProbe": "httpGet.path=/,httpGet.port=8080,initialDelaySeconds=15,timeoutSeconds=5,periodSeconds=10,failureThreshold=90"
+    },
+    {
       "id": "gcul-blockchain-orchestrator",
       "dir": "apps/services/blockchain-orchestrator-service",
       "dockerfile": "deploy/docker/Dockerfile.java",
       "port": 8080,
       "memory": "512Mi",
       "env": {},
-      "links": ["gcul-sidecar", "gcul-claims", "gcul-notification", "gcul-payment"]
+      "links": ["gcul-sidecar", "gcul-claims", "gcul-notification", "gcul-payment", "gcul-canton"]
     },
     {
       "id": "gcul-sidecar",

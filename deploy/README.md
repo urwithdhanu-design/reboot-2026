@@ -2,6 +2,8 @@
 
 Deploy Java/Python microservices to **Cloud Run** and the customer + admin React apps to **Firebase Hosting**. Both UIs call `/api/*` on the same origin; Hosting rewrites route each prefix to the matching Cloud Run service (same paths as local Vite proxies).
 
+**Day-to-day deploy after code changes (Windows + Mac):** [`docs/CLOUD-RUN-DEPLOY.md`](../docs/CLOUD-RUN-DEPLOY.md)
+
 ## Prerequisites
 
 - [Google Cloud SDK](https://cloud.google.com/sdk) (`gcloud`) and [Firebase CLI](https://firebase.google.com/docs/cli) (`firebase`)
@@ -44,6 +46,7 @@ Builds each service with Cloud Build and deploys ten services:
 | `gcul-premium-deposit` | `/api/premium-deposits` |
 | `gcul-blockchain-orchestrator` | `/api/blockchain` |
 | `gcul-sidecar` | (internal; wired into orchestrator) |
+| `gcul-canton` | (internal; Daml ledger for orchestrator) |
 | `gcul-chatbot` | `/api/chatbot` |
 
 ```powershell
