@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { api } from "../api";
-import { BottomNav, StepHeader } from "../components";
+import { CustomerAppShell, StepHeader } from "../components";
 import { clearStashedQuote, readStashedQuote } from "../components/PayQuoteButton";
 import { markQuotePaid } from "../customerPolicies";
 
@@ -57,7 +57,7 @@ export function PaymentSuccessPage() {
   }
 
   return (
-    <div className="screen has-nav">
+    <CustomerAppShell active="policies">
       <StepHeader title="Payment" />
       <h2 className="section-title">
         {loading ? "Confirming payment…" : paid ? "Payment successful" : "Payment status"}
@@ -96,8 +96,7 @@ export function PaymentSuccessPage() {
           Back to marketplace
         </Link>
       )}
-      <BottomNav active="policies" />
-    </div>
+    </CustomerAppShell>
   );
 }
 
@@ -108,7 +107,7 @@ export function PaymentCancelPage() {
   const quote = readStashedQuote();
 
   return (
-    <div className="screen has-nav">
+    <CustomerAppShell active="home">
       <StepHeader title="Payment" />
       <h2 className="section-title">Payment cancelled</h2>
       <p className="muted">
@@ -128,7 +127,6 @@ export function PaymentCancelPage() {
           Back to marketplace
         </Link>
       )}
-      <BottomNav active="home" />
-    </div>
+    </CustomerAppShell>
   );
 }

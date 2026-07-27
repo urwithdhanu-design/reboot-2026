@@ -13,7 +13,7 @@ import {
   readPaidQuoteIds,
   type CustomerPolicy,
 } from "../customerPolicies";
-import { AssistantBar, BottomNav, CustomerPageHeader, CustomerPanel, CustomerTabs, HeaderIconClaims, HeaderIconPolicies, HeaderIconProfile } from "../components";
+import { AssistantBar, CustomerAppShell, CustomerPageHeader, CustomerPanel, CustomerTabs, HeaderIconClaims, HeaderIconPolicies, HeaderIconProfile } from "../components";
 import { KycOnboardingPrompt } from "../components/KycOnboardingPrompt";
 import { PayQuoteButton } from "../components/PayQuoteButton";
 import { needsKycAttention } from "../kycStatus";
@@ -219,7 +219,7 @@ export function PoliciesPage() {
   }
 
   return (
-    <div className="screen has-nav screen-customer">
+    <CustomerAppShell active="policies">
       <CustomerPageHeader
         title="Policies"
         subtitle="Manage cover, renewals, and your saved quotes"
@@ -468,8 +468,7 @@ export function PoliciesPage() {
       )}
 
       <AssistantBar screen="marketplace" />
-      <BottomNav active="policies" />
-    </div>
+    </CustomerAppShell>
   );
 }
 
@@ -929,7 +928,7 @@ export function ClaimsPage() {
   }
 
   return (
-    <div className="screen has-nav screen-customer">
+    <CustomerAppShell active="claims">
       <CustomerPageHeader
         title="Claims"
         subtitle="Start a new claim or track progress on existing ones"
@@ -1187,8 +1186,7 @@ export function ClaimsPage() {
       )}
 
       <AssistantBar screen="marketplace" />
-      <BottomNav active="claims" />
-    </div>
+    </CustomerAppShell>
   );
 }
 
@@ -1274,7 +1272,7 @@ export function ProfilePage() {
       .join("") || "?";
 
   return (
-    <div className="screen has-nav screen-customer">
+    <CustomerAppShell active="profile">
       <CustomerPageHeader
         title={profile?.full_name ?? "Profile"}
         subtitle={profile?.email ?? "Your account and preferences"}
@@ -1396,7 +1394,6 @@ export function ProfilePage() {
       ) : null}
 
       <AssistantBar screen="marketplace" />
-      <BottomNav active="profile" />
-    </div>
+    </CustomerAppShell>
   );
 }

@@ -3,6 +3,7 @@ import { SessionProvider, useSession } from "./session";
 import { ChatbotProvider } from "./chatbot/ChatbotContext";
 import { ChatbotWidget } from "./chatbot/ChatbotWidget";
 import { ViewModeProvider, useViewMode } from "./viewMode";
+import { CustomerNavProvider } from "./customerNav";
 import { ViewModeToggle } from "./components/ViewModeToggle";
 import { ComparePage } from "./pages/ComparePage";
 import { KycPage } from "./pages/KycPage";
@@ -124,7 +125,9 @@ function AppShell() {
             }
           />
         </Routes>
-        <ChatbotWidget />
+        <div className="phone-overlay-layer">
+          <ChatbotWidget />
+        </div>
       </div>
     </div>
   );
@@ -134,11 +137,13 @@ export default function App() {
   return (
     <SessionProvider>
       <ViewModeProvider>
-        <ChatbotProvider>
-          <BrowserRouter>
-            <AppShell />
-          </BrowserRouter>
-        </ChatbotProvider>
+        <CustomerNavProvider>
+          <ChatbotProvider>
+            <BrowserRouter>
+              <AppShell />
+            </BrowserRouter>
+          </ChatbotProvider>
+        </CustomerNavProvider>
       </ViewModeProvider>
     </SessionProvider>
   );

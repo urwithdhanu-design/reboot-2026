@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { api } from "../api";
-import { AssistantBar, BottomNav, StepHeader } from "../components";
+import { AssistantBar, CustomerAppShell, StepHeader } from "../components";
 import { IconDoc } from "../icons";
 import { formatKycStatus, isKycVerified } from "../kycStatus";
 import { useSession } from "../session";
@@ -87,17 +87,16 @@ export function KycPage() {
 
   if (refreshing) {
     return (
-      <div className="screen has-nav screen-customer">
+      <CustomerAppShell active="profile">
         <StepHeader title="KYC Verification" />
         <p className="muted">Loading verification status…</p>
-        <BottomNav active="profile" />
-      </div>
+      </CustomerAppShell>
     );
   }
 
   if (kycStatus === "in_progress") {
     return (
-      <div className="screen has-nav screen-customer kyc-screen">
+      <CustomerAppShell active="profile" className="kyc-screen">
         <StepHeader title="KYC Verification" />
         <section className="kyc-pending-panel" aria-labelledby="kyc-pending-title">
           <p className="kyc-onboarding-eyebrow">Verification in progress</p>
@@ -135,13 +134,12 @@ export function KycPage() {
           </div>
         </section>
         <AssistantBar screen="kyc" />
-        <BottomNav active="profile" />
-      </div>
+      </CustomerAppShell>
     );
   }
 
   return (
-    <div className="screen has-nav screen-customer kyc-screen">
+    <CustomerAppShell active="profile" className="kyc-screen">
       <StepHeader title="KYC Verification" />
 
       {registrationNote ? (
@@ -243,7 +241,6 @@ export function KycPage() {
       </form>
 
       <AssistantBar screen="kyc" />
-      <BottomNav active="profile" />
-    </div>
+    </CustomerAppShell>
   );
 }

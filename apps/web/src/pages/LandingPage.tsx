@@ -1,7 +1,7 @@
 import { Link, useLocation } from "react-router-dom";
 import { useEffect } from "react";
 import { api } from "../api";
-import { BottomNav } from "../components";
+import { CustomerAppShell } from "../components";
 import { KycOnboardingPrompt } from "../components/KycOnboardingPrompt";
 import { LANDING_NAV, PRODUCT_MARKETING } from "../data/productMarketing";
 import { productIcon } from "../icons";
@@ -42,16 +42,55 @@ export function LandingPage() {
       .catch(() => undefined);
   }, [token, updateUser]);
 
+  if (loggedIn) {
+    return (
+      <CustomerAppShell active="home" className="customer-app-shell--landing">
+        <div className="marketing-screen landing-v2 landing-v2-inset">
+          {registrationNote ? (
+            <div className="landing-banner" role="status">
+              {registrationNote}
+            </div>
+          ) : null}
+          {kycSubmitted ? (
+            <div className="landing-banner landing-banner-kyc" role="status">
+              KYC submitted — we are reviewing your documents. You can check status anytime from home or your wallet.
+            </div>
+          ) : null}
+          <header className="landing-header">
+            <Link to="/" className="landing-brand" aria-label="Lloyds Banking Group Insurance home">
+              <span className="landing-brand-mark" aria-hidden>
+                LBG
+              </span>
+              <span className="landing-brand-text">
+                <strong>Lloyds Banking Group</strong>
+                <span>Insurance</span>
+              </span>
+            </Link>
+            <div className="landing-header-actions">
+              <Link to="/policies" className="landing-btn-ghost">
+                Policies
+              </Link>
+              <Link to="/profile" className="landing-btn-primary">
+                {user?.full_name?.split(" ")[0] ?? "Account"}
+              </Link>
+            </div>
+          </header>
+
+          {showKycPrompt ? (
+            <KycOnboardingPrompt status={user?.kyc_status} variant="banner" className="landing-kyc-prompt" />
+          ) : null}
+
+          <LandingMainContent loggedIn={loggedIn} goQuote={goQuote} featured={featured} />
+        </div>
+      </CustomerAppShell>
+    );
+  }
+
   return (
-    <div className={`screen marketing-screen landing-v2${loggedIn ? " has-nav screen-customer" : ""}`}>
+    <div className="screen marketing-screen landing-v2">
       {registrationNote ? (
         <div className="landing-banner" role="status">
           {registrationNote}
-        </div>
-      ) : null}
-      {kycSubmitted ? (
-        <div className="landing-banner landing-banner-kyc" role="status">
-          KYC submitted — we are reviewing your documents. You can check status anytime from home or your wallet.
         </div>
       ) : null}
       <header className="landing-header">
@@ -65,32 +104,42 @@ export function LandingPage() {
           </span>
         </Link>
         <div className="landing-header-actions">
-          {loggedIn ? (
-            <>
-              <Link to="/policies" className="landing-btn-ghost">
-                Policies
-              </Link>
-              <Link to="/profile" className="landing-btn-primary">
-                {user?.full_name?.split(" ")[0] ?? "Account"}
-              </Link>
-            </>
-          ) : (
-            <>
-              <Link to="/login" className="landing-btn-ghost">
-                Log in
-              </Link>
-              <Link to="/register" className="landing-btn-primary">
-                Create account
-              </Link>
-            </>
-          )}
+          <Link to="/login" className="landing-btn-ghost">
+            Log in
+          </Link>
+          <Link to="/register" className="landing-btn-primary">
+            Create account
+          </Link>
         </div>
       </header>
 
-      {showKycPrompt ? (
-        <KycOnboardingPrompt status={user?.kyc_status} variant="banner" className="landing-kyc-prompt" />
-      ) : null}
+      <LandingMainContent loggedIn={false} goQuote={goQuote} featured={featured} />
 
+      <footer className="landing-footer">
+        <p>
+          Limits, terms and exclusions apply. Quotes require an account — we will ask you to log in or register when you continue.
+        </p>
+        <div className="landing-footer-links">
+          <Link to="/login">Log in</Link>
+          <Link to="/register">Register</Link>
+          <Link to="/forgot-password">Forgot password</Link>
+        </div>
+      </footer>
+    </div>
+  );
+}
+
+function LandingMainContent({
+  loggedIn,
+  goQuote,
+  featured,
+}: {
+  loggedIn: boolean;
+  goQuote: (productId: string) => void;
+  featured: typeof PRODUCT_MARKETING[number];
+}) {
+  return (
+    <>
       <nav className="landing-nav" aria-label="Insurance products">
         <div className="landing-nav-track">
           {LANDING_NAV.map((item) => (
@@ -265,7 +314,6 @@ export function LandingPage() {
           <Link to="/forgot-password">Forgot password</Link>
         </div>
       </footer>
-      {loggedIn ? <BottomNav active="home" /> : null}
-    </div>
+    </>
   );
 }

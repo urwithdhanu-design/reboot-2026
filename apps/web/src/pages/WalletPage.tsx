@@ -3,7 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { api, type WalletTransaction } from "../api";
 import {
   AssistantBar,
-  BottomNav,
+  CustomerAppShell,
   CustomerPageHeader,
   CustomerPanel,
   CustomerTabs,
@@ -214,7 +214,7 @@ export function WalletPage() {
   const kycBlocksWallet = needsKycAttention(kycStatus);
 
   return (
-    <div className="screen has-nav screen-customer">
+    <CustomerAppShell active="wallet">
       <CustomerPageHeader
         title="Wallet"
         subtitle="Secure digital account for policies and payouts"
@@ -487,7 +487,6 @@ export function WalletPage() {
       ) : null}
 
       <AssistantBar screen="wallet" />
-      <BottomNav active="wallet" />
-    </div>
+    </CustomerAppShell>
   );
 }

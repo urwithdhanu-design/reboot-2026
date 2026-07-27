@@ -104,6 +104,9 @@ textarea:focus-visible,
 
 .app-shell {
   min-height: 100vh;
+  height: 100vh;
+  max-height: 100vh;
+  overflow: hidden;
   display: grid;
   place-items: start center;
   padding: 12px;
@@ -112,6 +115,8 @@ textarea:focus-visible,
 
 .phone {
   width: min(100%, 420px);
+  height: calc(100vh - 24px);
+  max-height: calc(100vh - 24px);
   min-height: calc(100vh - 24px);
   background: var(--card);
   border-radius: 28px;
@@ -122,6 +127,335 @@ textarea:focus-visible,
   position: relative;
 }
 
+.phone > .screen {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+}
+
+.phone > .customer-app-shell {
+  flex: 1;
+  min-height: 0;
+}
+
+.phone-overlay-layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 60;
+  overflow: hidden;
+}
+
+.phone-overlay-layer .chatbot-fab,
+.phone-overlay-layer .chatbot-panel {
+  pointer-events: auto;
+}
+
+.app-shell.view-mobile .phone {
+  height: 100vh;
+  max-height: 100vh;
+  min-height: 100vh;
+}
+
+.customer-app-shell {
+  flex: 1;
+  display: flex;
+  min-height: 0;
+  width: 100%;
+  height: 100%;
+  background: #fff;
+}
+
+.customer-app-shell--side {
+  flex-direction: row;
+}
+
+.customer-app-rail {
+  flex-shrink: 0;
+  width: 232px;
+  min-height: 0;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 22px 16px 20px;
+  background: linear-gradient(180deg, #002e22 0%, #004d38 48%, #006a4d 100%);
+  color: #fff;
+  border-right: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: inset -1px 0 0 rgba(0, 0, 0, 0.08);
+  overflow: hidden;
+}
+
+.customer-app-rail-brand {
+  flex-shrink: 0;
+  padding: 4px 6px 20px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+  margin-bottom: 8px;
+}
+
+.customer-app-rail-brand strong {
+  display: block;
+  font-size: 0.95rem;
+}
+
+.customer-app-rail-brand span {
+  display: block;
+  font-size: 0.72rem;
+  opacity: 0.72;
+  margin-top: 2px;
+}
+
+.customer-app-rail-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+
+.customer-app-rail-scroll::-webkit-scrollbar {
+  display: none;
+}
+
+.customer-app-rail-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.customer-app-rail-item {
+  border: 0;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.78);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 11px 12px;
+  border-radius: 12px;
+  font-weight: 700;
+  font-size: 0.88rem;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease, transform 0.15s ease;
+}
+
+.customer-app-rail-item:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+}
+
+.customer-app-rail-item.active {
+  background: rgba(255, 255, 255, 0.16);
+  color: #fff;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.14);
+}
+
+.customer-app-rail-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  display: grid;
+  place-items: center;
+  background: rgba(0, 0, 0, 0.12);
+}
+
+.customer-app-rail-item.active .customer-app-rail-icon {
+  background: rgba(255, 255, 255, 0.22);
+}
+
+.customer-app-main {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  background: linear-gradient(180deg, #f6faf8 0%, #fafcfc 12%, #fff 28%);
+}
+
+.customer-app-topbar {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 18px;
+  background: rgba(255, 255, 255, 0.98);
+  border-bottom: 1px solid rgba(0, 106, 77, 0.08);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.9);
+  z-index: 2;
+}
+
+.customer-app-topbar-brand {
+  display: flex;
+  align-items: center;
+}
+
+.customer-app-topbar-name {
+  font-weight: 800;
+  font-size: 0.95rem;
+  color: var(--lbg-green-deep);
+}
+
+.customer-app-topbar-spacer {
+  flex: 1;
+}
+
+.customer-app-topbar--toggle-only {
+  justify-content: flex-end;
+  padding: 8px 16px;
+  background: rgba(255, 255, 255, 0.98);
+  border-bottom: 1px solid rgba(0, 106, 77, 0.08);
+}
+
+.customer-app-tabs-wrap {
+  flex-shrink: 0;
+  background: rgba(255, 255, 255, 0.98);
+  border-top: 1px solid rgba(0, 106, 77, 0.1);
+  box-shadow: 0 -8px 28px rgba(0, 40, 28, 0.08);
+}
+
+.customer-app-tabs-layout {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 14px 4px;
+}
+
+.customer-nav-placement {
+  display: inline-flex;
+  gap: 4px;
+  padding: 3px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  flex-shrink: 0;
+}
+
+.customer-nav-placement button {
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border-radius: 999px;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+}
+
+.customer-nav-placement button.active {
+  background: var(--lbg-green);
+  color: #fff;
+}
+
+.customer-app-rail-toggle {
+  flex-shrink: 0;
+  margin-top: 0;
+  align-self: center;
+  background: rgba(0, 0, 0, 0.15);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.customer-app-rail-toggle button {
+  color: rgba(255, 255, 255, 0.85);
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  display: grid;
+  place-items: center;
+}
+
+.customer-app-rail-toggle button.active {
+  background: rgba(255, 255, 255, 0.22);
+  color: #fff;
+}
+
+.customer-app-content {
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  scroll-behavior: smooth;
+  scrollbar-width: none;
+}
+
+.customer-app-content::-webkit-scrollbar {
+  display: none;
+}
+
+.customer-app-shell--side .customer-app-page {
+  min-width: 0;
+}
+
+.customer-app-shell--side .landing-nav {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.customer-app-shell--side .landing-nav-track {
+  max-width: 100%;
+  overflow-x: auto;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+
+.customer-app-shell--side .landing-nav-track::-webkit-scrollbar {
+  display: none;
+}
+
+.customer-app-page {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 16px 18px 24px;
+  min-height: min-content;
+}
+
+.customer-app-shell--side .customer-app-page {
+  padding-top: 20px;
+}
+
+.customer-app-page .customer-hero {
+  margin: 0;
+  box-shadow:
+    0 14px 32px rgba(0, 50, 36, 0.16),
+    inset 0 1px 0 rgba(255, 255, 255, 0.22);
+}
+
+.customer-app-tabs-bottom {
+  flex-shrink: 0;
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 2px;
+  padding: 4px 6px 12px;
+  background: transparent;
+  border-top: none;
+  box-shadow: none;
+}
+
+.app-shell.view-mobile .customer-app-rail {
+  display: none;
+}
+
+.app-shell.view-mobile .customer-app-shell {
+  min-height: 100%;
+}
+
+.customer-app-shell--landing .customer-app-content {
+  border-top: none;
+}
+
+.customer-app-shell--landing .customer-app-page {
+  padding: 0;
+  gap: 0;
+}
+
 /* View mode toggle — dashboard control */
 .view-mode-toggle {
   position: fixed;
@@ -130,7 +464,7 @@ textarea:focus-visible,
   z-index: 100;
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  gap: 3px;
   padding: 4px;
   background: #fff;
   border: 1px solid var(--line);
@@ -138,23 +472,18 @@ textarea:focus-visible,
   box-shadow: 0 6px 18px rgba(0, 0, 0, 0.1);
 }
 
-.view-mode-toggle-label {
-  font-size: 0.72rem;
-  font-weight: 700;
-  color: var(--muted);
-  padding: 0 8px 0 10px;
-}
-
 .view-mode-toggle button {
   border: 0;
   background: transparent;
   color: var(--muted);
-  font: inherit;
-  font-size: 0.78rem;
-  font-weight: 700;
-  padding: 8px 12px;
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
   border-radius: 999px;
   cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
 }
 
 .view-mode-toggle button.active {
@@ -200,35 +529,46 @@ textarea:focus-visible,
 
 /* Desktop / normal web view */
 .app-shell.view-desktop {
-  padding: 0;
-  place-items: stretch;
-  background: #eef2ef;
+  padding: 16px;
+  place-items: center;
+  background: linear-gradient(165deg, #e8eef0 0%, #eef2ef 45%, #e4ebe8 100%);
 }
 
-.app-shell.view-desktop .phone,
 .app-shell.view-desktop .phone.phone-desktop,
 .app-shell.view-desktop .phone-marketing:has(.marketing-screen) {
   width: 100%;
-  max-width: none;
-  min-height: 100vh;
-  border-radius: 0;
-  box-shadow: none;
-  overflow: visible;
-  background: transparent;
+  max-width: 1040px;
+  height: calc(100vh - 32px);
+  max-height: calc(100vh - 32px);
+  min-height: calc(100vh - 32px);
+  border-radius: 20px;
+  box-shadow:
+    0 0 0 1px rgba(0, 106, 77, 0.06),
+    0 28px 72px rgba(0, 40, 28, 0.14);
+  overflow: hidden;
+  background: var(--card);
+  display: flex;
+  flex-direction: column;
 }
 
-.app-shell.view-desktop .screen {
-  width: min(100%, 760px);
-  margin: 0 auto;
-  min-height: 100vh;
-  background: var(--card);
-  box-shadow: 0 0 0 1px var(--line);
-  padding-left: 28px;
-  padding-right: 28px;
+.app-shell.view-desktop .customer-app-shell--side .customer-app-rail {
+  border-top-left-radius: 20px;
+  border-bottom-left-radius: 20px;
+}
+
+.app-shell.view-desktop .customer-bottom-nav.customer-app-tabs-bottom {
+  position: relative;
+  left: auto;
+  transform: none;
+  width: 100%;
+  border-radius: 0;
+  box-shadow:
+    0 -1px 0 rgba(0, 106, 77, 0.08),
+    0 -8px 24px rgba(0, 40, 28, 0.06);
 }
 
 .app-shell.view-desktop .marketing-screen {
-  width: min(100%, 1080px);
+  width: 100%;
   background: #f3f4f2;
   box-shadow: none;
   padding-left: 32px;
@@ -236,7 +576,16 @@ textarea:focus-visible,
   padding-top: 28px;
 }
 
-.app-shell.view-desktop .bottom-nav {
+.app-shell.view-desktop .screen:not(.customer-app-shell) {
+  width: 100%;
+  margin: 0 auto;
+  min-height: 0;
+  background: var(--card);
+  padding-left: 28px;
+  padding-right: 28px;
+}
+
+.app-shell.view-desktop .bottom-nav:not(.customer-bottom-nav) {
   position: fixed;
   left: 50%;
   transform: translateX(-50%);
@@ -245,8 +594,32 @@ textarea:focus-visible,
   box-shadow: 0 -6px 24px rgba(0, 0, 0, 0.08);
 }
 
-.app-shell.view-desktop .screen.has-nav {
-  padding-bottom: 100px;
+.app-shell.view-desktop .chatbot-fab {
+  right: 20px;
+  bottom: 28px;
+  top: auto;
+  transform: none;
+}
+
+.app-shell.view-desktop .phone:has(.customer-app-tabs-bottom) .chatbot-fab {
+  bottom: 92px;
+}
+
+.app-shell.view-desktop .chatbot-panel {
+  left: auto;
+  right: 20px;
+  width: min(380px, calc(100% - 40px));
+  top: 72px;
+  bottom: 28px;
+}
+
+.app-shell.view-desktop .phone:has(.customer-app-tabs-bottom) .chatbot-panel {
+  bottom: 92px;
+}
+
+.app-shell.view-desktop .view-mode-toggle {
+  top: 16px;
+  right: 16px;
 }
 
 .app-shell.view-desktop .mkt-product-hero-card {
@@ -263,24 +636,6 @@ textarea:focus-visible,
 .app-shell.view-desktop .mkt-nav {
   justify-content: flex-start;
   gap: 8px 18px;
-}
-
-.app-shell.view-desktop .chatbot-fab {
-  right: max(24px, calc(50% - 380px + 24px));
-  bottom: 96px;
-}
-
-.app-shell.view-desktop .chatbot-panel {
-  left: auto;
-  right: max(24px, calc(50% - 380px + 24px));
-  width: min(380px, calc(100vw - 48px));
-  top: 72px;
-  bottom: 88px;
-}
-
-.app-shell.view-desktop .view-mode-toggle {
-  top: 16px;
-  right: 16px;
 }
 
 @media (min-width: 900px) {
@@ -1827,6 +2182,10 @@ a.link-quiet:hover {
   background: #f5f5f5;
 }
 
+.customer-app-shell.vitality-screen .customer-app-main {
+  background: #f5f5f5;
+}
+
 .vitality-top {
   display: flex;
   align-items: flex-start;
@@ -2777,7 +3136,7 @@ a.link-quiet:hover {
 /* —— Landing page (guest home) —— */
 .marketing-screen.landing-v2 {
   gap: 0;
-  padding: 0 0 32px;
+  padding: 0 0 88px;
   background: linear-gradient(180deg, #f8faf9 0%, #eef3f0 42%, #f3f4f2 100%);
 }
 
@@ -4145,9 +4504,10 @@ a.link-quiet:hover {
 /* Pluggable insurance chatbot (guests + signed-in) */
 .chatbot-fab {
   position: absolute;
-  right: 16px;
+  right: 14px;
   bottom: 20px;
-  z-index: 40;
+  top: auto;
+  z-index: 1;
   width: 52px;
   height: 52px;
   border: 0;
@@ -4158,10 +4518,17 @@ a.link-quiet:hover {
   place-items: center;
   box-shadow: 0 8px 20px rgba(0, 104, 71, 0.35);
   cursor: pointer;
+  transform: none;
+  transition: background 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
 }
 
-.phone:has(.has-nav) .chatbot-fab {
-  bottom: 78px;
+.phone:has(.customer-app-tabs-bottom) .chatbot-fab {
+  bottom: 88px;
+}
+
+.chatbot-fab:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 24px rgba(0, 104, 71, 0.42);
 }
 
 .chatbot-fab.open {
@@ -4174,7 +4541,7 @@ a.link-quiet:hover {
   right: 10px;
   bottom: 16px;
   top: 56px;
-  z-index: 45;
+  z-index: 2;
   background: #fff;
   border: 1px solid var(--line);
   border-radius: 16px;
@@ -4184,8 +4551,8 @@ a.link-quiet:hover {
   overflow: hidden;
 }
 
-.phone:has(.has-nav) .chatbot-panel {
-  bottom: 72px;
+.phone:has(.customer-app-tabs-bottom) .chatbot-panel {
+  bottom: 84px;
 }
 
 .chatbot-header {
@@ -4615,7 +4982,6 @@ a.link-quiet:hover {
 /* —— Customer app: 3D headers, panels & nav —— */
 .screen-customer {
   gap: 14px;
-  background: linear-gradient(180deg, #f4f8f6 0%, #fff 28%, #fafcfb 100%);
 }
 
 .customer-hero {

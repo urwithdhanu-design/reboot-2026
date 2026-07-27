@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { api, type Product } from "../api";
 import { loadMarketplaceFromFirestore } from "../firestore/catalogCache";
-import { AssistantBar, BottomNav, CustomerPageHeader, CustomerPanel, HeaderIconHome } from "../components";
+import { AssistantBar, CustomerAppShell, CustomerPageHeader, CustomerPanel, HeaderIconHome } from "../components";
 import { IconSearch, productIcon } from "../icons";
 
 const DEFAULT_CATEGORIES = [
@@ -82,7 +82,7 @@ export function MarketplacePage() {
   const openQuote = (productId: string) => navigate(`/quote/${productId}`);
 
   return (
-    <div className="screen has-nav screen-customer">
+    <CustomerAppShell active="home">
       <CustomerPageHeader
         title="Home"
         subtitle="Browse cover, compare quotes, and protect what matters most"
@@ -174,7 +174,6 @@ export function MarketplacePage() {
       </CustomerPanel>
 
       <AssistantBar screen="marketplace" />
-      <BottomNav active="home" />
-    </div>
+    </CustomerAppShell>
   );
 }

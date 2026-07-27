@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { api, type Product, type QuoteEstimate } from "../api";
-import { AssistantBar, BottomNav, StepHeader } from "../components";
+import { AssistantBar, CustomerAppShell, StepHeader } from "../components";
 import {
   mergeCompareQuotes,
   readCompareQuotes,
@@ -117,7 +117,7 @@ export function ComparePage() {
   }
 
   return (
-    <div className="screen has-nav">
+    <CustomerAppShell active="policies">
       <StepHeader title="Compare" />
 
       <section className="compare-hero" aria-labelledby="compare-heading">
@@ -431,7 +431,6 @@ export function ComparePage() {
       )}
 
       <AssistantBar screen="marketplace" />
-      <BottomNav active="policies" />
-    </div>
+    </CustomerAppShell>
   );
 }
