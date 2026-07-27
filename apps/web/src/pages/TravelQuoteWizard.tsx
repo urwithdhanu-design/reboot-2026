@@ -149,6 +149,9 @@ export function TravelQuoteWizard({
               </li>
               <li>Flight {answers.flight_number}</li>
               <li>Parametric cover: {selectedCover.join(", ") || "None"}</li>
+              {selectedCover.length > 0 ? (
+                <li>Policy coverage limit: £1,000 (shared across parametric claims)</li>
+              ) : null}
             </ul>
             <p className="muted travel-parametric-note">
               After payment and policy minting, parametric rules are created automatically for your
@@ -183,7 +186,7 @@ export function TravelQuoteWizard({
                   }
                 >
                   <strong>Flight delay</strong>
-                  <span>Auto-payout when your flight is delayed beyond the threshold.</span>
+                  <span>Auto-payout when delayed ≥4h — up to £1,000 policy cover.</span>
                 </button>
                 <button
                   type="button"
@@ -196,7 +199,7 @@ export function TravelQuoteWizard({
                   }
                 >
                   <strong>Trip cancellation</strong>
-                  <span>Cover if your trip is cancelled before departure.</span>
+                  <span>Cover if cancelled before departure — shared £1,000 policy limit.</span>
                 </button>
               </div>
             </div>

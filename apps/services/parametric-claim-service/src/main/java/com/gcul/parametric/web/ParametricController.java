@@ -4,6 +4,8 @@ import java.util.List;
 import java.util.Map;
 
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -30,6 +32,11 @@ public class ParametricController {
 	@PostMapping("/rules")
 	public Map<String, Object> createRule(@RequestBody Map<String, Object> body) {
 		return parametric.createRule(body);
+	}
+
+	@PatchMapping("/rules/{ruleId}")
+	public Map<String, Object> updateRule(@PathVariable String ruleId, @RequestBody Map<String, Object> body) {
+		return parametric.updateRule(ruleId, body);
 	}
 
 	@GetMapping("/triggers")

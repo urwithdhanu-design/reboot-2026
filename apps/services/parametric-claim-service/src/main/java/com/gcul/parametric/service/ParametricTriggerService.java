@@ -61,36 +61,97 @@ public class ParametricTriggerService {
 
 		var existing = repo.findFirstByPolicyRefAndRuleType(policyRef, ruleType);
 		if (existing.isPresent()) {
-			return toMap(existing.get());
+			ParametricRule rule = existing.get();
+			applyRuleFields(rule, body, policy, flightDelay, tripCancellation);
+			Map<String, Object> result = toMap(repo.save(rule));
+			result.put("updated", true);
+			return result;
 		}
 
 		ParametricRule rule = new ParametricRule();
 		rule.setId("PR-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase(Locale.ROOT));
-		rule.setName(firstNonBlank(str(body.get("name")),
-				flightDelay ? "Flight delay cover"
-						: tripCancellation ? "Trip cancellation cover" : "Parametric rule"));
-		rule.setRuleType(ruleType);
-		rule.setMetric(firstNonBlank(str(body.get("metric")),
-				flightDelay ? "flight_delay_minutes"
-						: tripCancellation ? "trip_cancelled" : "rainfall_mm"));
-		rule.setThreshold(num(body.get("threshold"), flightDelay ? 240 : tripCancellation ? 1 : 50));
-		rule.setComparison(firstNonBlank(str(body.get("comparison")), "gte"));
-		rule.setPayoutAmount(num(body.get("payout_amount"), flightDelay ? 250 : tripCancellation ? 150 : 500));
-		rule.setPolicyRef(policyRef);
-		rule.setProductCategory(firstNonBlank(
-				str(body.get("product_category")),
-				str(policy.get("product_category")),
-				"Travel"));
-		rule.setFlightNumber(str(body.get("flight_number")));
-		rule.setTravelDate(str(body.get("travel_date")));
-		rule.setPolicyExpiresAt(firstNonBlank(
-				str(body.get("policy_expires_at")),
-				PolicyLookupClient.derivePolicyExpiry(policy)));
-		rule.setCustomerEmail(firstNonBlank(str(body.get("customer_email")), str(policy.get("customer_email"))));
+		applyRuleFields(rule, body, policy, flightDelay, tripCancellation);
 		rule.setActive(true);
 		rule.setOracleStatus("monitoring");
 		rule.setCreatedAt(Instant.now());
-		return toMap(repo.save(rule));
+		Map<String, Object> result = toMap(repo.save(rule));
+		result.put("updated", false);
+		return result;
+	}
+
+	public Map<String, Object> updateRule(String ruleId, Map<String, Object> body) {
+		ParametricRule rule = repo.findById(ruleId).orElseThrow(
+				() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Rule not found: " + ruleId));
+		boolean flightDelay = "flight_delay".equalsIgnoreCase(rule.getRuleType());
+		boolean tripCancellation = "trip_cancellation".equalsIgnoreCase(rule.getRuleType());
+		Map<String, Object> policy = policyClient.fetchPolicy(rule.getPolicyRef());
+		applyRuleFields(rule, body, policy, flightDelay, tripCancellation);
+		Map<String, Object> result = toMap(repo.save(rule));
+		result.put("updated", true);
+		return result;
+	}
+
+	private void applyRuleFields(
+			ParametricRule rule,
+			Map<String, Object> body,
+			Map<String, Object> policy,
+			boolean flightDelay,
+			boolean tripCancellation) {
+		rule.setName(firstNonBlank(str(body.get("name")),
+				flightDelay ? "Flight delay cover"
+						: tripCancellation ? "Trip cancellation cover" : rule.getName()));
+		if (!str(body.get("rule_type")).isBlank()) {
+			rule.setRuleType(str(body.get("rule_type")));
+		}
+		if (!str(body.get("metric")).isBlank()) {
+			rule.setMetric(str(body.get("metric")));
+		}
+		else if (rule.getMetric() == null || rule.getMetric().isBlank()) {
+			rule.setMetric(flightDelay ? "flight_delay_minutes"
+					: tripCancellation ? "trip_cancelled" : "rainfall_mm");
+		}
+		if (body.containsKey("threshold")) {
+			rule.setThreshold(num(body.get("threshold"), rule.getThreshold() > 0 ? rule.getThreshold()
+					: flightDelay ? 240 : tripCancellation ? 1 : 50));
+		}
+		else if (rule.getThreshold() <= 0) {
+			rule.setThreshold(flightDelay ? 240 : tripCancellation ? 1 : 50);
+		}
+		if (!str(body.get("comparison")).isBlank()) {
+			rule.setComparison(str(body.get("comparison")));
+		}
+		else if (rule.getComparison() == null || rule.getComparison().isBlank()) {
+			rule.setComparison("gte");
+		}
+		if (body.containsKey("payout_amount")) {
+			rule.setPayoutAmount(num(body.get("payout_amount"), rule.getPayoutAmount() > 0 ? rule.getPayoutAmount()
+					: flightDelay ? 250 : tripCancellation ? 150 : 500));
+		}
+		else if (rule.getPayoutAmount() <= 0) {
+			rule.setPayoutAmount(flightDelay ? 250 : tripCancellation ? 150 : 500);
+		}
+		if (!str(body.get("policy_ref")).isBlank()) {
+			rule.setPolicyRef(str(body.get("policy_ref")));
+		}
+		rule.setProductCategory(firstNonBlank(
+				str(body.get("product_category")),
+				str(policy.get("product_category")),
+				firstNonBlank(rule.getProductCategory(), "Travel")));
+		if (!str(body.get("flight_number")).isBlank()) {
+			rule.setFlightNumber(str(body.get("flight_number")).trim().toUpperCase(Locale.ROOT));
+		}
+		if (!str(body.get("travel_date")).isBlank()) {
+			rule.setTravelDate(str(body.get("travel_date")));
+		}
+		rule.setPolicyExpiresAt(firstNonBlank(
+				str(body.get("policy_expires_at")),
+				PolicyLookupClient.derivePolicyExpiry(policy),
+				rule.getPolicyExpiresAt()));
+		rule.setCustomerEmail(firstNonBlank(str(body.get("customer_email")), str(policy.get("customer_email")),
+				rule.getCustomerEmail()));
+		if (body.containsKey("active")) {
+			rule.setActive(Boolean.TRUE.equals(body.get("active")) || "true".equalsIgnoreCase(str(body.get("active"))));
+		}
 	}
 
 	public Map<String, Object> oracleStatus() {
@@ -126,8 +187,16 @@ public class ParametricTriggerService {
 		return claimProcessor.initiateAndProcess(body);
 	}
 
-	/** Admin simulation: manual delay override for demos. */
+	/** Admin simulation: manual delay override for demos — applies threshold to the selected rule. */
 	public Map<String, Object> simulateFlightDelay(Map<String, Object> body) {
+		String ruleId = str(body.get("rule_id"));
+		if (ruleId.isBlank()) {
+			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "rule_id is required");
+		}
+		if (body.containsKey("threshold") || body.containsKey("payout_amount")
+				|| body.containsKey("flight_number") || body.containsKey("travel_date")) {
+			updateRule(ruleId, body);
+		}
 		body.put("simulation", true);
 		body.put("trigger_source", "simulation");
 		if (body.get("flight_delay_minutes") == null) {
@@ -136,14 +205,24 @@ public class ParametricTriggerService {
 		return claimProcessor.initiateAndProcess(body);
 	}
 
-	/** Admin simulation: trip cancellation payout for demos. */
+	/** Admin simulation: trip cancellation payout for demos — uses the selected rule's flight/date. */
 	public Map<String, Object> simulateTripCancellation(Map<String, Object> body) {
+		String ruleId = str(body.get("rule_id"));
+		if (ruleId.isBlank()) {
+			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "rule_id is required");
+		}
+		ParametricRule rule = repo.findById(ruleId).orElseThrow(
+				() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Rule not found: " + ruleId));
+		if (body.containsKey("payout_amount") || body.containsKey("flight_number") || body.containsKey("travel_date")) {
+			updateRule(ruleId, body);
+		}
 		body.put("simulation", true);
 		body.put("trigger_source", "simulation");
 		body.put("cancellation_confirmed", true);
 		body.put("trip_cancelled", true);
 		body.put("observed_value", 1);
-		body.put("flight_delay_minutes", 1);
+		body.putIfAbsent("flight_number", rule.getFlightNumber());
+		body.putIfAbsent("travel_date", rule.getTravelDate());
 		return claimProcessor.initiateAndProcess(body);
 	}
 

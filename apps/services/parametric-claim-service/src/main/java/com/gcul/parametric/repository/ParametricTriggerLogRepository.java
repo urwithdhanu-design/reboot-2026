@@ -14,5 +14,11 @@ public interface ParametricTriggerLogRepository extends JpaRepository<Parametric
 
 	boolean existsByRuleIdAndTravelDateAndClaimCreatedTrue(String ruleId, String travelDate);
 
+	boolean existsByPolicyRefAndFlightNumberIgnoreCaseAndTravelDateAndRuleTypeAndClaimCreatedTrue(
+			String policyRef,
+			String flightNumber,
+			String travelDate,
+			String ruleType);
+
 	List<ParametricTriggerLog> findByClaimId(String claimId);
 }

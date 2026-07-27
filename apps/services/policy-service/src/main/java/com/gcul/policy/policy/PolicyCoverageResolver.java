@@ -16,6 +16,8 @@ import org.springframework.stereotype.Component;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+import com.gcul.policy.travel.TravelCoverageLimits;
+
 @Component
 public class PolicyCoverageResolver {
 
@@ -158,18 +160,21 @@ public class PolicyCoverageResolver {
 		}
 
 		List<Map<String, Object>> items = new ArrayList<>();
-		double totalLimit = 0;
 		if (isYes(answers.get("coverage_flight_delay"))) {
-			items.add(Map.of("code", "flight_delay", "label", "Flight delay", "limit_gbp", 250.0));
-			totalLimit += 250;
+			items.add(Map.of("code", "flight_delay", "label", "Flight delay", "limit_gbp",
+					TravelCoverageLimits.FLIGHT_DELAY_ITEM_LIMIT_GBP));
 		}
 		if (isYes(answers.get("coverage_cancellation"))) {
-			items.add(Map.of("code", "trip_cancellation", "label", "Trip cancellation", "limit_gbp", 150.0));
-			totalLimit += 150;
+			items.add(Map.of("code", "trip_cancellation", "label", "Trip cancellation", "limit_gbp",
+					TravelCoverageLimits.TRIP_CANCELLATION_ITEM_LIMIT_GBP));
 		}
+		double totalLimit;
 		if (items.isEmpty()) {
 			items.add(Map.of("code", "travel_medical", "label", "Emergency medical", "limit_gbp", 1_000_000.0));
 			totalLimit = 1_000_000;
+		}
+		else {
+			totalLimit = TravelCoverageLimits.POLICY_LIMIT_GBP;
 		}
 
 		String destination = str(answers.get("destination"));

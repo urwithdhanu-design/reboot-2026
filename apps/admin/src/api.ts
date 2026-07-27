@@ -284,7 +284,9 @@ export type ParametricOraclePollResult = {
   };
 };
 
-export type ParametricSimulateResult = ParametricOraclePollResult;
+export type ParametricSimulateResult = ParametricOraclePollResult & {
+  threshold?: number;
+};
 
 export type AdminClaimRow = {
   id: string;
@@ -707,8 +709,14 @@ export const adminApi = {
     adminRequest<{ rules: ParametricRuleRow[]; count: number }>('/api/parametric/rules'),
 
   createParametricRule: (body: Record<string, unknown>) =>
-    adminRequest<ParametricRuleRow>('/api/parametric/rules', {
+    adminRequest<ParametricRuleRow & { updated?: boolean }>('/api/parametric/rules', {
       method: 'POST',
+      body: JSON.stringify(body),
+    }),
+
+  updateParametricRule: (ruleId: string, body: Record<string, unknown>) =>
+    adminRequest<ParametricRuleRow & { updated?: boolean }>(`/api/parametric/rules/${encodeURIComponent(ruleId)}`, {
+      method: 'PATCH',
       body: JSON.stringify(body),
     }),
 
@@ -720,6 +728,8 @@ export const adminApi = {
     flight_number?: string;
     travel_date?: string;
     flight_delay_minutes: number;
+    threshold?: number;
+    payout_amount?: number;
   }) =>
     adminRequest<ParametricSimulateResult>('/api/parametric/simulate/flight-delay', {
       method: 'POST',

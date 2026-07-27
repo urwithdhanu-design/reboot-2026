@@ -16,6 +16,8 @@ Insurance platform (`apps/`) plus the reusable Universal Ledger Python SDK (`pac
 
 **Blockchain / insurer mint (Ethereum Alchemy, MetaMask, GCUL):** [`docs/BLOCKCHAIN-INSURER-MINT.md`](docs/BLOCKCHAIN-INSURER-MINT.md)
 
+**Minting, deposits & claim processing:** [`docs/MINT-DEPOSITS-CLAIMS.md`](docs/MINT-DEPOSITS-CLAIMS.md)
+
 **Domain events (Pub/Sub):** [`docs/EVENT-CATALOG.md`](docs/EVENT-CATALOG.md)
 
 ## Install the SDK

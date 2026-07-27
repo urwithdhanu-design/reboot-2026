@@ -3,7 +3,8 @@
 Use **`local-dev.cmd`** from the repo root — one command for setup, start, stop, and status.
 
 **Full Windows guide (prerequisites, `.ps1` files, troubleshooting):** [`scripts/local/README.md`](../../scripts/local/README.md)  
-**New machine setup (step-by-step):** [`docs/LOCAL-SETUP.md`](../../docs/LOCAL-SETUP.md)
+**New machine setup (step-by-step):** [`docs/LOCAL-SETUP.md`](../../docs/LOCAL-SETUP.md)  
+**Minting, deposits & claims (architecture):** [`docs/MINT-DEPOSITS-CLAIMS.md`](../../docs/MINT-DEPOSITS-CLAIMS.md)
 
 ## First time
 

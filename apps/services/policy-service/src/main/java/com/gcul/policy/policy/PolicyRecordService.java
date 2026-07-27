@@ -125,6 +125,7 @@ public class PolicyRecordService {
 		if (!"MINTED".equalsIgnoreCase(record.getMintStatus())) {
 			return record;
 		}
+		record = syncTravelCoverageLimits(record);
 		Instant activated = record.getActivatedAt() == null ? Instant.now() : record.getActivatedAt();
 		if (record.getActivatedAt() == null) {
 			record.setActivatedAt(activated);
@@ -140,6 +141,27 @@ public class PolicyRecordService {
 		}
 		activateCoverageOnMint(record, activated);
 		return repository.save(record);
+	}
+
+	private PolicyRecord syncTravelCoverageLimits(PolicyRecord record) {
+		String category = PolicyCoverageResolver.normalizeProductCategory(
+				record.getProductCategory(),
+				record.getProductTitle());
+		if (!"Travel".equalsIgnoreCase(category) || !StringUtils.hasText(record.getQuoteId())) {
+			return record;
+		}
+		try {
+			Map<String, Object> quote = quoteService.getQuote(record.getQuoteId());
+			Instant start = record.getCoverStartAt();
+			PolicyCoverageSnapshot snap = start == null
+					? coverageResolver.resolvePendingFromQuote(quote)
+					: coverageResolver.activateOnMint(quote, start);
+			applyCoverage(record, snap);
+			return repository.save(record);
+		}
+		catch (Exception ignored) {
+			return record;
+		}
 	}
 
 	@Transactional

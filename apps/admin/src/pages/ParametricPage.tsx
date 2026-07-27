@@ -114,7 +114,11 @@ export function ParametricPage() {
         product_category: 'Travel',
       });
       setSelectedRuleId(rule.id);
-      setSuccess(`Rule ${rule.id} created — oracle monitoring started for ${rule.flight_number}`);
+      setSuccess(
+        rule.updated
+          ? `Rule ${rule.id} updated — threshold ≥${rule.threshold} min, payout ${formatGBP(rule.payout_amount)}`
+          : `Rule ${rule.id} created — oracle monitoring started for ${rule.flight_number}`,
+      );
       await load();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not create rule');
@@ -157,32 +161,40 @@ export function ParametricPage() {
     }
   }
 
-  async function simulateDelay() {
-    const ruleId = selectedRuleId || rules[0]?.id;
+  async function simulateDelay(ruleIdOverride?: string) {
+    const ruleId = ruleIdOverride || selectedRuleId || flightRules[0]?.id;
     if (!ruleId) {
       setError('Create a flight delay rule first');
       return;
     }
+    const rule = rules.find((r) => r.id === ruleId);
     setBusy(true);
     setError(null);
     setSuccess(null);
     try {
       const result = await adminApi.simulateFlightDelay({
         rule_id: ruleId,
-        flight_number: flightNumber.trim(),
-        travel_date: travelDate,
+        flight_number: (rule?.flight_number || flightNumber).trim(),
+        travel_date: rule?.travel_date || travelDate,
         flight_delay_minutes: Number(delayMinutes),
+        threshold: Number(rule?.threshold ?? threshold),
+        payout_amount: Number(rule?.payout_amount ?? payout),
       });
       if (result.claim_created && result.claim_id) {
         setSuccess(
-          `Manual simulation — claim ${result.claim_id} auto-settled (${result.status}).`,
+          `Flight delay simulation on ${ruleId} — claim ${result.claim_id} auto-settled (${result.status}). Threshold was ≥${result.threshold ?? threshold} min.`,
         );
       } else if (result.status === 'already_settled') {
         setSuccess(result.message ?? 'Flight delay claim already settled for this rule and travel date');
+      } else if (result.status === 'blocked') {
+        setError(result.message ?? 'Flight delay blocked — trip cancellation already claimed for this flight and date');
       } else if (result.matched) {
         setSuccess(result.message ?? 'Threshold matched');
       } else {
-        setError(result.message ?? 'Threshold not met — no claim created');
+        setError(
+          result.message
+            ?? `Threshold not met — observed ${result.observed_value ?? delayMinutes} min below ≥${result.threshold ?? threshold} min`,
+        );
       }
       await load();
     } catch (err) {
@@ -212,7 +224,11 @@ export function ParametricPage() {
         product_category: 'Travel',
       });
       setSelectedCancellationRuleId(rule.id);
-      setSuccess(`Cancellation rule ${rule.id} created for ${policyRef.trim()}`);
+      setSuccess(
+        rule.updated
+          ? `Cancellation rule ${rule.id} updated for ${policyRef.trim()}`
+          : `Cancellation rule ${rule.id} created for ${policyRef.trim()}`,
+      );
       await load();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not create cancellation rule');
@@ -243,6 +259,8 @@ export function ParametricPage() {
         );
       } else if (result.status === 'already_settled') {
         setSuccess(result.message ?? 'Trip cancellation claim already settled for this rule and travel date');
+      } else if (result.status === 'blocked') {
+        setError(result.message ?? 'Trip cancellation blocked for this trip');
       } else if (result.matched) {
         setSuccess(result.message ?? 'Cancellation threshold matched');
       } else {
@@ -367,8 +385,12 @@ export function ParametricPage() {
               </label>
             </div>
             <Button onClick={() => void createFlightDelayRule()} disabled={busy || !policyRef}>
-              Create rule & start monitoring
+              Save flight delay rule
             </Button>
+            <p className="text-xs text-lbg-gray-500">
+              Re-saving updates threshold and payout on the existing rule for this policy. Trip cancellation on the same
+              flight and date blocks a later flight delay claim.
+            </p>
           </div>
         </Card>
 
@@ -401,12 +423,20 @@ export function ParametricPage() {
             <details className="text-xs text-lbg-gray-500">
               <summary className="cursor-pointer font-medium text-lbg-gray-600">Manual simulation (demo override)</summary>
               <div className="mt-3 space-y-2">
+                <p className="text-[11px] text-lbg-gray-500">
+                  Applies to rule <span className="font-mono">{selectedRuleId || '—'}</span>. Threshold and observed delay
+                  are saved to the rule before simulating.
+                </p>
+                <label className="block text-sm">
+                  <span className="font-medium">Delay threshold (min)</span>
+                  <input className="mt-1 w-full border rounded-lg px-3 py-2 text-sm" value={threshold} onChange={(e) => setThreshold(e.target.value)} />
+                </label>
                 <label className="block text-sm">
                   <span className="font-medium">Observed delay (minutes)</span>
                   <input className="mt-1 w-full border rounded-lg px-3 py-2 text-sm" value={delayMinutes} onChange={(e) => setDelayMinutes(e.target.value)} />
                 </label>
                 <Button variant="outline" size="sm" onClick={() => void simulateDelay()} disabled={busy || !selectedRuleId}>
-                  <Zap className="w-3 h-3" /> Simulate delay
+                  <Zap className="w-3 h-3" /> Simulate delay on selected rule
                 </Button>
               </div>
             </details>
@@ -486,6 +516,7 @@ export function ParametricPage() {
               </Button>
               <p className="text-xs text-lbg-gray-500">
                 Publishes ClaimInitiated, records on Canton, creates an auto-approved claim, and credits the customer wallet.
+                A prior flight delay claim does not block cancellation if policy coverage limit remains.
               </p>
               {cancellationRules.length === 0 ? (
                 <p className="text-xs text-amber-700 bg-amber-100/60 rounded-lg p-3">
@@ -564,9 +595,22 @@ export function ParametricPage() {
                           Simulate
                         </Button>
                       ) : (
-                        <Button size="sm" variant="outline" disabled={busy} onClick={() => void pollOracle(r.id)}>
-                          Poll
-                        </Button>
+                        <div className="flex gap-1">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            disabled={busy}
+                            onClick={() => {
+                              setSelectedRuleId(r.id);
+                              void simulateDelay(r.id);
+                            }}
+                          >
+                            Simulate
+                          </Button>
+                          <Button size="sm" variant="outline" disabled={busy} onClick={() => void pollOracle(r.id)}>
+                            Poll
+                          </Button>
+                        </div>
                       )}
                     </td>
                   </tr>
@@ -620,7 +664,7 @@ export function ParametricPage() {
                     </td>
                     <td className="py-3 pr-4">{isCancellation ? 'Trip cancelled' : `${t.observed_value} min`}</td>
                     <td className="py-3 pr-4">
-                      <Badge variant={t.claim_created ? 'success' : t.matched ? 'warning' : t.status === 'already_settled' ? 'info' : 'neutral'}>
+                      <Badge variant={t.claim_created ? 'success' : t.matched ? 'warning' : t.status === 'already_settled' ? 'info' : t.status === 'blocked' ? 'error' : 'neutral'}>
                         {t.status}
                       </Badge>
                     </td>

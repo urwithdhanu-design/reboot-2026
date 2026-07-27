@@ -20,6 +20,7 @@ import com.gcul.parametric.model.ParametricRule;
 import com.gcul.parametric.model.ParametricTriggerLog;
 import com.gcul.parametric.repository.ParametricRuleRepository;
 import com.gcul.parametric.repository.ParametricTriggerLogRepository;
+import com.gcul.parametric.service.ParametricRuleConflictService;
 
 @Service
 public class ClaimInitiatedProcessor {
@@ -32,6 +33,7 @@ public class ClaimInitiatedProcessor {
 	private final BlockchainClient blockchainClient;
 	private final ClaimsClient claimsClient;
 	private final ParametricEventPublisher events;
+	private final ParametricRuleConflictService conflicts;
 
 	public ClaimInitiatedProcessor(
 			ParametricRuleRepository rules,
@@ -39,13 +41,15 @@ public class ClaimInitiatedProcessor {
 			PolicyLookupClient policyClient,
 			BlockchainClient blockchainClient,
 			ClaimsClient claimsClient,
-			ParametricEventPublisher events) {
+			ParametricEventPublisher events,
+			ParametricRuleConflictService conflicts) {
 		this.rules = rules;
 		this.triggerLogs = triggerLogs;
 		this.policyClient = policyClient;
 		this.blockchainClient = blockchainClient;
 		this.claimsClient = claimsClient;
 		this.events = events;
+		this.conflicts = conflicts;
 	}
 
 	/** Publish ClaimInitiated and process synchronously (admin simulation). */
@@ -80,19 +84,28 @@ public class ClaimInitiatedProcessor {
 			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Policy ref does not match rule");
 		}
 		policyRef = rule.getPolicyRef();
+		String effectiveFlight = firstNonBlank(flightNumber, rule.getFlightNumber());
 		String effectiveTravelDate = firstNonBlank(travelDate, rule.getTravelDate());
+		double effectiveThreshold = num(payload.get("threshold"), rule.getThreshold());
 
 		if (!effectiveTravelDate.isBlank()
 				&& triggerLogs.existsByRuleIdAndTravelDateAndClaimCreatedTrue(rule.getId(), effectiveTravelDate)) {
-			return finishLog(rule, policyRef, flightNumber, travelDate, observed, false, null,
+			return finishLog(rule, policyRef, effectiveFlight, effectiveTravelDate, observed, false, null,
 					"already_settled", "Claim already auto-settled for this rule and travel date",
-					triggerSource, oracleProvider, flightStatus);
+					triggerSource, oracleProvider, flightStatus, effectiveThreshold);
 		}
 
-		if (!travelDate.isBlank() && rule.getTravelDate() != null && !rule.getTravelDate().isBlank()
-				&& !travelDate.equals(rule.getTravelDate())) {
-			return finishLog(rule, policyRef, flightNumber, travelDate, observed, false, null,
-					"skipped", "Travel date does not match rule coverage date", triggerSource, oracleProvider, flightStatus);
+		if (!effectiveTravelDate.isBlank() && rule.getTravelDate() != null && !rule.getTravelDate().isBlank()
+				&& !effectiveTravelDate.equals(rule.getTravelDate())) {
+			return finishLog(rule, policyRef, effectiveFlight, effectiveTravelDate, observed, false, null,
+					"skipped", "Travel date does not match rule coverage date (" + rule.getTravelDate() + ")",
+					triggerSource, oracleProvider, flightStatus, effectiveThreshold);
+		}
+
+		String conflict = conflicts.blockReasonForFlightDelay(rule, effectiveFlight, effectiveTravelDate);
+		if (conflict != null) {
+			return finishLog(rule, policyRef, effectiveFlight, effectiveTravelDate, observed, false, null,
+					"blocked", conflict, triggerSource, oracleProvider, flightStatus, effectiveThreshold);
 		}
 
 		Map<String, Object> policy = policyClient.fetchPolicy(policyRef);
@@ -103,22 +116,22 @@ public class ClaimInitiatedProcessor {
 		Map<String, Object> canton = blockchainClient.verifyCantonPolicy(policyRef, policyReferenceHash);
 		blockchainClient.assertVerifiedOnCanton(canton, policy);
 
-		boolean matched = matches(rule, observed);
+		boolean matched = matches(rule, observed, effectiveThreshold);
 		if (!matched) {
 			String detail = "trip_cancellation".equalsIgnoreCase(rule.getRuleType())
 					? "Trip not marked cancelled for rule threshold"
-					: "Delay " + observed + " min below threshold " + rule.getThreshold();
-			return finishLog(rule, policyRef, flightNumber, travelDate, observed, false, null,
+					: "Delay " + observed + " min below threshold " + effectiveThreshold;
+			return finishLog(rule, policyRef, effectiveFlight, effectiveTravelDate, observed, false, null,
 					"below_threshold", detail,
-					triggerSource, oracleProvider, flightStatus);
+					triggerSource, oracleProvider, flightStatus, effectiveThreshold);
 		}
 
 		Map<String, Object> chainPayload = new LinkedHashMap<>();
 		chainPayload.put("policy_ref", policyRef);
 		chainPayload.put("policy_reference_hash", policyReferenceHash);
 		chainPayload.put("rule_id", rule.getId());
-		chainPayload.put("flight_number", firstNonBlank(flightNumber, rule.getFlightNumber()));
-		chainPayload.put("travel_date", firstNonBlank(travelDate, rule.getTravelDate()));
+		chainPayload.put("flight_number", effectiveFlight);
+		chainPayload.put("travel_date", effectiveTravelDate);
 		chainPayload.put("payout_amount", rule.getPayoutAmount());
 		chainPayload.put("canton_contract_id", str(canton.get("contractId")));
 		if ("trip_cancellation".equalsIgnoreCase(rule.getRuleType())) {
@@ -135,11 +148,11 @@ public class ClaimInitiatedProcessor {
 		String walletAddress = str(policy.get("wallet_address"));
 		String description = "trip_cancellation".equalsIgnoreCase(rule.getRuleType())
 				? "Parametric auto-claim: " + rule.getName()
-						+ " — trip cancelled for flight " + firstNonBlank(flightNumber, rule.getFlightNumber())
-						+ " on " + firstNonBlank(travelDate, rule.getTravelDate())
+						+ " — trip cancelled for flight " + effectiveFlight
+						+ " on " + effectiveTravelDate
 				: "Parametric auto-claim: " + rule.getName()
-						+ " — flight " + firstNonBlank(flightNumber, rule.getFlightNumber())
-						+ " delayed " + observed + " min on " + firstNonBlank(travelDate, rule.getTravelDate());
+						+ " — flight " + effectiveFlight
+						+ " delayed " + observed + " min on " + effectiveTravelDate;
 		String claimCategory = "trip_cancellation".equalsIgnoreCase(rule.getRuleType())
 				? "Trip cancellation"
 				: "Flight delay";
@@ -163,9 +176,9 @@ public class ClaimInitiatedProcessor {
 			log.info("Parametric flight delay claim auto-settled {} for policy {} ({} min)", claim.get("id"), policyRef, observed);
 		}
 
-		Map<String, Object> result = finishLog(rule, policyRef, flightNumber, travelDate, observed, true,
+		Map<String, Object> result = finishLog(rule, policyRef, effectiveFlight, effectiveTravelDate, observed, true,
 				str(claim.get("id")), str(claim.get("status")), "Auto-approved and settled",
-				triggerSource, oracleProvider, flightStatus);
+				triggerSource, oracleProvider, flightStatus, effectiveThreshold);
 		result.put("claim", claim);
 		result.put("chain", chainRecord);
 		result.put("matched", true);
@@ -184,7 +197,8 @@ public class ClaimInitiatedProcessor {
 			String message,
 			String triggerSource,
 			String oracleProvider,
-			String flightStatus) {
+			String flightStatus,
+			double effectiveThreshold) {
 		ParametricTriggerLog logEntry = new ParametricTriggerLog();
 		logEntry.setId("PTG-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase(Locale.ROOT));
 		logEntry.setRuleId(rule.getId());
@@ -192,7 +206,9 @@ public class ClaimInitiatedProcessor {
 		logEntry.setFlightNumber(firstNonBlank(flightNumber, rule.getFlightNumber()));
 		logEntry.setTravelDate(firstNonBlank(travelDate, rule.getTravelDate()));
 		logEntry.setObservedValue(observed);
-		logEntry.setMatched("below_threshold".equals(status) ? false : matches(rule, observed));
+		logEntry.setMatched("below_threshold".equals(status) || "blocked".equals(status) || "skipped".equals(status)
+				? false
+				: matches(rule, observed, effectiveThreshold));
 		logEntry.setClaimCreated(claimCreated);
 		logEntry.setClaimId(claimId);
 		logEntry.setStatus(status);
@@ -214,6 +230,7 @@ public class ClaimInitiatedProcessor {
 		result.put("status", status);
 		result.put("message", message);
 		result.put("observed_value", observed);
+		result.put("threshold", effectiveThreshold);
 		return result;
 	}
 
@@ -225,12 +242,14 @@ public class ClaimInitiatedProcessor {
 		ParametricRule rule = rules.findById(ruleId).orElseThrow(
 				() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Rule not found"));
 
+		double effectiveThreshold = num(body.get("threshold"), rule.getThreshold());
+
 		Map<String, Object> event = new LinkedHashMap<>();
 		event.put("ruleId", rule.getId());
 		event.put("policyRef", rule.getPolicyRef());
 		event.put("ruleType", rule.getRuleType());
 		event.put("metric", rule.getMetric());
-		event.put("threshold", rule.getThreshold());
+		event.put("threshold", effectiveThreshold);
 		event.put("flightNumber", firstNonBlank(str(body.get("flight_number")), rule.getFlightNumber()));
 		event.put("travelDate", firstNonBlank(str(body.get("travel_date")), rule.getTravelDate()));
 		double observed = "trip_cancellation".equalsIgnoreCase(rule.getRuleType())
@@ -249,15 +268,15 @@ public class ClaimInitiatedProcessor {
 		return event;
 	}
 
-	private static boolean matches(ParametricRule rule, double observed) {
+	private static boolean matches(ParametricRule rule, double observed, double threshold) {
 		if ("trip_cancellation".equalsIgnoreCase(rule.getRuleType())) {
 			return observed >= 1;
 		}
 		return switch (rule.getComparison().toLowerCase(Locale.ROOT)) {
-			case "gt" -> observed > rule.getThreshold();
-			case "lte" -> observed <= rule.getThreshold();
-			case "lt" -> observed < rule.getThreshold();
-			default -> observed >= rule.getThreshold();
+			case "gt" -> observed > threshold;
+			case "lte" -> observed <= threshold;
+			case "lt" -> observed < threshold;
+			default -> observed >= threshold;
 		};
 	}
 
