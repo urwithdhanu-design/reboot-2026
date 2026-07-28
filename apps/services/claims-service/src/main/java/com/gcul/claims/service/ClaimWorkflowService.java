@@ -29,6 +29,7 @@ import com.gcul.claims.service.ClaimQueryService;
 public class ClaimWorkflowService {
 
 	private static final Logger log = LoggerFactory.getLogger(ClaimWorkflowService.class);
+	private static final double PARAMETRIC_AUTO_SETTLEMENT_LIMIT = 500.0;
 
 	private static final Set<String> ADMIN_STATUSES = Set.of(
 			ClaimStatus.IN_REVIEW,
@@ -74,7 +75,6 @@ public class ClaimWorkflowService {
 		if (amount <= 0) {
 			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "amount_claimed must be greater than zero");
 		}
-
 		Map<String, Object> policy = policyClient.fetchPolicy(policyRef);
 		policyClient.assertEligibleForClaim(policy);
 		String claimCategory = firstNonBlank(str(body.get("category")), str(policy.get("product_category")), "General");
@@ -140,6 +140,7 @@ public class ClaimWorkflowService {
 		if (amount <= 0) {
 			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "amount_claimed must be greater than zero");
 		}
+		boolean requiresApproval = amount > PARAMETRIC_AUTO_SETTLEMENT_LIMIT;
 
 		Map<String, Object> policy = policyClient.fetchPolicy(policyRef);
 		policyClient.assertEligibleForClaim(policy);
@@ -179,6 +180,15 @@ public class ClaimWorkflowService {
 		InsuranceClaim saved = repo.save(claim);
 		claimEvents.claimSubmitted(saved);
 		claimEvents.claimValidated(saved);
+		if (requiresApproval) {
+			saved.setStatus(ClaimStatus.PENDING_APPROVAL);
+			saved.setUpdatedAt(Instant.now());
+			saved = repo.save(saved);
+			claimEvents.claimPendingApproval(saved);
+			log.info("Parametric claim {} for policy {} requires admin approval (payout £{})",
+					saved.getId(), policyRef, amount);
+			return toMap(saved);
+		}
 
 		log.info("Parametric claim {} auto-settling for policy {}", saved.getId(), policyRef);
 		return approveAndSettle(saved.getId(), body);

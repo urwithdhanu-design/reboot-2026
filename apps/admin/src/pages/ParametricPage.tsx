@@ -31,6 +31,14 @@ function formatOracleStatus(status?: string) {
   return (status ?? 'idle').replace(/_/g, ' ');
 }
 
+function newestFirst<T extends { created_at?: string | null; triggered_at?: string | null }>(rows: T[]) {
+  return [...rows].sort((a, b) => {
+    const aTime = Date.parse(a.triggered_at ?? a.created_at ?? '') || 0;
+    const bTime = Date.parse(b.triggered_at ?? b.created_at ?? '') || 0;
+    return bTime - aTime;
+  });
+}
+
 export function ParametricPage() {
   const [rules, setRules] = useState<ParametricRuleRow[]>([]);
   const [triggers, setTriggers] = useState<ParametricTriggerRow[]>([]);
@@ -68,8 +76,10 @@ export function ParametricPage() {
         adminApi.listPolicies(),
         adminApi.getParametricOracleStatus(),
       ]);
-      setRules(rulesRes.rules);
-      setTriggers(triggersRes.triggers);
+      const latestRules = newestFirst(rulesRes.rules);
+      const latestTriggers = newestFirst(triggersRes.triggers);
+      setRules(latestRules);
+      setTriggers(latestTriggers);
       setOracleStatus(oracleRes);
       const minted = policiesRes.policies.filter((p) => p.mint_status === 'MINTED');
       setPolicies(minted);
