@@ -56,6 +56,42 @@ final class EmailTemplates {
 				""".formatted(brand, product, qid, paid));
 	}
 
+	static String policyCancelled(
+			String productTitle,
+			String policyNumber,
+			String reason,
+			double refundAmountGbp,
+			String refundStatus,
+			String platform) {
+		String product = escape(blankTo(productTitle, "Insurance"));
+		String policy = escape(blankTo(policyNumber, "—"));
+		String reasonLabel = escape(formatReason(reason));
+		String refundLine = refundAmountGbp > 0
+				? String.format("£%.2f (%s)", refundAmountGbp, escape(blankTo(refundStatus, "pending")))
+				: "No refund due";
+		String brand = escape(platform);
+		return layout(
+				brand,
+				"Policy cancelled",
+				"""
+				<p>Your policy on <strong>%s</strong> has been cancelled as requested.</p>
+				<div class="box">
+				  <div class="detail-row"><div class="label">Product</div><div class="value">%s</div></div>
+				  <div class="detail-row"><div class="label">Policy number</div><div class="value">%s</div></div>
+				  <div class="detail-row"><div class="label">Reason</div><div class="value">%s</div></div>
+				  <div class="detail-row"><div class="label">Refund</div><div class="value">%s</div></div>
+				</div>
+				<p>If a refund is due, it will be processed to your original payment method within 5–10 working days.</p>
+				""".formatted(brand, product, policy, reasonLabel, refundLine));
+	}
+
+	private static String formatReason(String reason) {
+		if (reason == null || reason.isBlank()) {
+			return "Customer request";
+		}
+		return reason.replace('_', ' ');
+	}
+
 	static String layout(String platform, String contextTitle, String bodyHtml) {
 		return """
 				<!DOCTYPE html>

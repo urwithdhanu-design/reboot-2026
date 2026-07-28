@@ -68,6 +68,25 @@ public class PolicyRecord {
 	@Column(length = 4000)
 	private String coverageDetailsJson;
 
+	private Instant cancelledAt;
+
+	@Column(length = 64)
+	private String cancellationReason;
+
+	@Column(length = 32)
+	private String cancellationType;
+
+	@Column(length = 512)
+	private String cancellationNote;
+
+	@Column(length = 32)
+	private String refundStatus;
+
+	private Double refundAmountGbp;
+
+	@Column(length = 64)
+	private String refundPaymentId;
+
 	public String getPolicyId() {
 		return policyId;
 	}
@@ -258,5 +277,61 @@ public class PolicyRecord {
 
 	public void setCoverageDetailsJson(String coverageDetailsJson) {
 		this.coverageDetailsJson = coverageDetailsJson;
+	}
+
+	public Instant getCancelledAt() {
+		return cancelledAt;
+	}
+
+	public void setCancelledAt(Instant cancelledAt) {
+		this.cancelledAt = cancelledAt;
+	}
+
+	public String getCancellationReason() {
+		return cancellationReason;
+	}
+
+	public void setCancellationReason(String cancellationReason) {
+		this.cancellationReason = cancellationReason;
+	}
+
+	public String getCancellationType() {
+		return cancellationType;
+	}
+
+	public void setCancellationType(String cancellationType) {
+		this.cancellationType = cancellationType;
+	}
+
+	public String getCancellationNote() {
+		return cancellationNote;
+	}
+
+	public void setCancellationNote(String cancellationNote) {
+		this.cancellationNote = cancellationNote;
+	}
+
+	public String getRefundStatus() {
+		return refundStatus;
+	}
+
+	public void setRefundStatus(String refundStatus) {
+		this.refundStatus = refundStatus;
+	}
+
+	public Double getRefundAmountGbp() {
+		return refundAmountGbp;
+	}
+
+	public void setRefundAmountGbp(Double refundAmountGbp) {
+		this.refundAmountGbp = refundAmountGbp;
+	}
+
+	public String getRefundPaymentId() {
+		return refundPaymentId;
+	}
+
+	public void setRefundPaymentId(String refundPaymentId) {
+		this.refundPaymentId = refundPaymentId;
 	}
 }

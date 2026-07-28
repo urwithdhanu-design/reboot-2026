@@ -27,7 +27,11 @@ public class UsersRoleSchemaPatch implements ApplicationRunner {
 					"ALTER TABLE users ADD COLUMN IF NOT EXISTS role VARCHAR(32) NOT NULL DEFAULT 'customer'");
 			jdbc.execute(
 					"ALTER TABLE users ADD COLUMN IF NOT EXISTS kyc_approval_mode VARCHAR(32)");
-			log.info("Ensured users.role and users.kyc_approval_mode columns exist");
+			jdbc.execute(
+					"ALTER TABLE users ADD COLUMN IF NOT EXISTS current_login_at VARCHAR(40)");
+			jdbc.execute(
+					"ALTER TABLE users ADD COLUMN IF NOT EXISTS last_login_at VARCHAR(40)");
+			log.info("Ensured users.role, kyc_approval_mode, and login timestamp columns exist");
 		}
 		catch (Exception ex) {
 			log.warn("Could not ensure users schema columns: {}", ex.getMessage());

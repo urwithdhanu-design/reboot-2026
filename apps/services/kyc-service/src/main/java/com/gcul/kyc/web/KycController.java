@@ -4,17 +4,21 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 
 import com.gcul.kyc.dto.KycSubmitRequest;
 import com.gcul.kyc.dto.UserMapper;
 import com.gcul.kyc.model.UserAccount;
 import com.gcul.kyc.service.KycSubmissionService;
+import com.gcul.kyc.service.KycUploadService;
 import com.gcul.kyc.store.UserStore;
 
 import jakarta.servlet.http.HttpServletRequest;
@@ -26,16 +30,34 @@ public class KycController {
 
 	private final UserStore store;
 	private final KycSubmissionService submissions;
+	private final KycUploadService uploads;
 
-	public KycController(UserStore store, KycSubmissionService submissions) {
+	public KycController(UserStore store, KycSubmissionService submissions, KycUploadService uploads) {
 		this.store = store;
 		this.submissions = submissions;
+		this.uploads = uploads;
 	}
 
 	@PostMapping("/submit")
 	public Map<String, Object> submit(@Valid @RequestBody KycSubmitRequest body, HttpServletRequest request) {
 		UserAccount user = requireUser(request);
 		return submissions.submit(user, body);
+	}
+
+	@PostMapping(value = "/selfie", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+	public Map<String, Object> uploadSelfie(
+			@RequestParam("file") MultipartFile file,
+			HttpServletRequest request) {
+		UserAccount user = requireUser(request);
+		return uploads.saveSelfie(user, file);
+	}
+
+	@PostMapping(value = "/document", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+	public Map<String, Object> uploadDocument(
+			@RequestParam("file") MultipartFile file,
+			HttpServletRequest request) {
+		UserAccount user = requireUser(request);
+		return uploads.saveDocument(user, file);
 	}
 
 	@GetMapping("/status")

@@ -1,7 +1,9 @@
 import type { ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
 import { useCustomerNav, type CustomerNavPlacement } from "../customerNav";
+import { useSession } from "../session";
 import { useViewMode } from "../viewMode";
+import { CustomerSessionInfo } from "./CustomerSessionInfo";
 
 const NAV_ROUTES: Record<string, string> = {
   home: "/",
@@ -30,9 +32,11 @@ export function CustomerAppShell({
 }) {
   const { isDesktopView } = useViewMode();
   const { navPlacement } = useCustomerNav();
+  const { token } = useSession();
   const isLanding = className.includes("customer-app-shell--landing");
   const sideRail = isDesktopView && navPlacement === "side";
   const bottomTabs = !isDesktopView || navPlacement === "bottom";
+  const showMobileSessionStrip = Boolean(token) && !isDesktopView;
 
   return (
     <div
@@ -41,6 +45,7 @@ export function CustomerAppShell({
       {sideRail ? <CustomerSideRail active={active} /> : null}
       <div className="customer-app-main">
         {!sideRail ? <CustomerAppTopBar toggleOnly={isLanding} /> : null}
+        {showMobileSessionStrip ? <CustomerSessionInfo variant="mobile" /> : null}
         <main className="customer-app-content" id="customer-main-content">
           <div className="customer-app-page">{children}</div>
         </main>
@@ -63,6 +68,7 @@ function CustomerSideRail({ active }: { active: string }) {
           <strong>Insure360</strong>
           <span>Customer portal</span>
         </div>
+        <CustomerSessionInfo variant="rail" />
       </div>
       <div className="customer-app-rail-scroll">
         <nav className="customer-app-rail-nav" aria-label="App sections">
@@ -94,6 +100,7 @@ function CustomerSideRail({ active }: { active: string }) {
 function CustomerAppTopBar({ toggleOnly = false }: { toggleOnly?: boolean }) {
   const { isDesktopView } = useViewMode();
   const { navPlacement, setNavPlacement } = useCustomerNav();
+  const { token } = useSession();
 
   if (!isDesktopView) return null;
 
@@ -107,6 +114,7 @@ function CustomerAppTopBar({ toggleOnly = false }: { toggleOnly?: boolean }) {
         <div className="customer-app-topbar-spacer" />
       )}
       {!toggleOnly ? <div className="customer-app-topbar-spacer" /> : null}
+      {token ? <CustomerSessionInfo variant="topbar" /> : null}
       <NavPlacementToggle placement={navPlacement} onChange={setNavPlacement} />
     </header>
   );

@@ -1,5 +1,5 @@
-import { createContext, useContext, useState, useCallback, type ReactNode } from 'react';
-import { adminApi, ADMIN_TOKEN_KEY, type AdminAuthUser } from '../api';
+import { createContext, useContext, useState, useCallback, useEffect, type ReactNode } from 'react';
+import { adminApi, ADMIN_TOKEN_KEY, setAdminUnauthorizedHandler, type AdminAuthUser } from '../api';
 
 interface AdminUser {
   id: string;
@@ -38,8 +38,46 @@ function loadStoredUser(): AdminUser | null {
   }
 }
 
+function clearStoredSession(): void {
+  localStorage.removeItem(ADMIN_TOKEN_KEY);
+  localStorage.removeItem(USER_KEY);
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AdminUser | null>(loadStoredUser);
+
+  const logout = useCallback(() => {
+    clearStoredSession();
+    setUser(null);
+  }, []);
+
+  useEffect(() => {
+    setAdminUnauthorizedHandler(() => {
+      clearStoredSession();
+      setUser(null);
+    });
+    return () => setAdminUnauthorizedHandler(null);
+  }, []);
+
+  useEffect(() => {
+    const token = localStorage.getItem(ADMIN_TOKEN_KEY);
+    if (!token) return;
+    adminApi
+      .getMe()
+      .then((profile) => {
+        if (profile.role !== 'platform_admin') {
+          logout();
+          return;
+        }
+        const u = toAdminUser(profile);
+        localStorage.setItem(USER_KEY, JSON.stringify(u));
+        setUser(u);
+      })
+      .catch(() => {
+        clearStoredSession();
+        setUser(null);
+      });
+  }, [logout]);
 
   const login = useCallback(async (email: string, password: string) => {
     const res = await adminApi.adminLogin(email.trim(), password);
@@ -47,12 +85,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const u = toAdminUser(res.user);
     localStorage.setItem(USER_KEY, JSON.stringify(u));
     setUser(u);
-  }, []);
-
-  const logout = useCallback(() => {
-    localStorage.removeItem(ADMIN_TOKEN_KEY);
-    localStorage.removeItem(USER_KEY);
-    setUser(null);
   }, []);
 
   return (

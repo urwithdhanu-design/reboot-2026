@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
-import { api } from "../api";
+import { Link } from "react-router-dom";
+import { api, type ChatbotPolicyCard } from "../api";
 import { IconChat } from "../icons";
+import { useSession } from "../session";
 import { useChatbot } from "./ChatbotContext";
 
 type ChatMessage = {
@@ -8,24 +10,79 @@ type ChatMessage = {
   role: "user" | "assistant";
   text: string;
   sources?: { title?: string; source?: string; category?: string }[];
+  policies?: ChatbotPolicyCard[];
+  action?: string | null;
+  requiresLogin?: boolean;
 };
+
+const SESSION_KEY = "gcul_stallion_session";
 
 const SUGGESTIONS = [
   "What home insurance do you offer?",
-  "How do I make a claim?",
-  "What types of insurance are available?",
-  "Tell me about pet insurance",
+  "Give me my policy details",
+  "Show me claims settled on the policy",
+  "Summarize home insurance business rules",
 ];
+
+const CHATBOT_DOWN_HINT =
+  "Start chatbot-assistance-service on port 8090 (or run: local-dev.cmd apis).";
+
+function formatChatbotError(err: unknown): string {
+  if (!(err instanceof Error)) {
+    return `Stallion is unavailable. ${CHATBOT_DOWN_HINT}`;
+  }
+  const msg = err.message;
+  if (
+    msg.includes("8090") ||
+    msg.includes("chatbot-assistance") ||
+    msg.includes("Stallion is unavailable")
+  ) {
+    return msg;
+  }
+  if (
+    msg.includes("Invalid API response") ||
+    msg.includes("Empty response") ||
+    msg.includes("Service unavailable") ||
+    msg.includes("Failed to fetch")
+  ) {
+    return `${msg} ${CHATBOT_DOWN_HINT}`;
+  }
+  return msg;
+}
+
+function formatAnswer(text: string) {
+  return text.split("\n").map((line, i) => {
+    const parts = line.split(/(\*\*[^*]+\*\*)/g);
+    return (
+      <span key={i}>
+        {parts.map((part, j) => {
+          if (part.startsWith("**") && part.endsWith("**")) {
+            return <strong key={j}>{part.slice(2, -2)}</strong>;
+          }
+          return <span key={j}>{part}</span>;
+        })}
+        {i < text.split("\n").length - 1 ? <br /> : null}
+      </span>
+    );
+  });
+}
 
 export function ChatbotWidget({ autoOpen = false }: { autoOpen?: boolean }) {
   const { open, setOpen, openChat, seedQuestion, clearSeed } = useChatbot();
+  const { token } = useSession();
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
+  const sessionId = useRef(
+    localStorage.getItem(SESSION_KEY) ?? `stallion-${Date.now()}`,
+  );
+  if (!localStorage.getItem(SESSION_KEY)) {
+    localStorage.setItem(SESSION_KEY, sessionId.current);
+  }
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
       id: "welcome",
       role: "assistant",
-      text: "Hi — I'm your insurance assistant. Ask about products, claims, or types of cover.",
+      text: "Hi — I'm Stallion, your assistant. Ask about products, claims, or your policies when you're logged in.",
     },
   ]);
   const listRef = useRef<HTMLDivElement>(null);
@@ -51,19 +108,26 @@ export function ChatbotWidget({ autoOpen = false }: { autoOpen?: boolean }) {
     listRef.current?.scrollTo({ top: listRef.current.scrollHeight, behavior: "smooth" });
   }, [messages, open, loading]);
 
-  async function send(raw: string) {
+  async function send(raw: string, policyId?: string) {
     const text = raw.trim();
-    if (!text || loading) return;
+    if (!text && !policyId) return;
+    if (loading) return;
+
+    const display = text || "Show claims for selected policy";
     const userMsg: ChatMessage = {
       id: `u-${Date.now()}`,
       role: "user",
-      text,
+      text: display,
     };
     setMessages((prev) => [...prev, userMsg]);
     setInput("");
     setLoading(true);
     try {
-      const res = await api.chatbotAsk(text);
+      const res = await api.chatbotAsk(text || "claims settled on my policy", {
+        sessionId: sessionId.current,
+        policyId,
+        token,
+      });
       setMessages((prev) => [
         ...prev,
         {
@@ -71,6 +135,9 @@ export function ChatbotWidget({ autoOpen = false }: { autoOpen?: boolean }) {
           role: "assistant",
           text: res.answer,
           sources: res.sources,
+          policies: res.policies,
+          action: res.action,
+          requiresLogin: res.requires_login,
         },
       ]);
     } catch (err) {
@@ -79,10 +146,7 @@ export function ChatbotWidget({ autoOpen = false }: { autoOpen?: boolean }) {
         {
           id: `e-${Date.now()}`,
           role: "assistant",
-          text:
-            err instanceof Error
-              ? `${err.message} Start chatbot-assistance-service on port 8090.`
-              : "Chatbot unavailable. Start the Python service on port 8090.",
+          text: formatChatbotError(err),
         },
       ]);
     } finally {
@@ -107,7 +171,7 @@ export function ChatbotWidget({ autoOpen = false }: { autoOpen?: boolean }) {
       <button
         type="button"
         className={`chatbot-fab${open ? " open" : ""}`}
-        aria-label={open ? "Close insurance chatbot" : "Open insurance chatbot"}
+        aria-label={open ? "Close Stallion assistant" : "Open Stallion assistant"}
         aria-expanded={open}
         onClick={() => setOpen(!open)}
       >
@@ -118,17 +182,17 @@ export function ChatbotWidget({ autoOpen = false }: { autoOpen?: boolean }) {
         <section
           className="chatbot-panel"
           role="dialog"
-          aria-label="Insurance chatbot assistant"
+          aria-label="Stallion assistant"
         >
           <header className="chatbot-header">
             <div>
-              <strong>Insurance assistant</strong>
-              <span>Products · Claims · Cover types</span>
+              <strong>Stallion</strong>
+              <span>Your assistant · Products · Claims · Your cover</span>
             </div>
             <button
               type="button"
               className="chatbot-close"
-              aria-label="Close chatbot"
+              aria-label="Close Stallion"
               onClick={() => setOpen(false)}
             >
               ×
@@ -146,7 +210,32 @@ export function ChatbotWidget({ autoOpen = false }: { autoOpen?: boolean }) {
           <div className="chatbot-messages" ref={listRef}>
             {messages.map((msg) => (
               <div key={msg.id} className={`chatbot-bubble ${msg.role}`}>
-                <p>{msg.text}</p>
+                <p>{formatAnswer(msg.text)}</p>
+                {msg.requiresLogin ? (
+                  <div className="chatbot-login-prompt">
+                    <Link to="/login" className="chatbot-login-link">Log in</Link>
+                    <Link to="/register" className="chatbot-login-link">Create account</Link>
+                  </div>
+                ) : null}
+                {msg.policies && msg.policies.length > 0 ? (
+                  <div className="chatbot-policy-cards" aria-label="Your policies">
+                    {msg.policies.map((policy) => (
+                      <button
+                        key={policy.policy_id ?? policy.policy_number}
+                        type="button"
+                        className="chatbot-policy-card"
+                        onClick={() => void send("", policy.policy_id)}
+                      >
+                        <strong>{policy.product_title ?? "Policy"}</strong>
+                        <span>{policy.policy_number ?? policy.policy_id}</span>
+                        <span className="muted">
+                          {policy.status ?? "—"}
+                          {policy.issued_at ? ` · ${policy.issued_at.slice(0, 10)}` : ""}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                ) : null}
                 {msg.sources && msg.sources.length > 0 ? (
                   <ul className="chatbot-sources">
                     {msg.sources.map((s, i) => (
@@ -161,14 +250,14 @@ export function ChatbotWidget({ autoOpen = false }: { autoOpen?: boolean }) {
             ))}
             {loading ? (
               <div className="chatbot-bubble assistant">
-                <p>Searching knowledge…</p>
+                <p>Stallion is thinking…</p>
               </div>
             ) : null}
           </div>
 
           <form className="chatbot-composer" onSubmit={onSubmit}>
             <label className="sr-only" htmlFor="chatbot-input">
-              Ask a question
+              Ask Stallion
             </label>
             <textarea
               id="chatbot-input"
@@ -176,7 +265,7 @@ export function ChatbotWidget({ autoOpen = false }: { autoOpen?: boolean }) {
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={onKeyDown}
-              placeholder="Ask about cover, claims, products…"
+              placeholder="Ask Stallion about cover, claims, or your policies…"
               disabled={loading}
             />
             <button type="submit" className="btn-primary" disabled={loading || !input.trim()}>

@@ -63,9 +63,18 @@ function Start-PythonService($Service) {
 Write-Host "Starting GCUL Java APIs ($($JavaServices.Count) services) ..."
 foreach ($s in $JavaServices) { Start-JavaService $s }
 
+$chatbot = $PythonServices | Where-Object { $_.id -eq "chatbot" } | Select-Object -First 1
+if ($chatbot) {
+  Write-Host "Starting Stallion chatbot (customer app) ..."
+  Start-PythonService $chatbot
+}
+
 if ($IncludePython) {
-  Write-Host "Starting Python sidecar + chatbot ..."
-  foreach ($s in $PythonServices) { Start-PythonService $s }
+  $sidecar = $PythonServices | Where-Object { $_.id -eq "sidecar" } | Select-Object -First 1
+  if ($sidecar) {
+    Write-Host "Starting GCUL sidecar ..."
+    Start-PythonService $sidecar
+  }
 }
 
 Write-Host ""

@@ -51,7 +51,7 @@ public class WebConfig {
 	FilterRegistrationBean<CustomerAuthFilter> customerAuthFilter(JwtService jwtService) {
 		FilterRegistrationBean<CustomerAuthFilter> registration = new FilterRegistrationBean<>();
 		registration.setFilter(new CustomerAuthFilter(jwtService));
-		registration.addUrlPatterns("/api/policies/me");
+		registration.addUrlPatterns("/api/policies/me", "/api/policies/*/cancel", "/api/policies/*/cancel/*");
 		registration.setOrder(2);
 		return registration;
 	}

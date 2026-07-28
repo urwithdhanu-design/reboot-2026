@@ -102,6 +102,7 @@ public class AuthController {
 		if (!passwords.matches(body.getPassword(), user.getPasswordHash())) {
 			throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid email/phone or password");
 		}
+		user = recordCustomerLogin(user);
 		return UserMapper.authResponse(jwt.createToken(user), user);
 	}
 
@@ -141,5 +142,15 @@ public class AuthController {
 			return user;
 		}
 		throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Missing bearer token");
+	}
+
+	/** Shift prior session start into last_login_at and stamp a new current login. */
+	private UserAccount recordCustomerLogin(UserAccount user) {
+		String now = Instant.now().toString();
+		if (user.getCurrentLoginAt() != null) {
+			user.setLastLoginAt(user.getCurrentLoginAt());
+		}
+		user.setCurrentLoginAt(now);
+		return store.save(user);
 	}
 }

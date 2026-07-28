@@ -109,7 +109,7 @@
       "memory": "2Gi",
       "cpu": "2",
       "timeout": "300",
-      "env": { "CHATBOT_AUTO_INGEST": "false" }
+      "env": { "CHATBOT_AUTO_INGEST": "true" }
     }
   ]
 }

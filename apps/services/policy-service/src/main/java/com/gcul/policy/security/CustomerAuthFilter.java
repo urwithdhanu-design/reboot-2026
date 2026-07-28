@@ -22,7 +22,10 @@ public class CustomerAuthFilter extends OncePerRequestFilter {
 	@Override
 	protected boolean shouldNotFilter(HttpServletRequest request) {
 		String path = request.getRequestURI();
-		return !path.startsWith("/api/policies/me");
+		if (path.startsWith("/api/policies/me")) {
+			return false;
+		}
+		return !path.matches("/api/policies/[^/]+/cancel.*");
 	}
 
 	@Override

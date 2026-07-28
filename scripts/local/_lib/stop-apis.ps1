@@ -30,6 +30,6 @@ function Stop-Ports([int[]] $PortList, [string] $Label) {
   }
 }
 
-$ports = 8081..8089 + 8092
-if ($IncludePython) { $ports += 8090, 8091 }
+$ports = 8081..8089 + 8090 + 8092
+if ($IncludePython) { $ports += 8091 }
 Stop-Ports $ports "API"

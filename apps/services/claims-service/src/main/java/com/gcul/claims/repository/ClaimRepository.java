@@ -18,4 +18,10 @@ public interface ClaimRepository extends JpaRepository<InsuranceClaim, String> {
 			WHERE c.policyRef = :policyRef AND c.status IN :statuses
 			""")
 	double sumReservedAmountForPolicy(@Param("policyRef") String policyRef, @Param("statuses") List<String> statuses);
+
+	long countByPolicyRefAndStatusIn(String policyRef, List<String> statuses);
+
+	List<InsuranceClaim> findByPolicyRefAndStatusInOrderByCreatedAtDesc(
+			String policyRef,
+			List<String> statuses);
 }

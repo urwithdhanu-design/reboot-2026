@@ -13,8 +13,12 @@ import {
   healthDemoAnswersThroughStep,
   sleep,
 } from "../healthDemoFill";
+import {
+  buildHomeDemoAnswers,
+  homeDemoAnswersThroughStep,
+  homeDemoStepSequence,
+} from "../homeDemoFill";
 import { AssistantBar, CustomerAppShell, StepHeader } from "../components";
-import { PayQuoteButton } from "../components/PayQuoteButton";
 import { productIcon } from "../icons";
 import { useSession } from "../session";
 import { HOME_DEMO_ADDRESS, HomeQuoteWizard } from "./HomeQuoteWizard";
@@ -189,6 +193,31 @@ export function QuoteBuilderPage() {
     }
   }
 
+  async function runHomeDemoFill() {
+    if (!user || !product || demoFilling || submitting) return;
+    setDemoFilling(true);
+    setDemoFlash(true);
+    setError(null);
+    setShowQuote(false);
+    const full = buildHomeDemoAnswers(user);
+    const steps = homeDemoStepSequence(full.claims_count);
+
+    try {
+      for (let i = 0; i < steps.length; i++) {
+        const step = steps[i];
+        setWizardStep(step);
+        const partial = homeDemoAnswersThroughStep(step, full);
+        setAnswers((prev) => ({ ...prev, ...partial }));
+        await sleep(i === steps.length - 1 ? 900 : 600);
+      }
+      await submitQuote(full, true);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Demo fill failed");
+      setDemoFilling(false);
+      setDemoFlash(false);
+    }
+  }
+
   function nextHomeStep(from: number): number {
     let next = from + 1;
     if (next === 10 && (answers.claims_count ?? "").startsWith("0")) {
@@ -345,6 +374,7 @@ export function QuoteBuilderPage() {
         error={error}
         onBack={onBack}
         onNext={onNextStep}
+        onContinueToPolicies={() => navigate("/policies", { state: { quote } })}
       />
     );
   }
@@ -362,6 +392,11 @@ export function QuoteBuilderPage() {
         quote={quote}
         submitting={submitting}
         error={error}
+        demoFilling={demoFilling}
+        demoFlash={demoFlash}
+        userName={user?.full_name}
+        canDemoFill={!!user}
+        onDemoFill={() => void runHomeDemoFill()}
         onBack={onBack}
         onNext={onNextStep}
         onCancel={() => navigate("/marketplace")}
@@ -407,7 +442,6 @@ export function QuoteBuilderPage() {
               </div>
             ))}
         </div>
-        <PayQuoteButton quote={quote} label="Pay first premium" />
         <button
           className="btn-secondary"
           type="button"

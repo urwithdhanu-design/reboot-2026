@@ -1,6 +1,5 @@
 import { useMemo, type Dispatch, type FormEvent, type SetStateAction } from "react";
 import type { Product, QuoteEstimate, QuoteField, QuoteSchema } from "../api";
-import { PayQuoteButton } from "../components/PayQuoteButton";
 
 type Props = {
   product: Product;
@@ -14,6 +13,7 @@ type Props = {
   error: string | null;
   onBack: () => void;
   onNext: (e: FormEvent) => void;
+  onContinueToPolicies: () => void;
 };
 
 function isRoundTrip(tripType?: string) {
@@ -92,6 +92,7 @@ export function TravelQuoteWizard({
   error,
   onBack,
   onNext,
+  onContinueToPolicies,
 }: Props) {
   const roundTrip = isRoundTrip(answers.trip_type);
   const currentStep = schema.steps.find((s) => s.step === wizardStep) ?? schema.steps[0];
@@ -151,12 +152,18 @@ export function TravelQuoteWizard({
               <li>Parametric cover: {selectedCover.join(", ") || "None"}</li>
             </ul>
             <p className="muted travel-parametric-note">
-              After payment and policy minting, parametric rules are created automatically for your
-              selected cover. Admins can simulate flight delay or cancellation from the Parametric console.
+              After payment, your policy is issued and parametric cover is activated automatically for
+              your selected options. Admins can simulate flight delay or cancellation from the Parametric console.
             </p>
           </div>
 
-          <PayQuoteButton quote={quote} label="Pay premium" />
+          <button
+            className="btn-outline lloyds-cancel"
+            type="button"
+            onClick={onContinueToPolicies}
+          >
+            Save quote without paying
+          </button>
         </div>
       ) : (
         <form className="travel-quote-body stack" onSubmit={onNext}>

@@ -23,6 +23,15 @@ local-dev.cmd start
 | Customer | http://localhost:5174 |
 | Admin | http://localhost:5175 |
 
+**Admin sign-in (local kyc-service, seeded on startup):**
+
+| Field | Value |
+|-------|-------|
+| Email | `admin@reboot2026.local` |
+| Password | `Reboot2026!Admin` |
+
+Use this on http://localhost:5175/login — not your customer account. If you see *Invalid token* or an empty KYC queue after switching between local and cloud APIs, sign out and sign in again.
+
 Wait **1–3 minutes** on first Maven start. Then:
 
 ```cmd

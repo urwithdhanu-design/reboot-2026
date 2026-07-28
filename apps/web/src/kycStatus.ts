@@ -20,6 +20,19 @@ export function formatKycStatus(status: KycStatus | null | undefined) {
     .join(" ");
 }
 
+export function kycStatusPillVariant(status: KycStatus | null | undefined) {
+  switch (status) {
+    case "in_progress":
+      return "pending";
+    case "rejected":
+      return "warning";
+    case "verified":
+      return "success";
+    default:
+      return "neutral";
+  }
+}
+
 export function kycPromptCopy(status: KycStatus | null | undefined) {
   switch (status) {
     case "in_progress":

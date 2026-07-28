@@ -46,8 +46,13 @@ public class PolicyValidationClient {
 	}
 
 	public void assertEligibleForClaim(Map<String, Object> policy) {
-		String mintStatus = str(policy.get("mint_status"));
 		String status = str(policy.get("status"));
+		if ("cancelled".equalsIgnoreCase(status)) {
+			throw new ResponseStatusException(
+					org.springframework.http.HttpStatus.BAD_REQUEST,
+					"Policy has been cancelled — new claims cannot be filed");
+		}
+		String mintStatus = str(policy.get("mint_status"));
 		if (!"MINTED".equalsIgnoreCase(mintStatus)) {
 			throw new ResponseStatusException(
 					org.springframework.http.HttpStatus.BAD_REQUEST,

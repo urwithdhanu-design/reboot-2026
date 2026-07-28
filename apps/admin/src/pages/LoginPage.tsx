@@ -173,6 +173,12 @@ export function LoginPage() {
             </a>
             .
           </p>
+          {import.meta.env.DEV ? (
+            <p className="text-[11px] text-center text-lbg-gray-500 mt-2 leading-relaxed px-4">
+              Local platform admin: <strong>admin@reboot2026.local</strong> / <strong>Reboot2026!Admin</strong>
+              {' '}(seeded by kyc-service on startup). Re-sign in after switching local ↔ cloud APIs.
+            </p>
+          ) : null}
         </div>
       </div>
     </div>

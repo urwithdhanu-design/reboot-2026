@@ -108,4 +108,21 @@ public class MailService {
 				VendorEmailTemplates.published(
 						contactName, vendorName, uiUrl, version, properties.getFromName()));
 	}
+
+	public void sendPolicyCancelled(
+			String to,
+			String productTitle,
+			String policyNumber,
+			String reason,
+			double refundAmountGbp,
+			String refundStatus) {
+		send(to, "Policy cancelled",
+				EmailTemplates.policyCancelled(
+						productTitle,
+						policyNumber,
+						reason,
+						refundAmountGbp,
+						refundStatus,
+						properties.getFromName()));
+	}
 }

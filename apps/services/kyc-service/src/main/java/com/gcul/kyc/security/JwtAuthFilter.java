@@ -60,7 +60,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
 		try {
 			Claims claims = jwtService.parse(header.substring(7));
 			var user = userStore.findById(claims.getSubject())
-					.orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "User not found"));
+					.orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Session expired"));
 			if (path.startsWith("/api/admin") && !user.isPlatformAdmin()) {
 				response.setStatus(HttpStatus.FORBIDDEN.value());
 				response.setContentType("application/json");
@@ -69,6 +69,12 @@ public class JwtAuthFilter extends OncePerRequestFilter {
 			}
 			request.setAttribute("currentUser", user);
 			filterChain.doFilter(request, response);
+		}
+		catch (ResponseStatusException ex) {
+			response.setStatus(ex.getStatusCode().value());
+			response.setContentType("application/json");
+			String detail = ex.getReason() == null ? "Unauthorized" : ex.getReason();
+			response.getWriter().write("{\"detail\":\"" + detail.replace("\"", "\\\"") + "\"}");
 		}
 		catch (Exception ex) {
 			response.setStatus(HttpStatus.UNAUTHORIZED.value());

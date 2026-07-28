@@ -1,10 +1,10 @@
 import { Link, useLocation } from "react-router-dom";
-import { useEffect } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { api } from "../api";
 import { CustomerAppShell } from "../components";
 import { KycOnboardingPrompt } from "../components/KycOnboardingPrompt";
 import { LANDING_NAV, PRODUCT_MARKETING } from "../data/productMarketing";
-import { productIcon } from "../icons";
+import { IconChevron, productIcon } from "../icons";
 import { useQuoteNavigation } from "../hooks/useQuoteNavigation";
 import { needsKycAttention } from "../kycStatus";
 import { useSession } from "../session";
@@ -129,6 +129,101 @@ export function LandingPage() {
   );
 }
 
+function LandingProductNav() {
+  const trackRef = useRef<HTMLDivElement>(null);
+  const [canScrollLeft, setCanScrollLeft] = useState(false);
+  const [canScrollRight, setCanScrollRight] = useState(false);
+  const [hasOverflow, setHasOverflow] = useState(false);
+
+  const updateScrollState = useCallback(() => {
+    const track = trackRef.current;
+    if (!track) return;
+    const { scrollLeft, scrollWidth, clientWidth } = track;
+    const overflow = scrollWidth > clientWidth + 1;
+    setHasOverflow(overflow);
+    setCanScrollLeft(overflow && scrollLeft > 1);
+    setCanScrollRight(overflow && scrollLeft + clientWidth < scrollWidth - 1);
+  }, []);
+
+  useEffect(() => {
+    const track = trackRef.current;
+    if (!track) return;
+
+    updateScrollState();
+    track.addEventListener("scroll", updateScrollState, { passive: true });
+
+    const observer = new ResizeObserver(updateScrollState);
+    observer.observe(track);
+    for (const child of track.children) {
+      observer.observe(child);
+    }
+
+    return () => {
+      track.removeEventListener("scroll", updateScrollState);
+      observer.disconnect();
+    };
+  }, [updateScrollState]);
+
+  const scrollTrack = (direction: "left" | "right") => {
+    const track = trackRef.current;
+    if (!track) return;
+
+    const children = Array.from(track.children) as HTMLElement[];
+    const scrollLeft = track.scrollLeft;
+    const viewportEnd = scrollLeft + track.clientWidth;
+
+    if (direction === "right") {
+      const next = children.find((el) => el.offsetLeft + el.offsetWidth > viewportEnd + 1);
+      if (next) {
+        track.scrollTo({ left: next.offsetLeft, behavior: "smooth" });
+      } else {
+        track.scrollBy({ left: 120, behavior: "smooth" });
+      }
+      return;
+    }
+
+    const prev = [...children].reverse().find((el) => el.offsetLeft < scrollLeft - 1);
+    if (prev) {
+      const target = Math.max(0, prev.offsetLeft + prev.offsetWidth - track.clientWidth);
+      track.scrollTo({ left: target, behavior: "smooth" });
+    } else {
+      track.scrollBy({ left: -120, behavior: "smooth" });
+    }
+  };
+
+  return (
+    <nav className="landing-nav" aria-label="Insurance products">
+      <div className="landing-nav-row">
+        <button
+          type="button"
+          className={`landing-nav-scroll landing-nav-scroll--left${hasOverflow && canScrollLeft ? "" : " landing-nav-scroll--hidden"}`}
+          aria-label="Scroll products left"
+          disabled={!canScrollLeft}
+          onClick={() => scrollTrack("left")}
+        >
+          <IconChevron size={16} className="landing-nav-scroll-icon landing-nav-scroll-icon--left" aria-hidden />
+        </button>
+        <div className="landing-nav-track" ref={trackRef}>
+          {LANDING_NAV.map((item) => (
+            <Link key={item.slug} to={`/products/${item.slug}`} className="landing-nav-pill">
+              {item.label}
+            </Link>
+          ))}
+        </div>
+        <button
+          type="button"
+          className={`landing-nav-scroll landing-nav-scroll--right${hasOverflow && canScrollRight ? "" : " landing-nav-scroll--hidden"}`}
+          aria-label="Scroll products right"
+          disabled={!canScrollRight}
+          onClick={() => scrollTrack("right")}
+        >
+          <IconChevron size={16} className="landing-nav-scroll-icon" aria-hidden />
+        </button>
+      </div>
+    </nav>
+  );
+}
+
 function LandingMainContent({
   loggedIn,
   goQuote,
@@ -140,15 +235,7 @@ function LandingMainContent({
 }) {
   return (
     <>
-      <nav className="landing-nav" aria-label="Insurance products">
-        <div className="landing-nav-track">
-          {LANDING_NAV.map((item) => (
-            <Link key={item.slug} to={`/products/${item.slug}`} className="landing-nav-pill">
-              {item.label}
-            </Link>
-          ))}
-        </div>
-      </nav>
+      <LandingProductNav />
 
       <section className="landing-hero" aria-label="Insurance overview">
         <div className="landing-hero-media">
@@ -309,9 +396,18 @@ function LandingMainContent({
             : " Quotes require an account — we will ask you to log in or register when you continue."}
         </p>
         <div className="landing-footer-links">
-          <Link to="/login">Log in</Link>
-          <Link to="/register">Register</Link>
-          <Link to="/forgot-password">Forgot password</Link>
+          {loggedIn ? (
+            <>
+              <Link to="/policies">Policies</Link>
+              <Link to="/profile">Profile</Link>
+            </>
+          ) : (
+            <>
+              <Link to="/login">Log in</Link>
+              <Link to="/register">Register</Link>
+              <Link to="/forgot-password">Forgot password</Link>
+            </>
+          )}
         </div>
       </footer>
     </>

@@ -145,6 +145,10 @@ public class PolicyRecordService {
 	@Transactional
 	public PolicyRecord resetMintForRetry(String policyId) {
 		PolicyRecord record = repository.findById(policyId).orElseThrow();
+		if (isCancelled(record)) {
+			throw new org.springframework.web.server.ResponseStatusException(
+					org.springframework.http.HttpStatus.CONFLICT, "Policy is cancelled");
+		}
 		if ("MINTED".equalsIgnoreCase(record.getMintStatus())) {
 			return record;
 		}
@@ -169,6 +173,31 @@ public class PolicyRecordService {
 			record.setMintStatus("PENDING");
 		}
 		return repository.save(record);
+	}
+
+	@Transactional
+	public PolicyRecord cancelPolicy(
+			String policyId,
+			String cancellationReason,
+			String cancellationType,
+			String cancellationNote,
+			String refundStatus,
+			double refundAmountGbp,
+			String refundPaymentId) {
+		PolicyRecord record = repository.findById(policyId).orElseThrow();
+		record.setStatus("cancelled");
+		record.setCancelledAt(Instant.now());
+		record.setCancellationReason(cancellationReason);
+		record.setCancellationType(cancellationType);
+		record.setCancellationNote(cancellationNote);
+		record.setRefundStatus(refundStatus);
+		record.setRefundAmountGbp(refundAmountGbp);
+		record.setRefundPaymentId(refundPaymentId);
+		return repository.save(record);
+	}
+
+	public boolean isCancelled(PolicyRecord record) {
+		return "cancelled".equalsIgnoreCase(record.getStatus());
 	}
 
 	public Optional<PolicyRecord> findByPolicyId(String policyId) {
@@ -272,10 +301,20 @@ public class PolicyRecordService {
 		map.put("coverage_expired", isCoverageExpired(record));
 		map.put("coverage_active", isCoverageActive(record));
 		map.put("coverage_pending_mint", isCoveragePendingMint(record));
+		map.put("cancelled_at", record.getCancelledAt() == null ? null : record.getCancelledAt().toString());
+		map.put("cancellation_reason", record.getCancellationReason());
+		map.put("cancellation_type", record.getCancellationType());
+		map.put("cancellation_note", record.getCancellationNote());
+		map.put("refund_status", record.getRefundStatus());
+		map.put("refund_amount_gbp", record.getRefundAmountGbp());
+		map.put("refund_payment_id", record.getRefundPaymentId());
 		return map;
 	}
 
 	private static boolean isCoverageActive(PolicyRecord record) {
+		if ("cancelled".equalsIgnoreCase(record.getStatus())) {
+			return false;
+		}
 		if (!"MINTED".equalsIgnoreCase(record.getMintStatus())) {
 			return false;
 		}

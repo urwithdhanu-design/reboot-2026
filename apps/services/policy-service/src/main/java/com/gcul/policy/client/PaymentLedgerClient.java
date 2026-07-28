@@ -33,4 +33,34 @@ public class PaymentLedgerClient {
 					body.get("quote_id"), ex.getMessage());
 		}
 	}
+
+	@SuppressWarnings("unchecked")
+	public String recordPolicyRefund(
+			String quoteId,
+			String policyRef,
+			String customerEmail,
+			double amountGbp) {
+		try {
+			Map<String, Object> body = Map.of(
+					"quote_id", quoteId,
+					"policy_ref", policyRef,
+					"customer_email", customerEmail == null ? "" : customerEmail,
+					"amount", amountGbp,
+					"currency", "GBP",
+					"provider", "refund",
+					"status", "refund_pending");
+			Map<String, Object> response = restClient.post()
+					.uri("/api/payment-ledger")
+					.body(body)
+					.retrieve()
+					.body(Map.class);
+			if (response != null && response.get("id") != null) {
+				return String.valueOf(response.get("id"));
+			}
+		}
+		catch (Exception ex) {
+			log.warn("Could not record refund in ledger for policy {}: {}", policyRef, ex.getMessage());
+		}
+		return null;
+	}
 }

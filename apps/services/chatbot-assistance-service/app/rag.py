@@ -69,7 +69,7 @@ class RagPipeline:
 
     def _openai_answer(self, question: str, context: str) -> str:
         prompt = (
-            "You are the Lloyds Banking Group insurance assistant. "
+            "You are Stallion, the Insure360 enterprise insurance assistant. "
             "Answer clearly using only the context. If unsure, say so.\n\n"
             f"Context:\n{context}\n\nQuestion: {question}\nAnswer:"
         )

@@ -6,6 +6,7 @@ export type AuthUser = {
   email: string;
   mobile_number: string;
   kyc_status: string;
+  last_login_at?: string | null;
   wallet: { address: string; status: string; balance_gbp?: number; currency?: string } | null;
 };
 
@@ -159,6 +160,46 @@ export type CustomerPolicyRecord = {
   coverage_expired?: boolean;
   coverage_active?: boolean;
   coverage_pending_mint?: boolean;
+  cancelled_at?: string | null;
+  cancellation_reason?: string | null;
+  cancellation_type?: string | null;
+  refund_status?: string | null;
+  refund_amount_gbp?: number | null;
+  refund_payment_id?: string | null;
+};
+
+export type PolicyCancelPreview = {
+  policy_id: string;
+  policy_number: string;
+  product_title?: string;
+  status: string;
+  issued_at?: string | null;
+  eligible: boolean;
+  ineligible_reason?: string | null;
+  refund_estimate_gbp: number;
+  cancellation_type?: string | null;
+  cooling_off?: boolean;
+  cooling_off_days_remaining?: number;
+  refund_message?: string | null;
+  open_claims_count?: number;
+};
+
+export type PolicyCancelResponse = {
+  policy: CustomerPolicyRecord;
+  refund_estimate_gbp: number;
+  refund_status: string;
+  refund_payment_id?: string | null;
+  message: string;
+};
+
+export type ChatbotPolicyCard = {
+  policy_id?: string;
+  policy_number?: string;
+  product_title?: string;
+  status?: string;
+  issued_at?: string;
+  product_category?: string;
+  mint_status?: string;
 };
 
 export type ChatbotAskResponse = {
@@ -170,6 +211,10 @@ export type ChatbotAskResponse = {
     score?: number;
   }[];
   vector_store: string;
+  action?: string | null;
+  policies?: ChatbotPolicyCard[];
+  claims?: Record<string, unknown>[];
+  requires_login?: boolean;
 };
 
 type AuthResponse = {
@@ -216,14 +261,29 @@ async function request<T>(
 
   if (!res.ok || data === null) {
     const body = (data ?? {}) as { detail?: string; message?: string; error?: string; title?: string };
-    const detail =
+    let detail =
       body.detail ??
       body.message ??
       body.error ??
       body.title ??
-      (data === null
-        ? trimmed.slice(0, 120) || "Invalid API response (expected JSON)"
-        : res.statusText);
+      (data === null ? null : res.statusText);
+
+    if (detail == null) {
+      if (!trimmed) {
+        if (res.status === 502 || res.status === 503 || res.status === 504) {
+          detail =
+            path.startsWith("/api/chatbot")
+              ? `Stallion is unavailable (${res.status}). Start chatbot-assistance-service on port 8090.`
+              : `Service unavailable (${res.status}). Check that the API backend is running.`;
+        } else {
+          detail = `Empty response from API (${res.status})`;
+        }
+      } else {
+        const snippet = trimmed.slice(0, 160).replace(/\s+/g, " ");
+        detail = `Invalid API response (${res.status}): ${snippet}`;
+      }
+    }
+
     throw new Error(typeof detail === "string" ? detail : "Request failed");
   }
   return data as T;
@@ -279,6 +339,58 @@ export const api = {
       token,
     ),
 
+  uploadKycSelfie: async (token: string, file: File) => {
+    const form = new FormData();
+    form.append("file", file);
+    const res = await fetch(`${API_BASE}/api/kyc/selfie`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}` },
+      body: form,
+    });
+    const text = await res.text();
+    let data: unknown = {};
+    if (text.trim()) {
+      try {
+        data = JSON.parse(text) as unknown;
+      } catch {
+        data = {};
+      }
+    }
+    if (!res.ok) {
+      const body = data as { detail?: string; message?: string; error?: string; title?: string };
+      throw new Error(
+        body.detail ?? body.message ?? body.error ?? body.title ?? text.slice(0, 200) ?? res.statusText,
+      );
+    }
+    return data as { uploaded: boolean; file_name: string; content_type: string; file_size: number };
+  },
+
+  uploadKycDocument: async (token: string, file: File) => {
+    const form = new FormData();
+    form.append("file", file);
+    const res = await fetch(`${API_BASE}/api/kyc/document`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}` },
+      body: form,
+    });
+    const text = await res.text();
+    let data: unknown = {};
+    if (text.trim()) {
+      try {
+        data = JSON.parse(text) as unknown;
+      } catch {
+        data = {};
+      }
+    }
+    if (!res.ok) {
+      const body = data as { detail?: string; message?: string; error?: string; title?: string };
+      throw new Error(
+        body.detail ?? body.message ?? body.error ?? body.title ?? text.slice(0, 200) ?? res.statusText,
+      );
+    }
+    return data as { uploaded: boolean; file_name: string; content_type: string; file_size: number };
+  },
+
   getWallet: (token: string) =>
     request<WalletInfo>("/api/wallet", {}, token),
 
@@ -316,6 +428,28 @@ export const api = {
     request<{ policies: CustomerPolicyRecord[]; count: number }>(
       "/api/policies/me",
       {},
+      token,
+    ),
+
+  previewPolicyCancel: (token: string, policyId: string) =>
+    request<PolicyCancelPreview>(
+      `/api/policies/${encodeURIComponent(policyId)}/cancel/preview`,
+      { method: "POST" },
+      token,
+    ),
+
+  cancelPolicy: (
+    token: string,
+    policyId: string,
+    body: {
+      reason?: string;
+      customer_note?: string;
+      confirm_refund_amount_gbp: number;
+    },
+  ) =>
+    request<PolicyCancelResponse>(
+      `/api/policies/${encodeURIComponent(policyId)}/cancel`,
+      { method: "POST", body: JSON.stringify(body) },
       token,
     ),
 
@@ -477,11 +611,22 @@ export const api = {
       body: JSON.stringify(body),
     }),
 
-  chatbotAsk: (message: string, sessionId?: string) =>
-    request<ChatbotAskResponse>("/api/chatbot/ask", {
-      method: "POST",
-      body: JSON.stringify({ message, session_id: sessionId }),
-    }),
+  chatbotAsk: (
+    message: string,
+    options?: { sessionId?: string; policyId?: string; token?: string | null },
+  ) =>
+    request<ChatbotAskResponse>(
+      "/api/chatbot/ask",
+      {
+        method: "POST",
+        body: JSON.stringify({
+          message,
+          session_id: options?.sessionId,
+          policy_id: options?.policyId,
+        }),
+      },
+      options?.token,
+    ),
 
   chatbotConfig: () =>
     request<{

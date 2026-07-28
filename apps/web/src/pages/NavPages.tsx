@@ -6,6 +6,7 @@ import { saveQuoteToCompare } from "../compareBasket";
 import {
   buildIssuedQuoteIdSet,
   getUnpaidSavedQuotes,
+  mergeDisplayQuotes,
   isClaimablePolicy,
   loadIssuedCustomerPolicies,
   markQuotePaid,
@@ -14,8 +15,9 @@ import {
   type CustomerPolicy,
 } from "../customerPolicies";
 import { AssistantBar, CustomerAppShell, CustomerPageHeader, CustomerPanel, CustomerTabs, HeaderIconClaims, HeaderIconPolicies, HeaderIconProfile } from "../components";
+import { CancelPolicyWizard } from "../components/CancelPolicyWizard";
 import { KycOnboardingPrompt } from "../components/KycOnboardingPrompt";
-import { PayQuoteButton } from "../components/PayQuoteButton";
+import { isCancelledPolicy } from "../customerPolicies";
 import { needsKycAttention } from "../kycStatus";
 import { useSession } from "../session";
 
@@ -24,38 +26,54 @@ const PRIMARY_ACTIONS: { id: string; label: string; to?: string }[] = [
   { id: "renewal", label: "Manage renewal" },
   { id: "claim", label: "Make a claim", to: "/claims" },
   { id: "cancel", label: "Cancel policy" },
-  { id: "cover", label: "View and change cover" },
-];
-
-const SECONDARY_ACTIONS: { id: string; label: string }[] = [
-  { id: "proof", label: "Get proof of insurance" },
-  { id: "documents", label: "View policy documents" },
 ];
 
 const ACTION_MESSAGES: Record<string, string> = {
   renewal: "Renewal options will appear here when your policy is due.",
-  cancel: "You can cancel online. We'll confirm any refunds before you finish.",
-  cover: "Review your current cover and request changes from this screen.",
-  proof: "Your digital proof of insurance is ready to download or share.",
-  documents: "Policy schedule, terms, and certificates are available here.",
 };
+
+const RENEWAL_WINDOW_MS = 30 * 24 * 60 * 60 * 1000;
+
+function policyExpiresWithinRenewalWindow(policy: CustomerPolicyRecord): boolean {
+  if (!policy.cover_expires_at) return false;
+  try {
+    const expiresAt = new Date(policy.cover_expires_at).getTime();
+    if (Number.isNaN(expiresAt)) return false;
+    const now = Date.now();
+    if (expiresAt < now) return false;
+    return expiresAt - now <= RENEWAL_WINDOW_MS;
+  } catch {
+    return false;
+  }
+}
+
+function visiblePrimaryActions(
+  policies: CustomerPolicyRecord[],
+): typeof PRIMARY_ACTIONS {
+  const hasPolicies = policies.length > 0;
+  const showRenewal = policies.some(policyExpiresWithinRenewalWindow);
+  return PRIMARY_ACTIONS.filter((action) => {
+    if (action.id === "compare") return !hasPolicies;
+    if (action.id === "renewal") return showRenewal;
+    return true;
+  });
+}
 
 function policyMintStatusLabel(policy: CustomerPolicyRecord): string {
   const mint = (policy.mint_status ?? "").toUpperCase();
   if (mint === "MINTED") {
-    const isCanton = policy.ledger_type === "canton"
-      || (policy.blockchain_network?.toLowerCase().includes("canton") ?? false);
-    return isCanton ? "Minted on Canton" : "NFT minted";
+    return "Active digital policy";
   }
   if (mint === "PENDING_WALLET") return "Premium paid · Awaiting wallet link";
-  if (mint === "PENDING") return "Premium paid · Mint in progress";
-  if (mint === "FAILED") return "Premium paid · Mint failed — contact support";
+  if (mint === "PENDING") return "Premium paid · Policy being issued";
+  if (mint === "FAILED") return "Premium paid · Policy issue failed — contact support";
   return "Premium paid · Issued";
 }
 
 function policyCoverStatus(policy: CustomerPolicyRecord): string {
+  if (isCancelledPolicy(policy)) return "Cancelled";
   const mint = (policy.mint_status ?? "").toUpperCase();
-  if (mint !== "MINTED") return "Awaiting mint";
+  if (mint !== "MINTED") return "Policy being issued";
   if (policy.coverage_pending_mint || !policy.cover_start_at) {
     return "Awaiting cover activation";
   }
@@ -82,6 +100,121 @@ function formatPolicyDate(iso?: string | null) {
   }
 }
 
+function policyStatusTone(coverLabel: string): "active" | "pending" | "expired" | "default" {
+  const lower = coverLabel.toLowerCase();
+  if (lower.includes("cancelled")) return "expired";
+  if (lower.includes("active")) return "active";
+  if (lower.includes("expired")) return "expired";
+  if (lower.includes("awaiting") || lower.includes("being issued") || lower.includes("activating")) {
+    return "pending";
+  }
+  return "default";
+}
+
+function policySortRank(policy: CustomerPolicyRecord): number {
+  const tone = policyStatusTone(policyCoverStatus(policy));
+  if (tone === "active") return 0;
+  if (tone === "pending") return 1;
+  if (tone === "expired") return 2;
+  return 3;
+}
+
+function PolicyCard({ policy }: { policy: CustomerPolicyRecord }) {
+  const [showDigital, setShowDigital] = useState(false);
+  const isCanton =
+    policy.ledger_type === "canton"
+    || (policy.blockchain_network?.toLowerCase().includes("canton") ?? false);
+  const mintLabel = policyMintStatusLabel(policy);
+  const coverLabel = policyCoverStatus(policy);
+  const tone = policyStatusTone(coverLabel);
+  const hasDigital =
+    Boolean(policy.token_id)
+    || Boolean(policy.transaction_hash && isCanton)
+    || Boolean(policy.explorer_url)
+    || Boolean(policy.wallet_address);
+
+  return (
+    <article className={`policy-card policy-card--${tone}`}>
+      <div className="policy-card-head">
+        <div className="policy-card-title-block">
+          <div className="policy-card-eyebrow">
+            {policy.product_category ?? "Insurance"}
+          </div>
+          <h3 className="policy-card-title">{policy.product_title ?? policy.policy_number}</h3>
+          <p className="policy-card-ref">{policy.policy_number}</p>
+        </div>
+        <span className={`policy-status-badge policy-status-badge--${tone}`}>{coverLabel}</span>
+      </div>
+
+      <div className="policy-card-dates" aria-label="Cover period">
+        <div className="policy-card-date">
+          <span className="policy-card-date-label">From</span>
+          <strong>
+            {policy.cover_start_at
+              ? formatPolicyDate(policy.cover_start_at)
+              : policy.mint_status === "MINTED"
+                ? "Activating…"
+                : "When issued"}
+          </strong>
+        </div>
+        <div className="policy-card-date-sep" aria-hidden />
+        <div className="policy-card-date">
+          <span className="policy-card-date-label">Until</span>
+          <strong>{policy.cover_expires_at ? formatPolicyDate(policy.cover_expires_at) : "—"}</strong>
+        </div>
+      </div>
+
+      {policy.coverage_summary ? (
+        <p className="policy-card-summary">{policy.coverage_summary}</p>
+      ) : null}
+
+      <dl className="policy-meta-grid">
+        {policy.coverage_limit_gbp != null ? (
+          <div className="policy-meta-item">
+            <dt>Cover limit</dt>
+            <dd>£{Number(policy.coverage_limit_gbp).toLocaleString("en-GB")}</dd>
+          </div>
+        ) : null}
+        <div className="policy-meta-item">
+          <dt>Digital policy</dt>
+          <dd>{mintLabel}</dd>
+        </div>
+      </dl>
+
+      {hasDigital ? (
+        <div className="policy-card-digital">
+          <button
+            type="button"
+            className="policy-card-digital-toggle"
+            aria-expanded={showDigital}
+            onClick={() => setShowDigital((v) => !v)}
+          >
+            {showDigital ? "Hide" : "Show"} digital details
+          </button>
+          {showDigital ? (
+            <div className="policy-card-digital-body">
+              {policy.token_id ? (
+                <p>
+                  Policy ID #{policy.token_id}
+                  {policy.wallet_address ? ` · ${policy.wallet_address.slice(0, 10)}…` : ""}
+                </p>
+              ) : null}
+              {policy.transaction_hash && isCanton ? (
+                <p>Reference: {policy.transaction_hash.slice(0, 18)}…</p>
+              ) : null}
+              {policy.explorer_url ? (
+                <a className="btn-link" href={policy.explorer_url} target="_blank" rel="noreferrer">
+                  View on Sepolia explorer
+                </a>
+              ) : null}
+            </div>
+          ) : null}
+        </div>
+      ) : null}
+    </article>
+  );
+}
+
 async function fetchMyPolicies(token: string): Promise<CustomerPolicyRecord[]> {
   const res = await api.getMyPolicies(token);
   return res.policies;
@@ -91,7 +224,6 @@ export function PoliciesPage() {
   const location = useLocation();
   const navigate = useNavigate();
   const { user, token } = useSession();
-  const [tab, setTab] = useState<"manage" | "quotes">("manage");
   const quote = (location.state as { quote?: QuoteEstimate } | null)?.quote;
   const demoSubmitted = Boolean(
     (location.state as { demoSubmitted?: boolean } | null)?.demoSubmitted,
@@ -108,18 +240,24 @@ export function PoliciesPage() {
   const [issuedQuoteIds, setIssuedQuoteIds] = useState<string[]>([]);
   const [quotesLoading, setQuotesLoading] = useState(true);
   const [selectedQuoteId, setSelectedQuoteId] = useState<string | null>(null);
+  const [cancelWizardOpen, setCancelWizardOpen] = useState(false);
 
   const displayQuotes = useMemo(() => {
     const issued = new Set(issuedQuoteIds);
-    const byId = new Map<string, QuoteEstimate>();
-    for (const q of savedQuotes) {
-      if (!issued.has(q.quote_id)) byId.set(q.quote_id, q);
-    }
-    if (quote && !issued.has(quote.quote_id) && !byId.has(quote.quote_id)) {
-      byId.set(quote.quote_id, quote);
-    }
-    return Array.from(byId.values());
+    return mergeDisplayQuotes(savedQuotes, quote, issued);
   }, [savedQuotes, quote, issuedQuoteIds]);
+
+  const freshlyAddedQuoteId = useMemo(() => {
+    if (!quote) return null;
+    if (issuedQuoteIds.includes(quote.quote_id)) return null;
+    const alreadySaved = savedQuotes.some((q) => q.quote_id === quote.quote_id);
+    return alreadySaved ? null : quote.quote_id;
+  }, [quote, savedQuotes, issuedQuoteIds]);
+
+  const sortedPolicies = useMemo(
+    () => [...policies].sort((a, b) => policySortRank(a) - policySortRank(b)),
+    [policies],
+  );
 
   const selectedQuote = useMemo(
     () => displayQuotes.find((q) => q.quote_id === selectedQuoteId) ?? displayQuotes[0] ?? null,
@@ -215,259 +353,221 @@ export function PoliciesPage() {
       navigate(to);
       return;
     }
+    if (id === "cancel") {
+      if (!token) {
+        setNotice("Sign in to cancel a policy online.");
+        return;
+      }
+      setCancelWizardOpen(true);
+      setNotice(null);
+      return;
+    }
     setNotice(ACTION_MESSAGES[id] ?? "We'll open this for you shortly.");
   }
+
+  const activeCoverCount = policies.filter(
+    (p) => policyStatusTone(policyCoverStatus(p)) === "active",
+  ).length;
+
+  const primaryActions = useMemo(
+    () => visiblePrimaryActions(policies),
+    [policies],
+  );
 
   return (
     <CustomerAppShell active="policies">
       <CustomerPageHeader
         title="Policies"
-        subtitle="Manage cover, renewals, and your saved quotes"
+        subtitle="Active cover, saved quotes, and policy actions in one place"
         icon={<HeaderIconPolicies />}
         accent="teal"
         metrics={[
-          { label: "Your policies", value: policies.length, tone: "success" },
-          { label: "Saved quotes", value: displayQuotes.length },
           {
-            label: "Ready to pay",
+            label: "Active cover",
+            value: activeCoverCount,
+            tone: activeCoverCount > 0 ? "success" : undefined,
+          },
+          { label: "Total policies", value: policies.length },
+          {
+            label: "Saved quotes",
             value: displayQuotes.length,
-            tone: "warning",
+            tone: displayQuotes.length > 0 ? "warning" : undefined,
           },
         ]}
       />
 
-      <CustomerTabs
-        value={tab}
-        onChange={setTab}
-        options={[
-          { value: "manage", label: "Manage" },
-          { value: "quotes", label: "Your quotes" },
-        ]}
-      />
-
-      {tab === "manage" && (
-        <>
-          <section className="manage-hero" aria-label="Manage your policy online">
-            <div className="manage-hero-panel">
-              <h2>Manage your policy online</h2>
-              <p>
-                Existing customers can make a claim or change, renew and cancel their
-                policy online.
-              </p>
-            </div>
-          </section>
-
-          <CustomerPanel title="Your policies" description="All policies linked to your account — premium paid, minting, and active cover" padding>
-            {policiesLoading ? (
-              <p className="muted" style={{ margin: 0 }}>Loading your policies…</p>
-            ) : policies.length > 0 ? (
-              <div className="stack" style={{ gap: 12 }}>
-                {policies.map((policy) => {
-                  const isCanton = policy.ledger_type === "canton"
-                    || (policy.blockchain_network?.toLowerCase().includes("canton") ?? false);
-                  const mintLabel = policyMintStatusLabel(policy);
-                  const coverLabel = policyCoverStatus(policy);
-                  return (
-                  <div className="quote-card" key={policy.policy_id}>
-                    <span className="muted">
-                      {coverLabel}
-                      {" · "}
-                      {mintLabel}
-                    </span>
-                    <strong>{policy.product_title ?? policy.policy_number}</strong>
-                    <p className="muted" style={{ margin: "4px 0 0" }}>
-                      Policy {policy.policy_number} · {policy.status}
-                      {policy.mint_status && policy.mint_status !== "MINTED"
-                        ? ` · ${policy.mint_status.replace(/_/g, " ").toLowerCase()}`
-                        : ""}
-                    </p>
-                    {policy.token_id ? (
-                      <p className="muted" style={{ margin: "4px 0 0" }}>
-                        {isCanton ? "Contract" : "Token"} #{policy.token_id}
-                        {policy.wallet_address ? ` · ${policy.wallet_address.slice(0, 10)}…` : ""}
-                      </p>
-                    ) : null}
-                    {policy.transaction_hash && isCanton ? (
-                      <p className="muted" style={{ margin: "4px 0 0", fontSize: "0.85rem" }}>
-                        Ledger update: {policy.transaction_hash.slice(0, 18)}…
-                      </p>
-                    ) : null}
-                    {policy.explorer_url ? (
-                      <a className="btn-link" href={policy.explorer_url} target="_blank" rel="noreferrer">
-                        View on Sepolia explorer
-                      </a>
-                    ) : null}
-                    {policy.coverage_summary ? (
-                      <p className="policy-coverage-summary" style={{ margin: "8px 0 0" }}>
-                        {policy.coverage_summary}
-                      </p>
-                    ) : null}
-                    {(policy.cover_start_at || policy.cover_expires_at || policy.coverage_limit_gbp != null) ? (
-                      <p className="muted policy-coverage-dates" style={{ margin: "4px 0 0", fontSize: "0.85rem" }}>
-                        {policy.cover_start_at
-                          ? `Cover from ${formatPolicyDate(policy.cover_start_at)}`
-                          : policy.mint_status === "MINTED"
-                            ? "Cover activating…"
-                            : "Cover starts when policy is minted"}
-                        {policy.cover_expires_at ? ` · Expires ${formatPolicyDate(policy.cover_expires_at)}` : null}
-                        {policy.coverage_limit_gbp != null
-                          ? ` · Limit £${Number(policy.coverage_limit_gbp).toLocaleString("en-GB")}`
-                          : null}
-                      </p>
-                    ) : policy.coverage_summary ? (
-                      <p className="muted policy-coverage-dates" style={{ margin: "4px 0 0", fontSize: "0.85rem" }}>
-                        Cover starts when policy is minted and approved
-                      </p>
-                    ) : null}
-                  </div>
-                )})}
-              </div>
-            ) : (
-              <p className="muted" style={{ margin: 0 }}>
-                No policies yet. Pay your quote premium to issue cover — it will appear here with status
-                (issued, minting, or active on Canton).
-              </p>
-            )}
-          </CustomerPanel>
-
-          <CustomerPanel title="What would you like to do today?" padding>
-            <div className="manage-btn-grid">
-              {PRIMARY_ACTIONS.map((action) => (
-                <button
-                  key={action.id}
-                  type="button"
-                  className="manage-btn manage-btn-primary"
-                  onClick={() => onAction(action.id, action.to)}
-                >
-                  {action.label}
-                </button>
-              ))}
-            </div>
-
-            <div className="manage-btn-grid manage-btn-grid-secondary" style={{ marginTop: 10 }}>
-              {SECONDARY_ACTIONS.map((action) => (
-                <button
-                  key={action.id}
-                  type="button"
-                  className="manage-btn manage-btn-secondary"
-                  onClick={() => onAction(action.id)}
-                >
-                  {action.label}
-                </button>
-              ))}
-            </div>
-
-            {notice ? (
-              <p className="manage-notice" role="status" style={{ marginTop: 12 }}>
-                {notice}
-              </p>
-            ) : null}
-          </CustomerPanel>
-        </>
-      )}
-
-      {tab === "quotes" && (
-        <CustomerPanel
-          title="Your quotes"
-          description="Unpaid quotes linked to your account"
-          toolbar={
-            <button type="button" className="btn-link" onClick={() => navigate("/marketplace")}>
-              Browse products
+      <section className="policy-actions-bar" aria-label="Policy actions">
+        <div className="policy-actions-primary">
+          {primaryActions.map((action) => (
+            <button
+              key={action.id}
+              type="button"
+              className="policy-action-chip policy-action-chip--primary"
+              onClick={() => onAction(action.id, action.to)}
+            >
+              {action.label}
             </button>
-          }
-        >
-          {demoSubmitted ? (
-            <p className="manage-notice" role="status">
-              Demo quote submitted — saved under your account.
+          ))}
+        </div>
+        {notice ? (
+          <p className="manage-notice policy-actions-notice" role="status">
+            {notice}
+          </p>
+        ) : null}
+      </section>
+
+      <CustomerPanel
+        title="Active cover"
+        description="Insurance you hold with us — live policies, cover dates, and digital certificates"
+        padding
+      >
+        <p className="policy-section-intro">
+          {policies.length > 0
+            ? "These are your issued policies. Check status and cover dates at a glance."
+            : "When you buy cover, your policies appear here with start dates and digital certificates."}
+        </p>
+        {policiesLoading ? (
+          <p className="policy-empty muted">Loading your policies…</p>
+        ) : sortedPolicies.length > 0 ? (
+          <div className="policy-card-list">
+            {sortedPolicies.map((policy) => (
+              <PolicyCard key={policy.policy_id} policy={policy} />
+            ))}
+          </div>
+        ) : (
+          <div className="policy-empty policy-empty--card">
+            <div className="policy-empty-icon" aria-hidden>
+              <HeaderIconPolicies />
+            </div>
+            <p className="policy-empty-title">No active cover yet</p>
+            <p className="policy-empty-hint">
+              Get a quote from the marketplace, complete checkout, and your policy will show up here
+              once issued.
             </p>
-          ) : null}
-          {payment?.paid ? (
-            <p className="manage-notice" role="status">
-              Payment received{payment.session_id ? ` · ${payment.session_id}` : ""}. Your
-              policy has been issued and moved out of this list.
-            </p>
-          ) : null}
-          {quotesLoading ? (
-            <p className="muted" style={{ margin: 0 }}>
-              Loading your quotes…
-            </p>
-          ) : displayQuotes.length > 0 ? (
-            <div className="stack" style={{ gap: 12 }}>
+            <button type="button" className="btn-primary" onClick={() => navigate("/marketplace")}>
+              Get a quote
+            </button>
+          </div>
+        )}
+      </CustomerPanel>
+
+      <CustomerPanel
+        title="Saved quotes"
+        description={
+          displayQuotes.length > 0
+            ? `${displayQuotes.length} quote${displayQuotes.length === 1 ? "" : "s"} waiting for review — select one to continue`
+            : "Quotes you've started but haven't purchased yet"
+        }
+        toolbar={
+          <button type="button" className="btn-link" onClick={() => navigate("/marketplace")}>
+            Browse products
+          </button>
+        }
+        padding
+      >
+        {demoSubmitted ? (
+          <p className="manage-notice" role="status">
+            Demo quote submitted — saved under your account.
+          </p>
+        ) : null}
+        {payment?.paid ? (
+          <p className="manage-notice" role="status">
+            Payment received{payment.session_id ? ` · ${payment.session_id}` : ""}. Your
+            policy has been issued and moved to Active cover.
+          </p>
+        ) : null}
+        {quotesLoading ? (
+          <p className="policy-empty muted">Loading your quotes…</p>
+        ) : displayQuotes.length > 0 ? (
+          <>
+            <div className="policy-quote-list">
               {displayQuotes.map((q) => {
                 const isSelected = selectedQuote?.quote_id === q.quote_id;
+                const isNew = freshlyAddedQuoteId === q.quote_id;
                 return (
                   <button
                     type="button"
                     key={q.quote_id}
-                    className={`quote-card quote-card-selectable${isSelected ? " quote-card-selected" : ""}`}
+                    className={`policy-quote-card${isSelected ? " policy-quote-card--selected" : ""}`}
                     onClick={() => setSelectedQuoteId(q.quote_id)}
                     aria-pressed={isSelected}
                   >
-                    <span className="muted">
-                      {isSelected ? "Selected quote" : "Saved quote"}
-                      {quote?.quote_id === q.quote_id ? " · Just added" : ""}
-                    </span>
-                    <strong>{q.product_title}</strong>
-                    <p className="muted" style={{ margin: "4px 0 0" }}>
-                      {q.category} · £{q.estimated_premium.toFixed(2)} / {q.price_unit}
-                    </p>
-                    <p className="muted" style={{ margin: "4px 0 0" }}>
-                      Ref: {quoteToPolicyRef(q.quote_id)} · ID: {q.quote_id}
-                    </p>
+                    <div className="policy-quote-card-inner">
+                      <span className="policy-quote-card-check" aria-hidden>
+                        {isSelected ? "✓" : ""}
+                      </span>
+                      <div className="policy-quote-card-body">
+                        <div className="policy-quote-card-head">
+                          <strong className="policy-quote-card-title">{q.product_title}</strong>
+                          <span className="policy-quote-card-price">
+                            £{q.estimated_premium.toFixed(2)}
+                            <span className="policy-quote-card-unit">/{q.price_unit}</span>
+                          </span>
+                        </div>
+                        <div className="policy-quote-card-meta-row">
+                          <span className="policy-quote-card-category">{q.category}</span>
+                          {isNew ? (
+                            <span className="policy-quote-card-badge">New</span>
+                          ) : null}
+                        </div>
+                        <p className="policy-quote-card-ref">
+                          Ref {quoteToPolicyRef(q.quote_id)}
+                        </p>
+                      </div>
+                    </div>
                   </button>
                 );
               })}
             </div>
-          ) : (
-            <p className="muted" style={{ margin: 0 }}>
-              No unpaid quotes. Browse the marketplace for a new quote, or check the Manage tab
-              for active cover.
+
+            {selectedQuote ? (
+              <div className="policy-quote-selected-bar">
+                <div className="policy-quote-selected-summary">
+                  <p className="policy-quote-selected-label">Selected quote</p>
+                  <p className="policy-quote-selected-title">{selectedQuote.product_title}</p>
+                  <p className="policy-quote-selected-price">
+                    £{selectedQuote.estimated_premium.toFixed(2)}
+                    <span>/{selectedQuote.price_unit}</span>
+                  </p>
+                </div>
+                <div className="policy-quote-actions">
+                  <button
+                    type="button"
+                    className="btn-primary policy-quote-review-btn"
+                    onClick={() => navigate(`/quote/${selectedQuote.product_id}`)}
+                  >
+                    Review quote
+                  </button>
+                  {displayQuotes.length > 1 ? (
+                    <button type="button" className="btn-link" onClick={() => navigate("/compare")}>
+                      Compare all
+                    </button>
+                  ) : null}
+                </div>
+              </div>
+            ) : null}
+          </>
+        ) : (
+          <div className="policy-empty policy-empty--card">
+            <p className="policy-empty-hint">
+              No saved quotes right now. Start a quote from the marketplace — it will appear here
+              until you purchase cover.
             </p>
-          )}
-
-          {selectedQuote ? (
-            <div style={{ marginTop: 14 }}>
-              <CustomerPanel
-                title="Pay first premium"
-                description={`Complete payment for ${selectedQuote.product_title} using your wallet or Stripe.`}
-                padding
-              >
-                <PayQuoteButton quote={selectedQuote} label="Pay first premium with Stripe" />
-                <button
-                  type="button"
-                  className="btn-link"
-                  style={{ marginTop: 10 }}
-                  onClick={() => navigate(`/quote/${selectedQuote.product_id}`)}
-                >
-                  Review quote details
-                </button>
-              </CustomerPanel>
-            </div>
-          ) : null}
-
-          {displayQuotes.length > 0 ? (
-            <button
-              type="button"
-              className="btn-link"
-              style={{ marginTop: 12 }}
-              onClick={() => navigate("/compare")}
-            >
-              Compare with other quotes
-            </button>
-          ) : null}
-
-          <button
-            className="btn-primary"
-            type="button"
-            style={{ marginTop: 14 }}
-            onClick={() => navigate("/marketplace")}
-          >
-            Browse products
-          </button>
-        </CustomerPanel>
-      )}
+          </div>
+        )}
+      </CustomerPanel>
 
       <AssistantBar screen="marketplace" />
+
+      {token ? (
+        <CancelPolicyWizard
+          open={cancelWizardOpen}
+          token={token}
+          policies={policies}
+          onClose={() => setCancelWizardOpen(false)}
+          onCancelled={(rows) => setPolicies(rows)}
+        />
+      ) : null}
     </CustomerAppShell>
   );
 }
@@ -975,8 +1075,8 @@ export function ClaimsPage() {
 
           {policies.length === 0 ? (
             <p className="manage-notice" role="status">
-              No Canton-minted policies yet — complete quote, payment, and policy minting first, then return here to
-              start a claim.
+              You do not have an active policy yet. Complete your quote and payment first — once your
+              policy is active on your account, return here to start a claim.
             </p>
           ) : (
             <div className="claim-policy-picker">
@@ -1009,7 +1109,7 @@ export function ClaimsPage() {
               <p className="muted" style={{ margin: 0, fontSize: "0.85rem" }}>
                 {selectedPolicy.cover_start_at
                   ? `Cover active from ${formatPolicyDate(selectedPolicy.cover_start_at)}`
-                  : "Cover starts when the policy is minted and approved"}
+                  : "Cover starts once your policy is approved and active"}
                 {selectedPolicy.cover_expires_at
                   ? ` · Valid until ${formatPolicyDate(selectedPolicy.cover_expires_at)}`
                   : ""}

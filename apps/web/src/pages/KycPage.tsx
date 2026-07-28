@@ -1,12 +1,113 @@
-import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { api } from "../api";
 import { AssistantBar, CustomerAppShell, StepHeader } from "../components";
+import { SelfieCapture } from "../components/SelfieCapture";
 import { IconDoc } from "../icons";
-import { formatKycStatus, isKycVerified } from "../kycStatus";
+import {
+  formatKycStatus,
+  isKycVerified,
+  kycStatusPillVariant,
+  type KycStatus,
+} from "../kycStatus";
 import { useSession } from "../session";
 
 const STEPS = ["Identity", "Verify", "Liveness", "Complete"] as const;
+type StepLabel = (typeof STEPS)[number];
+type StepState = "done" | "active" | "pending" | "submitted";
+
+const DOC_LABELS: Record<string, string> = {
+  passport: "Passport",
+  driving_licence: "Driving Licence",
+  national_id: "National ID",
+};
+
+function KycStatusPill({ status }: { status: KycStatus | null | undefined }) {
+  const variant = kycStatusPillVariant(status);
+  return (
+    <span className={`kyc-status-pill kyc-status-pill--${variant}`}>
+      <span className="kyc-status-pill-dot" aria-hidden />
+      {formatKycStatus(status)}
+    </span>
+  );
+}
+
+function KycProgressCard({
+  status,
+  stepStates,
+}: {
+  status: KycStatus | null | undefined;
+  stepStates: Record<StepLabel, StepState>;
+}) {
+  return (
+    <section className="kyc-page-progress" aria-label="KYC progress">
+      <div className="kyc-page-progress-edge" aria-hidden />
+      <div className="kyc-page-progress-inner">
+        <div className="kyc-page-progress-header">
+          <h3>KYC Progress</h3>
+          <KycStatusPill status={status} />
+        </div>
+        <ol className="kyc-page-stepper">
+          {STEPS.map((label, index) => {
+            const state = stepStates[label];
+            return (
+              <li key={label} className={state}>
+                <span className="kyc-page-step-marker" aria-hidden>
+                  {state === "done" || state === "submitted" ? "✓" : index + 1}
+                </span>
+                <span className="kyc-page-step-label">{label}</span>
+              </li>
+            );
+          })}
+        </ol>
+      </div>
+    </section>
+  );
+}
+
+function useKycStepStates(
+  kycStatus: KycStatus,
+  uploaded: boolean,
+  selfie: boolean,
+): Record<StepLabel, StepState> {
+  return useMemo(() => {
+    if (isKycVerified(kycStatus)) {
+      return {
+        Identity: "done",
+        Verify: "done",
+        Liveness: "done",
+        Complete: "done",
+      };
+    }
+
+    if (kycStatus === "in_progress") {
+      return {
+        Identity: "done",
+        Verify: "done",
+        Liveness: "done",
+        Complete: "submitted",
+      };
+    }
+
+    const completed: boolean[] = [true, uploaded, selfie, false];
+    const firstOpen = completed.findIndex((step) => !step);
+    const activeIndex = firstOpen === -1 ? STEPS.length - 1 : firstOpen;
+
+    return STEPS.reduce(
+      (acc, label, index) => {
+        if (completed[index]) {
+          acc[label] = "done";
+        } else if (index === activeIndex) {
+          acc[label] = "active";
+        } else {
+          acc[label] = "pending";
+        }
+        return acc;
+      },
+      {} as Record<StepLabel, StepState>,
+    );
+  }, [kycStatus, uploaded, selfie]);
+}
 
 export function KycPage() {
   const navigate = useNavigate();
@@ -15,12 +116,16 @@ export function KycPage() {
     (location.state as { registrationNote?: string } | null)?.registrationNote ?? null;
   const { token, user, updateUser } = useSession();
   const [documentType, setDocumentType] = useState("passport");
-  const [uploaded, setUploaded] = useState(true);
-  const [selfie, setSelfie] = useState(true);
+  const [uploaded, setUploaded] = useState(false);
+  const [selfie, setSelfie] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [docUploading, setDocUploading] = useState(false);
   const [refreshing, setRefreshing] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const docInputRef = useRef<HTMLInputElement>(null);
   const kycStatus = user?.kyc_status ?? "not_started";
+  const stepStates = useKycStepStates(kycStatus, uploaded, selfie);
+  const docLabel = DOC_LABELS[documentType] ?? "Document";
 
   useEffect(() => {
     if (!token) {
@@ -46,15 +151,19 @@ export function KycPage() {
     };
   }, [token, navigate, updateUser]);
 
-  const progress = useMemo(
-    () => ({
-      Identity: kycStatus === "not_started" ? "pending" : "done",
-      Verify: kycStatus === "in_progress" || isKycVerified(kycStatus) ? "done" : uploaded ? "done" : "pending",
-      Liveness: kycStatus === "in_progress" || isKycVerified(kycStatus) ? "done" : selfie ? "pending" : "pending",
-      Complete: isKycVerified(kycStatus) ? "done" : kycStatus === "in_progress" ? "submitted" : "pending",
-    }),
-    [uploaded, selfie, kycStatus],
-  );
+  async function onDocumentSelected(file: File | null) {
+    if (!file || !token) return;
+    setDocUploading(true);
+    setError(null);
+    try {
+      await api.uploadKycDocument(token, file);
+      setUploaded(true);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Document upload failed");
+    } finally {
+      setDocUploading(false);
+    }
+  }
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
@@ -102,28 +211,10 @@ export function KycPage() {
           <p className="kyc-onboarding-eyebrow">Verification in progress</p>
           <h2 id="kyc-pending-title">Your documents are being reviewed</h2>
           <p>
-            We have received your identity check and our team is reviewing it. Wallet setup will unlock
-            once verification is approved.
+            We have received your identity check and our team is reviewing it. Wallet setup will
+            unlock once verification is approved.
           </p>
-          <p className="kyc-onboarding-status">
-            Current status: <strong>{formatKycStatus(kycStatus)}</strong>
-          </p>
-          <div className="progress-block">
-            <h3>KYC Progress</h3>
-            <div className="progress-track">
-              {STEPS.map((label, index) => {
-                const done = progress[label] === "done" || progress[label] === "submitted" || index < 3;
-                return (
-                  <div className="progress-step" key={label}>
-                    <div className={`progress-dot${done ? " done" : ""}`}>
-                      {done ? "✓" : index + 1}
-                    </div>
-                    <span>{label}</span>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
+          <KycProgressCard status={kycStatus} stepStates={stepStates} />
           <div className="kyc-onboarding-actions">
             <Link to="/" className="kyc-onboarding-cta">
               Back to home
@@ -142,11 +233,7 @@ export function KycPage() {
     <CustomerAppShell active="profile" className="kyc-screen">
       <StepHeader title="KYC Verification" />
 
-      {registrationNote ? (
-        <p className="muted" style={{ margin: "0 0 12px", fontSize: "0.9rem" }}>
-          {registrationNote}
-        </p>
-      ) : null}
+      {registrationNote ? <p className="kyc-page-note">{registrationNote}</p> : null}
 
       {kycStatus === "rejected" ? (
         <div className="kyc-required-alert" role="alert">
@@ -154,80 +241,79 @@ export function KycPage() {
         </div>
       ) : null}
 
-      <div className="progress-block">
-        <h3>KYC Progress</h3>
-        <p className="kyc-onboarding-status" style={{ marginBottom: 12 }}>
-          Current status: <strong>{formatKycStatus(kycStatus)}</strong>
-        </p>
-        <div className="progress-track">
-          {STEPS.map((label, index) => {
-            const done = progress[label] === "done" || index < 2;
-            return (
-              <div className="progress-step" key={label}>
-                <div className={`progress-dot${done ? " done" : ""}`}>
-                  {done ? "✓" : index === 2 ? "1" : "i"}
-                </div>
-                <span>{label}</span>
-              </div>
-            );
-          })}
-        </div>
-      </div>
+      <KycProgressCard status={kycStatus} stepStates={stepStates} />
 
-      <form className="stack" onSubmit={onSubmit}>
-        <div>
-          <h2 className="section-title">Verify Your Identity</h2>
-          <p className="section-sub">Take a clear photo of your document</p>
-        </div>
-
-        <div className="field">
-          <label htmlFor="docType">Document Type</label>
-          <div className="input-shell">
-            <select
-              id="docType"
-              value={documentType}
-              onChange={(e) => setDocumentType(e.target.value)}
-            >
-              <option value="passport">Passport</option>
-              <option value="driving_licence">Driving Licence</option>
-              <option value="national_id">National ID</option>
-            </select>
+      <form className="kyc-page-form" onSubmit={onSubmit}>
+        <section className="kyc-page-card" aria-labelledby="kyc-doc-title">
+          <div className="kyc-page-card-head">
+            <h2 className="section-title" id="kyc-doc-title">
+              Verify Your Identity
+            </h2>
+            <p className="section-sub">Take a clear photo of your document</p>
           </div>
-        </div>
 
-        <button
-          type="button"
-          className="upload-card"
-          onClick={() => setUploaded(true)}
-        >
-          <div className="upload-icon">
-            <IconDoc />
-          </div>
-          <div>
-            <strong>Passport</strong>
-            <div className="muted" style={{ fontSize: "0.82rem" }}>
-              {uploaded ? "Front page ready" : "Upload front page"}
+          <div className="field">
+            <label htmlFor="docType">Document Type</label>
+            <div className="input-shell">
+              <select
+                id="docType"
+                value={documentType}
+                onChange={(e) => setDocumentType(e.target.value)}
+              >
+                <option value="passport">Passport</option>
+                <option value="driving_licence">Driving Licence</option>
+                <option value="national_id">National ID</option>
+              </select>
             </div>
           </div>
-        </button>
 
-        <div className="selfie-row">
-          <div>
-            <h2 className="section-title">Selfie Verification</h2>
-            <p className="section-sub">Take a selfie to match your document</p>
-          </div>
           <button
             type="button"
-            className="selfie-avatar"
-            aria-label="Capture selfie"
-            onClick={() => setSelfie(true)}
-            style={{
-              background:
-                "linear-gradient(145deg, #c8ddd3, #8fb9a5)",
-              border: "3px solid #e6f3ee",
+            className={`kyc-upload-zone${uploaded ? " ready" : ""}`}
+            disabled={docUploading}
+            onClick={() => docInputRef.current?.click()}
+          >
+            <div className="kyc-upload-zone-icon" aria-hidden>
+              <IconDoc />
+            </div>
+            <div className="kyc-upload-zone-copy">
+              <strong>{docLabel}</strong>
+              <div className="kyc-upload-zone-hint">
+                {docUploading ? "Uploading…" : uploaded ? "Front page ready" : "Tap to upload front page"}
+              </div>
+            </div>
+            {uploaded ? <span className="kyc-upload-zone-badge">Ready</span> : null}
+          </button>
+          <input
+            ref={docInputRef}
+            type="file"
+            accept="image/jpeg,image/png,image/webp,application/pdf"
+            className="kyc-selfie-file-input"
+            onChange={(e) => {
+              void onDocumentSelected(e.target.files?.[0] ?? null);
+              e.target.value = "";
             }}
           />
-        </div>
+        </section>
+
+        <section className="kyc-page-card kyc-page-card--selfie" aria-labelledby="kyc-selfie-title">
+          <div className="kyc-page-card-head">
+            <h2 className="section-title" id="kyc-selfie-title">
+              Selfie Verification
+            </h2>
+            <p className="section-sub">Take a selfie to match your document</p>
+          </div>
+          {token ? (
+            <SelfieCapture
+              token={token}
+              uploaded={selfie}
+              onUploaded={() => setSelfie(true)}
+              onClear={() => setSelfie(false)}
+            />
+          ) : (
+            <p className="muted">Sign in to capture your selfie.</p>
+          )}
+        </section>
 
         {error ? (
           <p className="error" role="alert">
@@ -235,7 +321,11 @@ export function KycPage() {
           </p>
         ) : null}
 
-        <button className="btn-primary" type="submit" disabled={loading}>
+        <button
+          className="btn-primary kyc-page-submit"
+          type="submit"
+          disabled={loading || !uploaded || !selfie}
+        >
           {loading ? "Submitting…" : kycStatus === "rejected" ? "Resubmit verification" : "Continue"}
         </button>
       </form>
