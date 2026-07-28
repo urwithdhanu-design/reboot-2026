@@ -1,15 +1,14 @@
 #Requires -Version 5.1
 <#
 .SYNOPSIS
-  Wipe local H2 data for policies, mints, claims, and related payment/wallet state.
+  Wipe local H2 test data, including customers, policies, mints, and claims.
 
 .DESCRIPTION
   Stops Java APIs (to release H2 file locks), deletes service databases under
-  apps/services/*/data, and removes uploaded claim documents. KYC users and
-  notifications are left intact unless -IncludeKyc is passed.
+  apps/services/*/data, and removes uploaded claim and KYC documents.
+  Notification history is left intact.
 #>
 param(
-  [switch] $IncludeKyc,
   [switch] $SkipStop
 )
 
@@ -17,6 +16,7 @@ $ErrorActionPreference = "Stop"
 . (Join-Path $PSScriptRoot "common.ps1")
 
 $targets = @(
+  @{ service = "kyc-service";                    patterns = @("kyc-db.mv.db", "kyc-db.trace.db"); extraDirs = @("kyc-uploads") },
   @{ service = "policy-service";                 patterns = @("policy-db.mv.db", "policy-db.trace.db") },
   @{ service = "claims-service";                 patterns = @("claims-db.mv.db", "claims-db.trace.db"); extraDirs = @("claim-documents") },
   @{ service = "parametric-claim-service";       patterns = @("parametric-db.mv.db", "parametric-db.trace.db") },
@@ -25,13 +25,6 @@ $targets = @(
   @{ service = "wallet-service";                patterns = @("wallet-db.mv.db", "wallet-db.trace.db") },
   @{ service = "premium-deposit-service";        patterns = @("premium-deposit-db.mv.db", "premium-deposit-db.trace.db") }
 )
-
-if ($IncludeKyc) {
-  $targets += @(
-    @{ service = "kyc-service";           patterns = @("kyc-db.mv.db", "kyc-db.trace.db") },
-    @{ service = "notification-service";  patterns = @("notification-db.mv.db", "notification-db.trace.db") }
-  )
-}
 
 if (-not $SkipStop) {
   Write-Host "Stopping Java APIs to release database files..."

@@ -619,13 +619,11 @@ Orchestrator config: `apps/services/blockchain-orchestrator-service/src/main/res
 
 ## Fresh testing
 
-Reset local H2 data for policies, mints, claims, wallets, and payments:
+Reset local H2 data for customers, policies, mints, claims, wallets, and payments:
 
 ```cmd
 local-dev.cmd clean
 local-dev.cmd apis
 ```
-
-Also wipe users: `local-dev.cmd clean -IncludeKyc`
 
 Then run: **quote → pay → mint → claim** (manual or parametric simulation).
