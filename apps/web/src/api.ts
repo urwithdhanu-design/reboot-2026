@@ -10,6 +10,21 @@ export type AuthUser = {
   wallet: { address: string; status: string; balance_gbp?: number; currency?: string } | null;
 };
 
+export type Dependant = {
+  id: string;
+  full_name: string;
+  date_of_birth: string;
+  relationship: string;
+  created_at?: string;
+  updated_at?: string;
+};
+
+export type DependantInput = {
+  full_name: string;
+  date_of_birth: string;
+  relationship: string;
+};
+
 export type Product = {
   id: string;
   title: string;
@@ -401,6 +416,28 @@ export const api = {
     request<WalletInfo>("/api/wallet", {}, token),
 
   me: (token: string) => request<AuthUser>("/api/auth/me", {}, token),
+
+  getDependants: (token: string) =>
+    request<{ dependants: Dependant[]; count: number }>("/api/profile/dependants", {}, token),
+
+  createDependant: (token: string, body: DependantInput) =>
+    request<Dependant>("/api/profile/dependants", {
+      method: "POST",
+      body: JSON.stringify(body),
+    }, token),
+
+  updateDependant: (token: string, id: string, body: DependantInput) =>
+    request<Dependant>(`/api/profile/dependants/${encodeURIComponent(id)}`, {
+      method: "PUT",
+      body: JSON.stringify(body),
+    }, token),
+
+  deleteDependant: (token: string, id: string) =>
+    request<{ deleted: boolean; id: string }>(
+      `/api/profile/dependants/${encodeURIComponent(id)}`,
+      { method: "DELETE" },
+      token,
+    ),
 
   createWallet: (token: string) =>
     request<WalletInfo & { ledger?: string; reused?: boolean }>(

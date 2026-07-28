@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { api } from "../api";
-import { AssistantBar, StepHeader } from "../components";
+import { AssistantBar, StepHeader, WalletConsentApprovedNotice } from "../components";
 import { useSession } from "../session";
 
 export function WalletApprovePage() {
@@ -80,14 +80,10 @@ export function WalletApprovePage() {
 
       {message ? (
         <div className="stack">
-          <p className="manage-notice" role="status">
+          {approvedAt ? <WalletConsentApprovedNotice approvedAt={approvedAt} /> : null}
+          <p className="muted" style={{ fontSize: "0.88rem", margin: 0 }}>
             {message}
           </p>
-          {approvedAt ? (
-            <p className="muted" style={{ fontSize: "0.85rem" }}>
-              Consent recorded at {new Date(approvedAt).toLocaleString()}
-            </p>
-          ) : null}
           {address ? (
             <p className="muted" style={{ fontSize: "0.85rem", wordBreak: "break-all" }}>
               Wallet address: {address}

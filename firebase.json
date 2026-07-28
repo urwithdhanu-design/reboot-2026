@@ -57,6 +57,13 @@
                                          {
                                              "run":  {
                                                          "region":  "us-central1",
+                                                         "serviceId":  "gcul-kyc"
+                                                     },
+                                             "source":  "/api/profile/**"
+                                         },
+                                         {
+                                             "run":  {
+                                                         "region":  "us-central1",
                                                          "serviceId":  "gcul-wallet"
                                                      },
                                              "source":  "/api/wallet/**"
@@ -397,6 +404,13 @@
                                                          "serviceId":  "gcul-kyc"
                                                      },
                                              "source":  "/api/kyc/**"
+                                         },
+                                         {
+                                             "run":  {
+                                                         "region":  "us-central1",
+                                                         "serviceId":  "gcul-kyc"
+                                                     },
+                                             "source":  "/api/profile/**"
                                          },
                                          {
                                              "run":  {

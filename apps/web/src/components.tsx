@@ -82,3 +82,5 @@ export {
   CustomerNavBar,
   BottomNav,
 } from "./components/CustomerAppShell";
+
+export { WalletConsentApprovedNotice } from "./components/WalletConsentApprovedNotice";

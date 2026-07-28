@@ -14,8 +14,10 @@ import {
   readPaidQuoteIds,
   type CustomerPolicy,
 } from "../customerPolicies";
-import { AssistantBar, CustomerAppShell, CustomerPageHeader, CustomerPanel, CustomerTabs, HeaderIconClaims, HeaderIconPolicies, HeaderIconProfile } from "../components";
+import { AssistantBar, CustomerAppShell, CustomerPageHeader, CustomerPanel, CustomerTabs, HeaderIconClaims, HeaderIconPolicies, HeaderIconProfile, WalletConsentApprovedNotice } from "../components";
 import { CancelPolicyWizard } from "../components/CancelPolicyWizard";
+import { ReviewQuoteModal } from "../components/ReviewQuoteModal";
+import { DependantsPanel } from "../components/DependantsPanel";
 import { KycOnboardingPrompt } from "../components/KycOnboardingPrompt";
 import { isCancelledPolicy } from "../customerPolicies";
 import { needsKycAttention } from "../kycStatus";
@@ -241,6 +243,8 @@ export function PoliciesPage() {
   const [quotesLoading, setQuotesLoading] = useState(true);
   const [selectedQuoteId, setSelectedQuoteId] = useState<string | null>(null);
   const [cancelWizardOpen, setCancelWizardOpen] = useState(false);
+  const [reviewQuoteOpen, setReviewQuoteOpen] = useState(false);
+  const [walletPurchaseNotice, setWalletPurchaseNotice] = useState<string | null>(null);
 
   const displayQuotes = useMemo(() => {
     const issued = new Set(issuedQuoteIds);
@@ -476,6 +480,11 @@ export function PoliciesPage() {
             policy has been issued and moved to Active cover.
           </p>
         ) : null}
+        {walletPurchaseNotice ? (
+          <p className="manage-notice" role="status">
+            {walletPurchaseNotice}
+          </p>
+        ) : null}
         {quotesLoading ? (
           <p className="policy-empty muted">Loading your quotes…</p>
         ) : displayQuotes.length > 0 ? (
@@ -534,7 +543,7 @@ export function PoliciesPage() {
                   <button
                     type="button"
                     className="btn-primary policy-quote-review-btn"
-                    onClick={() => navigate(`/quote/${selectedQuote.product_id}`)}
+                    onClick={() => setReviewQuoteOpen(true)}
                   >
                     Review quote
                   </button>
@@ -568,6 +577,31 @@ export function PoliciesPage() {
           onCancelled={(rows) => setPolicies(rows)}
         />
       ) : null}
+
+      <ReviewQuoteModal
+        open={reviewQuoteOpen}
+        quote={selectedQuote}
+        token={token}
+        onClose={() => setReviewQuoteOpen(false)}
+        onPurchased={({ quote_id, policy_id, balance_gbp }) => {
+          markQuotePaid(quote_id);
+          setReviewQuoteOpen(false);
+          setWalletPurchaseNotice(
+            `Payment received from wallet · £${selectedQuote?.estimated_premium.toFixed(2) ?? ""} — your policy has been issued and moved to Active cover.${
+              policy_id ? ` Ref ${policy_id}.` : ""
+            } Wallet balance: £${balance_gbp.toFixed(2)}.`,
+          );
+          setIssuedQuoteIds((current) =>
+            current.includes(quote_id) ? current : [...current, quote_id],
+          );
+          setSavedQuotes((current) => current.filter((q) => q.quote_id !== quote_id));
+          if (token) {
+            void fetchMyPolicies(token)
+              .then((rows) => setPolicies(rows))
+              .catch(() => undefined);
+          }
+        }}
+      />
     </CustomerAppShell>
   );
 }
@@ -1302,10 +1336,11 @@ function formatKyc(status: string) {
 export function ProfilePage() {
   const navigate = useNavigate();
   const { token, user, updateUser, clear } = useSession();
-  const [tab, setTab] = useState<"account" | "wallet">("account");
+  const [tab, setTab] = useState<"account" | "dependants" | "wallet">("account");
   const [profile, setProfile] = useState<AuthUser | null>(user);
   const [loading, setLoading] = useState(!user);
   const [error, setError] = useState<string | null>(null);
+  const [consentApprovedAt, setConsentApprovedAt] = useState<string | null>(null);
 
   useEffect(() => {
     if (!token) return;
@@ -1341,6 +1376,11 @@ export function ProfilePage() {
     api
       .getWallet(token)
       .then((res) => {
+        if (res.consent_approved_at) {
+          setConsentApprovedAt(res.consent_approved_at);
+        } else {
+          setConsentApprovedAt(null);
+        }
         if (res.status !== "connected" || !res.address) return;
         setProfile((current) => {
           if (!current) return current;
@@ -1401,6 +1441,7 @@ export function ProfilePage() {
         onChange={setTab}
         options={[
           { value: "account", label: "Account" },
+          { value: "dependants", label: "Dependants" },
           { value: "wallet", label: "Wallet" },
         ]}
       />
@@ -1445,8 +1486,18 @@ export function ProfilePage() {
             </>
           )}
 
+          {tab === "dependants" && token ? (
+            <DependantsPanel token={token} />
+          ) : null}
+
           {tab === "wallet" && (
             <CustomerPanel title="Digital wallet" description="Policy tokens and payout destination">
+              {consentApprovedAt ? (
+                <WalletConsentApprovedNotice
+                  approvedAt={consentApprovedAt}
+                  className="wallet-consent-notice--profile"
+                />
+              ) : null}
               {profile.wallet ? (
                 <dl className="profile-dl">
                   <div>

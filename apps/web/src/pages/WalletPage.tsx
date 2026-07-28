@@ -7,6 +7,7 @@ import {
   CustomerPageHeader,
   CustomerPanel,
   HeaderIconWallet,
+  WalletConsentApprovedNotice,
 } from "../components";
 import { KycOnboardingPrompt, KycRequiredAlert } from "../components/KycOnboardingPrompt";
 import {
@@ -657,10 +658,10 @@ export function WalletPage() {
                 </div>
 
                 {consentApprovedAt ? (
-                  <p className="manage-notice" role="status" style={{ marginTop: 12 }}>
-                    Wallet consent approved on{" "}
-                    <strong>{new Date(consentApprovedAt).toLocaleString()}</strong>
-                  </p>
+                  <WalletConsentApprovedNotice
+                    approvedAt={consentApprovedAt}
+                    className="wallet-consent-notice--inline"
+                  />
                 ) : null}
 
                 {note ? (

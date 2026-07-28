@@ -1137,6 +1137,11 @@ a.link-quiet:hover {
   font-weight: 600;
 }
 
+.wallet-consent-notice--inline,
+.wallet-consent-notice--profile {
+  margin-top: 12px;
+}
+
 .claims-notice {
   margin-bottom: 12px;
 }
@@ -1931,6 +1936,131 @@ a.link-quiet:hover {
   min-width: 140px;
 }
 
+.review-quote-modal {
+  width: min(600px, 100%);
+}
+
+.review-quote-body {
+  padding: 0 22px 22px;
+}
+
+.review-quote-summary {
+  padding: 16px 18px;
+  border-radius: 12px;
+  background: #f8fbf9;
+  border: 1px solid #dceee4;
+  margin-bottom: 16px;
+}
+
+.review-quote-summary-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.review-quote-summary-head strong {
+  font-size: 1.05rem;
+}
+
+.review-quote-price {
+  font-size: 1.2rem;
+  font-weight: 800;
+  color: var(--lbg-green-deep);
+  white-space: nowrap;
+}
+
+.review-quote-price span {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.review-quote-meta {
+  margin: 8px 0 0;
+  font-size: 0.86rem;
+  color: var(--muted);
+}
+
+.review-quote-message {
+  margin: 10px 0 0;
+  font-size: 0.9rem;
+  line-height: 1.45;
+}
+
+.review-quote-details {
+  margin-bottom: 16px;
+}
+
+.review-quote-details-label {
+  margin: 0 0 8px;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--lbg-green);
+}
+
+.review-quote-details-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px 14px;
+  margin: 0;
+  padding: 14px 16px;
+  border-radius: 12px;
+  border: 1px solid #e4ebe7;
+  background: #fff;
+}
+
+.review-quote-detail-row dt {
+  margin: 0;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+}
+
+.review-quote-detail-row dd {
+  margin: 4px 0 0;
+  font-size: 0.92rem;
+  font-weight: 600;
+  color: #1a1f1c;
+}
+
+.review-quote-wallet-box {
+  padding: 14px 16px;
+  border-radius: 12px;
+  background: #eef8f3;
+  border: 1px solid #c8e6d8;
+  margin-bottom: 16px;
+}
+
+.review-quote-wallet-balance {
+  margin: 0;
+  font-size: 0.95rem;
+}
+
+.review-quote-wallet-shortfall {
+  margin: 10px 0 0;
+  font-size: 0.88rem;
+}
+
+.review-quote-error {
+  margin: 0 0 12px;
+}
+
+.review-quote-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  align-items: stretch;
+}
+
+.review-quote-actions .btn-link {
+  align-self: center;
+}
+
 .app-shell.view-desktop .policy-meta-grid {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
@@ -2146,6 +2276,62 @@ a.link-quiet:hover {
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   font-size: 0.82rem;
   font-weight: 600;
+}
+
+.dependants-list {
+  list-style: none;
+  margin: 0 0 16px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.dependants-list-item {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  border: 1px solid var(--border, #e4ebe7);
+  border-radius: 12px;
+  background: #fff;
+}
+
+.dependants-list-main {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.dependants-list-main strong {
+  font-size: 0.95rem;
+}
+
+.dependants-list-main .muted {
+  font-size: 0.82rem;
+}
+
+.dependants-list-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.btn-link.danger {
+  color: #b42318;
+}
+
+.dependants-form {
+  margin-top: 4px;
+}
+
+.dependants-form-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 
 .btn-secondary {
