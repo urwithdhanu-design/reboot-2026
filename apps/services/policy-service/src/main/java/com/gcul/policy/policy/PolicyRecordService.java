@@ -12,6 +12,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 import com.gcul.policy.model.PolicyRecord;
+import com.gcul.policy.motor.MotorCoverageLimits;
 import com.gcul.policy.quote.QuoteService;
 import com.gcul.policy.repository.PolicyRecordRepository;
 
@@ -126,6 +127,7 @@ public class PolicyRecordService {
 			return record;
 		}
 		record = syncTravelCoverageLimits(record);
+		record = syncMotorCoverageLimits(record);
 		Instant activated = record.getActivatedAt() == null ? Instant.now() : record.getActivatedAt();
 		if (record.getActivatedAt() == null) {
 			record.setActivatedAt(activated);
@@ -152,6 +154,27 @@ public class PolicyRecordService {
 		}
 		try {
 			Map<String, Object> quote = quoteService.getQuote(record.getQuoteId());
+			Instant start = record.getCoverStartAt();
+			PolicyCoverageSnapshot snap = start == null
+					? coverageResolver.resolvePendingFromQuote(quote)
+					: coverageResolver.activateOnMint(quote, start);
+			applyCoverage(record, snap);
+			return repository.save(record);
+		}
+		catch (Exception ignored) {
+			return record;
+		}
+	}
+
+	private PolicyRecord syncMotorCoverageLimits(PolicyRecord record) {
+		if (!StringUtils.hasText(record.getQuoteId())) {
+			return record;
+		}
+		try {
+			Map<String, Object> quote = quoteService.getQuote(record.getQuoteId());
+			if (!MotorCoverageLimits.PRODUCT_ID.equalsIgnoreCase(str(quote.get("product_id")))) {
+				return record;
+			}
 			Instant start = record.getCoverStartAt();
 			PolicyCoverageSnapshot snap = start == null
 					? coverageResolver.resolvePendingFromQuote(quote)

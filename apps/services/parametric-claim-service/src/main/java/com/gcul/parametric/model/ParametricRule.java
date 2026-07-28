@@ -63,6 +63,9 @@ public class ParametricRule {
 	@Column(columnDefinition = "TEXT")
 	private String oracleMessage;
 
+	/** IoT/telematics device id for motor parametric rules. */
+	private String telematicsDeviceId;
+
 	public String getId() { return id; }
 	public void setId(String id) { this.id = id; }
 	public String getName() { return name; }
@@ -103,4 +106,6 @@ public class ParametricRule {
 	public void setOracleProvider(String oracleProvider) { this.oracleProvider = oracleProvider; }
 	public String getOracleMessage() { return oracleMessage; }
 	public void setOracleMessage(String oracleMessage) { this.oracleMessage = oracleMessage; }
+	public String getTelematicsDeviceId() { return telematicsDeviceId; }
+	public void setTelematicsDeviceId(String telematicsDeviceId) { this.telematicsDeviceId = telematicsDeviceId; }
 }

@@ -93,6 +93,18 @@ public class PlanDataSeeder implements ApplicationRunner {
 						"Health",
 						28, "month", "GBP", 4.6, 188, true, "heart"),
 				new InsurancePlan(
+						"motor-protect-plus",
+						"Motor Protect Plus",
+						"IoT-enabled motor cover with telematics accident detection and emergency parametric payouts.",
+						"Smart motor cover with automatic accident payouts.",
+						bullets(
+								"Telematics accident detection",
+								"Emergency parametric payout on verified impact",
+								"Comprehensive vehicle cover"),
+						"Motor insurance",
+						"Vehicle",
+						45, "month", "GBP", 4.7, 95, true, "car"),
+				new InsurancePlan(
 						"car-insurance",
 						"Car insurance",
 						"Choose either Gold or Silver and get cover that’s easy to manage online.",

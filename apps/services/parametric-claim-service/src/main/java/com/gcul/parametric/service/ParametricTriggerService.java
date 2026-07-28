@@ -58,11 +58,12 @@ public class ParametricTriggerService {
 		String ruleType = firstNonBlank(str(body.get("rule_type")), "flight_delay");
 		boolean flightDelay = "flight_delay".equalsIgnoreCase(ruleType);
 		boolean tripCancellation = "trip_cancellation".equalsIgnoreCase(ruleType);
+		boolean telematicsAccident = "telematics_accident".equalsIgnoreCase(ruleType);
 
 		var existing = repo.findFirstByPolicyRefAndRuleType(policyRef, ruleType);
 		if (existing.isPresent()) {
 			ParametricRule rule = existing.get();
-			applyRuleFields(rule, body, policy, flightDelay, tripCancellation);
+			applyRuleFields(rule, body, policy, flightDelay, tripCancellation, telematicsAccident);
 			Map<String, Object> result = toMap(repo.save(rule));
 			result.put("updated", true);
 			return result;
@@ -70,7 +71,7 @@ public class ParametricTriggerService {
 
 		ParametricRule rule = new ParametricRule();
 		rule.setId("PR-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase(Locale.ROOT));
-		applyRuleFields(rule, body, policy, flightDelay, tripCancellation);
+		applyRuleFields(rule, body, policy, flightDelay, tripCancellation, telematicsAccident);
 		rule.setActive(true);
 		rule.setOracleStatus("monitoring");
 		rule.setCreatedAt(Instant.now());
@@ -84,8 +85,9 @@ public class ParametricTriggerService {
 				() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Rule not found: " + ruleId));
 		boolean flightDelay = "flight_delay".equalsIgnoreCase(rule.getRuleType());
 		boolean tripCancellation = "trip_cancellation".equalsIgnoreCase(rule.getRuleType());
+		boolean telematicsAccident = "telematics_accident".equalsIgnoreCase(rule.getRuleType());
 		Map<String, Object> policy = policyClient.fetchPolicy(rule.getPolicyRef());
-		applyRuleFields(rule, body, policy, flightDelay, tripCancellation);
+		applyRuleFields(rule, body, policy, flightDelay, tripCancellation, telematicsAccident);
 		Map<String, Object> result = toMap(repo.save(rule));
 		result.put("updated", true);
 		return result;
@@ -96,10 +98,12 @@ public class ParametricTriggerService {
 			Map<String, Object> body,
 			Map<String, Object> policy,
 			boolean flightDelay,
-			boolean tripCancellation) {
+			boolean tripCancellation,
+			boolean telematicsAccident) {
 		rule.setName(firstNonBlank(str(body.get("name")),
 				flightDelay ? "Flight delay cover"
-						: tripCancellation ? "Trip cancellation cover" : rule.getName()));
+						: tripCancellation ? "Trip cancellation cover"
+								: telematicsAccident ? "Telematics accident cover" : rule.getName()));
 		if (!str(body.get("rule_type")).isBlank()) {
 			rule.setRuleType(str(body.get("rule_type")));
 		}
@@ -108,14 +112,15 @@ public class ParametricTriggerService {
 		}
 		else if (rule.getMetric() == null || rule.getMetric().isBlank()) {
 			rule.setMetric(flightDelay ? "flight_delay_minutes"
-					: tripCancellation ? "trip_cancelled" : "rainfall_mm");
+					: tripCancellation ? "trip_cancelled"
+							: telematicsAccident ? "impact_g_force" : "rainfall_mm");
 		}
 		if (body.containsKey("threshold")) {
 			rule.setThreshold(num(body.get("threshold"), rule.getThreshold() > 0 ? rule.getThreshold()
-					: flightDelay ? 240 : tripCancellation ? 1 : 50));
+					: flightDelay ? 240 : tripCancellation ? 1 : telematicsAccident ? 3.0 : 50));
 		}
 		else if (rule.getThreshold() <= 0) {
-			rule.setThreshold(flightDelay ? 240 : tripCancellation ? 1 : 50);
+			rule.setThreshold(flightDelay ? 240 : tripCancellation ? 1 : telematicsAccident ? 3.0 : 50);
 		}
 		if (!str(body.get("comparison")).isBlank()) {
 			rule.setComparison(str(body.get("comparison")));
@@ -125,10 +130,10 @@ public class ParametricTriggerService {
 		}
 		if (body.containsKey("payout_amount")) {
 			rule.setPayoutAmount(num(body.get("payout_amount"), rule.getPayoutAmount() > 0 ? rule.getPayoutAmount()
-					: flightDelay ? 250 : tripCancellation ? 150 : 500));
+					: flightDelay ? 250 : tripCancellation ? 150 : telematicsAccident ? 500 : 500));
 		}
 		else if (rule.getPayoutAmount() <= 0) {
-			rule.setPayoutAmount(flightDelay ? 250 : tripCancellation ? 150 : 500);
+			rule.setPayoutAmount(flightDelay ? 250 : tripCancellation ? 150 : telematicsAccident ? 500 : 500);
 		}
 		if (!str(body.get("policy_ref")).isBlank()) {
 			rule.setPolicyRef(str(body.get("policy_ref")));
@@ -136,7 +141,7 @@ public class ParametricTriggerService {
 		rule.setProductCategory(firstNonBlank(
 				str(body.get("product_category")),
 				str(policy.get("product_category")),
-				firstNonBlank(rule.getProductCategory(), "Travel")));
+				firstNonBlank(rule.getProductCategory(), telematicsAccident ? "Vehicle" : "Travel")));
 		if (!str(body.get("flight_number")).isBlank()) {
 			rule.setFlightNumber(str(body.get("flight_number")).trim().toUpperCase(Locale.ROOT));
 		}
@@ -149,6 +154,9 @@ public class ParametricTriggerService {
 				rule.getPolicyExpiresAt()));
 		rule.setCustomerEmail(firstNonBlank(str(body.get("customer_email")), str(policy.get("customer_email")),
 				rule.getCustomerEmail()));
+		if (!str(body.get("telematics_device_id")).isBlank()) {
+			rule.setTelematicsDeviceId(str(body.get("telematics_device_id")).trim());
+		}
 		if (body.containsKey("active")) {
 			rule.setActive(Boolean.TRUE.equals(body.get("active")) || "true".equalsIgnoreCase(str(body.get("active"))));
 		}
@@ -205,6 +213,29 @@ public class ParametricTriggerService {
 		return claimProcessor.initiateAndProcess(body);
 	}
 
+	/** Admin simulation: telematics accident (IoT impact g-force) for motor policies. */
+	public Map<String, Object> simulateTelematicsAccident(Map<String, Object> body) {
+		String ruleId = str(body.get("rule_id"));
+		if (ruleId.isBlank()) {
+			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "rule_id is required");
+		}
+		ParametricRule rule = repo.findById(ruleId).orElseThrow(
+				() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Rule not found: " + ruleId));
+		if (body.containsKey("threshold") || body.containsKey("payout_amount")
+				|| body.containsKey("flight_number") || body.containsKey("travel_date")
+				|| body.containsKey("telematics_device_id")) {
+			updateRule(ruleId, body);
+		}
+		body.put("simulation", true);
+		body.put("trigger_source", "simulation");
+		if (body.get("impact_g_force") == null) {
+			body.put("impact_g_force", body.get("observed_value"));
+		}
+		body.putIfAbsent("flight_number", rule.getFlightNumber());
+		body.putIfAbsent("travel_date", rule.getTravelDate());
+		return claimProcessor.initiateAndProcess(body);
+	}
+
 	/** Admin simulation: trip cancellation payout for demos — uses the selected rule's flight/date. */
 	public Map<String, Object> simulateTripCancellation(Map<String, Object> body) {
 		String ruleId = str(body.get("rule_id"));
@@ -250,6 +281,7 @@ public class ParametricTriggerService {
 		map.put("travel_date", r.getTravelDate());
 		map.put("policy_expires_at", r.getPolicyExpiresAt());
 		map.put("customer_email", r.getCustomerEmail());
+		map.put("telematics_device_id", r.getTelematicsDeviceId());
 		map.put("active", r.isActive());
 		map.put("created_at", r.getCreatedAt().toString());
 		map.put("last_polled_at", r.getLastPolledAt() == null ? null : r.getLastPolledAt().toString());

@@ -480,7 +480,9 @@ function formatClaimStatus(status: string) {
 function formatParametricEventLabel(eventType?: string | null, description?: string) {
   if (eventType === "trip_cancellation") return "Trip cancellation";
   if (eventType === "flight_delay") return "Flight delay";
+  if (eventType === "telematics_accident") return "Telematics accident";
   if ((description ?? "").toLowerCase().includes("trip cancel")) return "Trip cancellation";
+  if ((description ?? "").toLowerCase().includes("telematics")) return "Telematics accident";
   if ((description ?? "").toLowerCase().includes("delayed")) return "Flight delay";
   return "Parametric auto-claim";
 }

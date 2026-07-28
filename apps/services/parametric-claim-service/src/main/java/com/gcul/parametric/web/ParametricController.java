@@ -61,6 +61,11 @@ public class ParametricController {
 		return parametric.simulateTripCancellation(body);
 	}
 
+	@PostMapping("/simulate/telematics-accident")
+	public Map<String, Object> simulateTelematicsAccident(@RequestBody Map<String, Object> body) {
+		return parametric.simulateTelematicsAccident(body);
+	}
+
 	@GetMapping("/oracle/status")
 	public Map<String, Object> oracleStatus() {
 		return parametric.oracleStatus();

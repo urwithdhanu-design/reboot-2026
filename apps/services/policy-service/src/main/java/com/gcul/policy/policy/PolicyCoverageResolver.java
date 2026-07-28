@@ -17,6 +17,7 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import com.gcul.policy.travel.TravelCoverageLimits;
+import com.gcul.policy.motor.MotorCoverageLimits;
 
 @Component
 public class PolicyCoverageResolver {
@@ -233,13 +234,28 @@ public class PolicyCoverageResolver {
 		};
 		String vehicle = str(answers.get("vehicle_type"));
 		String typeLabel = coverType.isBlank() ? "Comprehensive" : coverType;
+
+		List<Map<String, Object>> items = new ArrayList<>();
+		if (isYes(answers.get("coverage_accident_detection"))) {
+			items.add(Map.of("code", "telematics_accident", "label", "Telematics accident detection", "limit_gbp",
+					MotorCoverageLimits.ACCIDENT_ITEM_LIMIT_GBP));
+			limit = MotorCoverageLimits.POLICY_LIMIT_GBP;
+		}
+		else {
+			items.add(Map.of("code", "vehicle_damage", "label", typeLabel, "limit_gbp", limit));
+		}
+
+		String reg = str(answers.get("vehicle_reg"));
 		String summary = pending
-				? "Motor · " + (vehicle.isBlank() ? "vehicle" : vehicle) + " · " + typeLabel
+				? "Motor · " + (vehicle.isBlank() ? "vehicle" : vehicle)
+						+ (reg.isBlank() ? "" : " · " + reg)
+						+ " · " + typeLabel
 						+ String.format(Locale.ROOT, " · £%,.0f limit · activates when minted", limit)
-				: "Motor · " + (vehicle.isBlank() ? "vehicle" : vehicle) + " · " + typeLabel
+				: "Motor · " + (vehicle.isBlank() ? "vehicle" : vehicle)
+						+ (reg.isBlank() ? "" : " · " + reg)
+						+ " · " + typeLabel
 						+ String.format(Locale.ROOT, " · £%,.0f limit · from %s", limit, formatInstant(coverageStart));
-		return new PolicyCoverageSnapshot("Vehicle", coverageStart, expires, limit, summary,
-				List.of(Map.of("code", "vehicle_damage", "label", typeLabel, "limit_gbp", limit)));
+		return new PolicyCoverageSnapshot("Vehicle", coverageStart, expires, limit, summary, items);
 	}
 
 	private PolicyCoverageSnapshot resolvePet(Map<String, Object> answers, Instant coverageStart) {

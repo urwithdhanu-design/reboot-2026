@@ -125,9 +125,11 @@ public class ClaimWorkflowService {
 	@Transactional
 	public Map<String, Object> createParametricAutoSettle(Map<String, Object> body) {
 		body.put("source", "parametric");
-		String defaultCategory = "trip_cancellation".equalsIgnoreCase(str(body.get("parametric_event_type")))
-				? "Trip cancellation"
-				: "Flight delay";
+		String defaultCategory = switch (str(body.get("parametric_event_type")).toLowerCase(Locale.ROOT)) {
+			case "trip_cancellation" -> "Trip cancellation";
+			case "telematics_accident" -> "Telematics accident";
+			default -> "Flight delay";
+		};
 		body.put("category", firstNonBlank(str(body.get("category")), defaultCategory));
 
 		String policyRef = str(body.get("policy_ref"));

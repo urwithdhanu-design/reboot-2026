@@ -19,6 +19,7 @@ import { productIcon } from "../icons";
 import { useSession } from "../session";
 import { HOME_DEMO_ADDRESS, HomeQuoteWizard } from "./HomeQuoteWizard";
 import { TravelQuoteWizard } from "./TravelQuoteWizard";
+import { MotorQuoteWizard } from "./MotorQuoteWizard";
 
 export function QuoteBuilderPage() {
   const { productId = "" } = useParams();
@@ -44,13 +45,16 @@ export function QuoteBuilderPage() {
     api
       .getProduct(productId)
       .then(async (prod) => {
-        const quoteSchema = await api.getQuoteSchema(prod.category);
+        const quoteSchema = await api.getQuoteSchema(prod.category, prod.id);
         if (!alive) return;
         setProduct(prod);
         setSchema(quoteSchema);
         const defaults: Record<string, string> = {};
         const isHome =
           quoteSchema.flow === "wizard" && quoteSchema.category === "Property";
+        const isMotor =
+          prod.id === "motor-protect-plus" ||
+          (quoteSchema.flow === "wizard" && quoteSchema.category === "Vehicle" && prod.id === "motor-protect-plus");
         const isTravel =
           quoteSchema.flow === "wizard" && quoteSchema.category === "Travel";
 
@@ -59,6 +63,21 @@ export function QuoteBuilderPage() {
             const d = new Date();
             d.setDate(d.getDate() + 3);
             defaults[field.name] = d.toISOString().slice(0, 10);
+          } else if (isMotor && field.name === "cover_start_date") {
+            const d = new Date();
+            d.setDate(d.getDate() + 3);
+            defaults[field.name] = d.toISOString().slice(0, 10);
+          } else if (isMotor && field.name === "vehicle_reg") {
+            defaults[field.name] = "AB12 CDE";
+          } else if (isMotor && field.name === "telematics_device_id") {
+            defaults[field.name] = "IOT-MOTOR-001";
+          } else if (
+            isMotor &&
+            (field.name === "coverage_accident_detection")
+          ) {
+            defaults[field.name] = "Yes";
+          } else if (isMotor && field.name === "email" && user?.email) {
+            defaults[field.name] = user.email;
           } else if (isTravel && field.name === "departure_date") {
             const d = new Date();
             d.setDate(d.getDate() + 14);
@@ -126,13 +145,14 @@ export function QuoteBuilderPage() {
     return () => {
       alive = false;
     };
-  }, [productId]);
+  }, [productId, user?.email]);
 
   const currentStep = useMemo(
     () => schema?.steps.find((s) => s.step === wizardStep) ?? null,
     [schema, wizardStep],
   );
 
+  const isMotorWizard = productId === "motor-protect-plus";
   const isHealthWizard = schema?.flow === "wizard" && schema.category === "Health";
   const isHomeWizard = schema?.flow === "wizard" && schema.category === "Property";
   const isTravelWizard = schema?.flow === "wizard" && schema.category === "Travel";
@@ -210,7 +230,7 @@ export function QuoteBuilderPage() {
     setError(null);
     if (!schema) return;
 
-    if (!isHealthWizard && !isHomeWizard && !isTravelWizard) {
+    if (!isHealthWizard && !isHomeWizard && !isTravelWizard && !isMotorWizard) {
       void submitQuote();
       return;
     }
@@ -263,6 +283,17 @@ export function QuoteBuilderPage() {
           delete next.return_date;
           return next;
         });
+      }
+    }
+
+    if (isMotorWizard && wizardStep === 2) {
+      if (answers.coverage_accident_detection !== "Yes") {
+        setError("Motor Protect Plus requires IoT accident detection cover");
+        return;
+      }
+      if (!String(answers.telematics_device_id ?? "").trim()) {
+        setError("Enter your telematics device ID");
+        return;
       }
     }
 
@@ -330,6 +361,24 @@ export function QuoteBuilderPage() {
         </Link>
         <BottomNav active="home" />
       </div>
+    );
+  }
+
+  if (isMotorWizard) {
+    return (
+      <MotorQuoteWizard
+        product={product}
+        schema={schema}
+        answers={answers}
+        setAnswers={setAnswers}
+        wizardStep={wizardStep}
+        showQuote={showQuote}
+        quote={quote}
+        submitting={submitting}
+        error={error}
+        onBack={onBack}
+        onNext={onNextStep}
+      />
     );
   }
 

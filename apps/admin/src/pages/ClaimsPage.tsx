@@ -59,6 +59,7 @@ function isSettled(status: string) {
 function formatParametricEventLabel(eventType?: string | null) {
   if (eventType === 'trip_cancellation') return 'Trip cancellation';
   if (eventType === 'flight_delay') return 'Flight delay';
+  if (eventType === 'telematics_accident') return 'Telematics accident';
   return 'Parametric';
 }
 
@@ -78,6 +79,7 @@ function resolveParametricEventType(
   if (trigger?.rule_type) return trigger.rule_type;
   if (rule?.rule_type) return rule.rule_type;
   if ((claim.description ?? '').toLowerCase().includes('trip cancel')) return 'trip_cancellation';
+  if ((claim.description ?? '').toLowerCase().includes('telematics')) return 'telematics_accident';
   if ((claim.description ?? '').toLowerCase().includes('delayed')) return 'flight_delay';
   return null;
 }

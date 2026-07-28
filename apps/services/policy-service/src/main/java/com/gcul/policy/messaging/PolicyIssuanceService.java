@@ -23,6 +23,7 @@ import com.gcul.policy.policy.PolicyRecordService;
 import com.gcul.policy.policy.PolicyReferenceHasher;
 import com.gcul.policy.quote.QuoteService;
 import com.gcul.policy.travel.TravelParametricProvisioner;
+import com.gcul.policy.motor.MotorParametricProvisioner;
 
 @Service
 public class PolicyIssuanceService {
@@ -36,6 +37,7 @@ public class PolicyIssuanceService {
 	private final KycInternalClient kycInternalClient;
 	private final PolicyRecordService policyRecords;
 	private final TravelParametricProvisioner travelParametricProvisioner;
+	private final MotorParametricProvisioner motorParametricProvisioner;
 	private final PolicyCoverageResolver coverageResolver;
 
 	public PolicyIssuanceService(
@@ -46,6 +48,7 @@ public class PolicyIssuanceService {
 			KycInternalClient kycInternalClient,
 			PolicyRecordService policyRecords,
 			TravelParametricProvisioner travelParametricProvisioner,
+			MotorParametricProvisioner motorParametricProvisioner,
 			PolicyCoverageResolver coverageResolver) {
 		this.quotes = quotes;
 		this.publisher = publisher;
@@ -54,6 +57,7 @@ public class PolicyIssuanceService {
 		this.kycInternalClient = kycInternalClient;
 		this.policyRecords = policyRecords;
 		this.travelParametricProvisioner = travelParametricProvisioner;
+		this.motorParametricProvisioner = motorParametricProvisioner;
 		this.coverageResolver = coverageResolver;
 	}
 
@@ -150,6 +154,7 @@ public class PolicyIssuanceService {
 				policyRecords.applyMintResult(policyId, payload);
 			}
 			policyRecords.findByPolicyId(policyId).ifPresent(travelParametricProvisioner::provisionForMintedPolicy);
+			policyRecords.findByPolicyId(policyId).ifPresent(motorParametricProvisioner::provisionForMintedPolicy);
 			if (alreadyMinted) {
 				return;
 			}

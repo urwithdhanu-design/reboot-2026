@@ -230,6 +230,7 @@ export type ParametricRuleRow = {
   oracle_status?: string;
   oracle_provider?: string;
   oracle_message?: string;
+  telematics_device_id?: string;
 };
 
 export type ParametricTriggerRow = {
@@ -286,6 +287,7 @@ export type ParametricOraclePollResult = {
 
 export type ParametricSimulateResult = ParametricOraclePollResult & {
   threshold?: number;
+  observed_value?: number;
 };
 
 export type AdminClaimRow = {
@@ -744,6 +746,24 @@ export const adminApi = {
     adminRequest<ParametricSimulateResult>('/api/parametric/simulate/trip-cancellation', {
       method: 'POST',
       body: JSON.stringify(body),
+    }),
+
+  simulateTelematicsAccident: (body: {
+    rule_id: string;
+    vehicle_reg?: string;
+    incident_date?: string;
+    impact_g_force: number;
+    threshold?: number;
+    payout_amount?: number;
+    telematics_device_id?: string;
+  }) =>
+    adminRequest<ParametricSimulateResult>('/api/parametric/simulate/telematics-accident', {
+      method: 'POST',
+      body: JSON.stringify({
+        ...body,
+        flight_number: body.vehicle_reg,
+        travel_date: body.incident_date,
+      }),
     }),
 
   getParametricOracleStatus: () =>

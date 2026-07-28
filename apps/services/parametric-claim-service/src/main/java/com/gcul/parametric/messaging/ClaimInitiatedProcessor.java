@@ -118,9 +118,7 @@ public class ClaimInitiatedProcessor {
 
 		boolean matched = matches(rule, observed, effectiveThreshold);
 		if (!matched) {
-			String detail = "trip_cancellation".equalsIgnoreCase(rule.getRuleType())
-					? "Trip not marked cancelled for rule threshold"
-					: "Delay " + observed + " min below threshold " + effectiveThreshold;
+			String detail = thresholdDetail(rule, observed, effectiveThreshold);
 			return finishLog(rule, policyRef, effectiveFlight, effectiveTravelDate, observed, false, null,
 					"below_threshold", detail,
 					triggerSource, oracleProvider, flightStatus, effectiveThreshold);
@@ -138,6 +136,11 @@ public class ClaimInitiatedProcessor {
 			chainPayload.put("trip_cancelled", true);
 			chainPayload.put("claim_type", "trip_cancellation");
 		}
+		else if ("telematics_accident".equalsIgnoreCase(rule.getRuleType())) {
+			chainPayload.put("impact_g_force", observed);
+			chainPayload.put("claim_type", "telematics_accident");
+			chainPayload.put("vehicle_reg", effectiveFlight);
+		}
 		else {
 			chainPayload.put("flight_delay_minutes", observed);
 		}
@@ -146,16 +149,8 @@ public class ClaimInitiatedProcessor {
 		String customerEmail = knownIdentity(firstNonBlank(str(policy.get("customer_email")), rule.getCustomerEmail()));
 		String customerId = knownIdentity(str(policy.get("customer_id")));
 		String walletAddress = str(policy.get("wallet_address"));
-		String description = "trip_cancellation".equalsIgnoreCase(rule.getRuleType())
-				? "Parametric auto-claim: " + rule.getName()
-						+ " — trip cancelled for flight " + effectiveFlight
-						+ " on " + effectiveTravelDate
-				: "Parametric auto-claim: " + rule.getName()
-						+ " — flight " + effectiveFlight
-						+ " delayed " + observed + " min on " + effectiveTravelDate;
-		String claimCategory = "trip_cancellation".equalsIgnoreCase(rule.getRuleType())
-				? "Trip cancellation"
-				: "Flight delay";
+		String description = claimDescription(rule, effectiveFlight, effectiveTravelDate, observed);
+		String claimCategory = claimCategory(rule);
 
 		Map<String, Object> claimBody = claimsClient.buildClaimRequest(
 				policyRef,
@@ -171,6 +166,10 @@ public class ClaimInitiatedProcessor {
 		Map<String, Object> claim = claimsClient.createParametricAutoSettle(claimBody);
 		if ("trip_cancellation".equalsIgnoreCase(rule.getRuleType())) {
 			log.info("Parametric trip cancellation claim auto-settled {} for policy {}", claim.get("id"), policyRef);
+		}
+		else if ("telematics_accident".equalsIgnoreCase(rule.getRuleType())) {
+			log.info("Parametric telematics accident claim auto-settled {} for policy {} ({}g impact)", claim.get("id"),
+					policyRef, observed);
 		}
 		else {
 			log.info("Parametric flight delay claim auto-settled {} for policy {} ({} min)", claim.get("id"), policyRef, observed);
@@ -252,11 +251,7 @@ public class ClaimInitiatedProcessor {
 		event.put("threshold", effectiveThreshold);
 		event.put("flightNumber", firstNonBlank(str(body.get("flight_number")), rule.getFlightNumber()));
 		event.put("travelDate", firstNonBlank(str(body.get("travel_date")), rule.getTravelDate()));
-		double observed = "trip_cancellation".equalsIgnoreCase(rule.getRuleType())
-				|| Boolean.TRUE.equals(body.get("cancellation_confirmed"))
-				|| Boolean.TRUE.equals(body.get("trip_cancelled"))
-						? 1
-						: num(body.get("flight_delay_minutes"), num(body.get("observed_value"), 0));
+		double observed = observedValue(rule, body);
 		event.put("observedValue", observed);
 		event.put("flightDelayMinutes", observed);
 		event.put("payoutAmount", rule.getPayoutAmount());
@@ -266,6 +261,55 @@ public class ClaimInitiatedProcessor {
 		event.put("flight_status", str(body.get("flight_status")));
 		event.put("simulation", Boolean.TRUE.equals(body.get("simulation")) || body.get("simulation") == null);
 		return event;
+	}
+
+	private static double observedValue(ParametricRule rule, Map<String, Object> body) {
+		if ("trip_cancellation".equalsIgnoreCase(rule.getRuleType())
+				|| Boolean.TRUE.equals(body.get("cancellation_confirmed"))
+				|| Boolean.TRUE.equals(body.get("trip_cancelled"))) {
+			return 1;
+		}
+		if ("telematics_accident".equalsIgnoreCase(rule.getRuleType())) {
+			return num(body.get("impact_g_force"), num(body.get("observed_value"), 0));
+		}
+		return num(body.get("flight_delay_minutes"), num(body.get("observed_value"), 0));
+	}
+
+	private static String thresholdDetail(ParametricRule rule, double observed, double effectiveThreshold) {
+		if ("trip_cancellation".equalsIgnoreCase(rule.getRuleType())) {
+			return "Trip not marked cancelled for rule threshold";
+		}
+		if ("telematics_accident".equalsIgnoreCase(rule.getRuleType())) {
+			return "Impact " + observed + "g below threshold " + effectiveThreshold + "g";
+		}
+		return "Delay " + observed + " min below threshold " + effectiveThreshold;
+	}
+
+	private static String claimDescription(ParametricRule rule, String effectiveFlight, String effectiveTravelDate,
+			double observed) {
+		if ("trip_cancellation".equalsIgnoreCase(rule.getRuleType())) {
+			return "Parametric auto-claim: " + rule.getName()
+					+ " — trip cancelled for flight " + effectiveFlight
+					+ " on " + effectiveTravelDate;
+		}
+		if ("telematics_accident".equalsIgnoreCase(rule.getRuleType())) {
+			return "Parametric auto-claim: " + rule.getName()
+					+ " — telematics impact " + observed + "g detected for vehicle "
+					+ effectiveFlight + " on " + effectiveTravelDate;
+		}
+		return "Parametric auto-claim: " + rule.getName()
+				+ " — flight " + effectiveFlight
+				+ " delayed " + observed + " min on " + effectiveTravelDate;
+	}
+
+	private static String claimCategory(ParametricRule rule) {
+		if ("trip_cancellation".equalsIgnoreCase(rule.getRuleType())) {
+			return "Trip cancellation";
+		}
+		if ("telematics_accident".equalsIgnoreCase(rule.getRuleType())) {
+			return "Telematics accident";
+		}
+		return "Flight delay";
 	}
 
 	private static boolean matches(ParametricRule rule, double observed, double threshold) {

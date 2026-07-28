@@ -37,8 +37,10 @@ public class QuoteController {
 	}
 
 	@GetMapping("/quotes/schema")
-	public Map<String, Object> schema(@RequestParam String category) {
-		return quotes.schemaFor(category);
+	public Map<String, Object> schema(
+			@RequestParam String category,
+			@RequestParam(required = false) String product_id) {
+		return quotes.schemaForProduct(product_id, category);
 	}
 
 	@PostMapping("/quotes/estimate")

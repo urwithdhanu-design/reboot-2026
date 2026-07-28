@@ -19,6 +19,8 @@ import com.gcul.policy.mail.MailService;
 import com.gcul.policy.model.InsurancePlan;
 import com.gcul.policy.repository.InsurancePlanRepository;
 
+import com.gcul.policy.motor.MotorCoverageLimits;
+
 @Service
 public class QuoteService {
 
@@ -32,7 +34,14 @@ public class QuoteService {
 	}
 
 	public Map<String, Object> schemaFor(String category) {
+		return schemaForProduct(null, category);
+	}
+
+	public Map<String, Object> schemaForProduct(String productId, String category) {
 		String key = normalizeCategory(category);
+		if (MotorCoverageLimits.PRODUCT_ID.equalsIgnoreCase(str(productId))) {
+			return motorWizardSchema();
+		}
 		if ("Health".equals(key)) {
 			return healthWizardSchema();
 		}
@@ -127,6 +136,37 @@ public class QuoteService {
 				step(5, "Add your contact details",
 						"You'll receive a copy of your quote and more details on the plan you're interested in.",
 						step5)));
+		response.put("fields", flattenFields(response));
+		return response;
+	}
+
+	private Map<String, Object> motorWizardSchema() {
+		List<Map<String, Object>> step1 = List.of(
+				field("vehicle_reg", "Vehicle registration", "text", "e.g. AB12 CDE", true),
+				field("vehicle_type", "Vehicle type", "select", null, true,
+						List.of("Car", "Van", "Motorcycle")),
+				field("reg_year", "Registration year", "number", "2019", true),
+				field("mileage", "Annual mileage", "number", "8000", true),
+				field("driver_age", "Main driver age", "number", "35", true),
+				field("cover_type", "Cover type", "select", null, true,
+						List.of("Comprehensive", "Third party fire & theft", "Third party only")),
+				field("cover_start_date", "Cover start date", "date", null, true));
+
+		List<Map<String, Object>> step2 = List.of(
+				field("telematics_device_id", "Telematics device ID", "text", "e.g. IOT-MOTOR-001", true),
+				field("coverage_accident_detection", "IoT accident detection cover", "select", null, true,
+						List.of("Yes", "No")),
+				field("email", "Email for your quote", "email", null, true));
+
+		Map<String, Object> response = new LinkedHashMap<>();
+		response.put("category", "Vehicle");
+		response.put("flow", "wizard");
+		response.put("title", "Motor Protect Plus");
+		response.put("partner", "Reboot 2026");
+		response.put("total_steps", 2);
+		response.put("steps", List.of(
+				step(1, "Vehicle details", "Tell us about your vehicle and cover", step1),
+				step(2, "Telematics & contact", "Enable IoT accident detection for parametric payouts", step2)));
 		response.put("fields", flattenFields(response));
 		return response;
 	}
@@ -290,7 +330,7 @@ public class QuoteService {
 		InsurancePlan plan = plans.findById(productId)
 				.orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Product not found"));
 
-		Map<String, Object> schema = schemaFor(plan.getCategory());
+		Map<String, Object> schema = schemaForProduct(productId, plan.getCategory());
 		@SuppressWarnings("unchecked")
 		List<Map<String, Object>> fields = (List<Map<String, Object>>) schema.get("fields");
 		for (Map<String, Object> fieldDef : fields) {
@@ -311,6 +351,9 @@ public class QuoteService {
 		}
 		if ("Travel".equals(plan.getCategory())) {
 			validateTravelQuote(answers);
+		}
+		if (MotorCoverageLimits.PRODUCT_ID.equalsIgnoreCase(productId)) {
+			validateMotorQuote(answers);
 		}
 
 		double premium = calculatePremium(plan, answers);
@@ -415,6 +458,23 @@ public class QuoteService {
 		}
 	}
 
+	private void validateMotorQuote(Map<String, Object> answers) {
+		if ("yes".equalsIgnoreCase(str(answers.get("coverage_accident_detection")))) {
+			if (str(answers.get("telematics_device_id")).isBlank()) {
+				throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+						"Telematics device ID is required when accident detection cover is selected");
+			}
+			if (str(answers.get("vehicle_reg")).isBlank()) {
+				throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+						"Vehicle registration is required for telematics cover");
+			}
+		}
+		else {
+			throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+					"Motor Protect Plus requires IoT accident detection cover");
+		}
+	}
+
 	private void validateHealthAge(Map<String, Object> answers) {
 		int day = intVal(answers.get("dob_day"), 0);
 		int month = intVal(answers.get("dob_month"), 0);
@@ -475,7 +535,10 @@ public class QuoteService {
 				String cover = str(answers.get("cover_type")).toLowerCase(Locale.ROOT);
 				double coverFactor = cover.contains("comprehensive") ? 1.0
 						: cover.contains("fire") ? 0.75 : 0.55;
-				yield base * ageFactor * milesFactor * driverFactor * coverFactor;
+				double telematicsFactor = "yes".equalsIgnoreCase(str(answers.get("coverage_accident_detection")))
+						? 1.35
+						: 1.0;
+				yield base * ageFactor * milesFactor * driverFactor * coverFactor * telematicsFactor;
 			}
 			case "Pet" -> {
 				int petAge = intVal(answers.get("pet_age"), 3);

@@ -332,9 +332,11 @@ export const api = {
   getProduct: (productId: string) =>
     request<Product>(`/api/products/${encodeURIComponent(productId)}`),
 
-  getQuoteSchema: (category: string) =>
+  getQuoteSchema: (category: string, productId?: string) =>
     request<QuoteSchema>(
-      `/api/quotes/schema?category=${encodeURIComponent(category)}`,
+      `/api/quotes/schema?category=${encodeURIComponent(category)}${
+        productId ? `&product_id=${encodeURIComponent(productId)}` : ""
+      }`,
     ),
 
   estimateQuote: (body: {

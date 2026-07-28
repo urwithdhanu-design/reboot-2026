@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Plane, Plus, Radio, RefreshCw, Satellite, Zap, XCircle } from 'lucide-react';
+import { Car, Plane, Plus, Radio, RefreshCw, Satellite, Zap, XCircle } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { AdminLayout } from '../components/layout/AdminLayout';
 import {
@@ -50,6 +50,13 @@ export function ParametricPage() {
   const [cancellationPayout, setCancellationPayout] = useState('150');
   const [selectedRuleId, setSelectedRuleId] = useState('');
   const [selectedCancellationRuleId, setSelectedCancellationRuleId] = useState('');
+  const [selectedTelematicsRuleId, setSelectedTelematicsRuleId] = useState('');
+  const [vehicleReg, setVehicleReg] = useState('AB12 CDE');
+  const [incidentDate, setIncidentDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [impactGForce, setImpactGForce] = useState('4.2');
+  const [telematicsThreshold, setTelematicsThreshold] = useState('3.0');
+  const [telematicsPayout, setTelematicsPayout] = useState('500');
+  const [telematicsDeviceId, setTelematicsDeviceId] = useState('IOT-MOTOR-001');
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -72,6 +79,11 @@ export function ParametricPage() {
         (prev) =>
           prev ||
           (rulesRes.rules.find((r) => r.rule_type === 'trip_cancellation')?.id ?? ''),
+      );
+      setSelectedTelematicsRuleId(
+        (prev) =>
+          prev ||
+          (rulesRes.rules.find((r) => r.rule_type === 'telematics_accident')?.id ?? ''),
       );
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load parametric data');
@@ -274,9 +286,54 @@ export function ParametricPage() {
     }
   }
 
+  async function simulateTelematics(ruleIdOverride?: string) {
+    const ruleId = ruleIdOverride || selectedTelematicsRuleId || telematicsRules[0]?.id;
+    if (!ruleId) {
+      setError('Create or select a telematics accident rule first');
+      return;
+    }
+    const rule = rules.find((r) => r.id === ruleId);
+    setBusy(true);
+    setError(null);
+    setSuccess(null);
+    try {
+      const result = await adminApi.simulateTelematicsAccident({
+        rule_id: ruleId,
+        vehicle_reg: (rule?.flight_number || vehicleReg).trim(),
+        incident_date: rule?.travel_date || incidentDate,
+        impact_g_force: Number(impactGForce),
+        threshold: Number(rule?.threshold ?? telematicsThreshold),
+        payout_amount: Number(rule?.payout_amount ?? telematicsPayout),
+        telematics_device_id: rule?.telematics_device_id || telematicsDeviceId,
+      });
+      if (result.claim_created && result.claim_id) {
+        setSuccess(
+          `Telematics accident simulation on ${ruleId} — claim ${result.claim_id} auto-settled (${result.status}). Impact ${result.observed_value ?? impactGForce}g vs threshold ≥${result.threshold ?? telematicsThreshold}g.`,
+        );
+      } else if (result.status === 'already_settled') {
+        setSuccess(result.message ?? 'Telematics claim already settled for this rule and incident date');
+      } else if (result.matched) {
+        setSuccess(result.message ?? 'Impact threshold matched');
+      } else {
+        setError(
+          result.message
+            ?? `Threshold not met — observed ${result.observed_value ?? impactGForce}g below ≥${result.threshold ?? telematicsThreshold}g`,
+        );
+      }
+      await load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Telematics simulation failed');
+    } finally {
+      setBusy(false);
+    }
+  }
+
   const flightRules = rules.filter((r) => r.rule_type === 'flight_delay' || r.metric === 'flight_delay_minutes');
   const cancellationRules = rules.filter(
     (r) => r.rule_type === 'trip_cancellation' || r.metric === 'trip_cancelled',
+  );
+  const telematicsRules = rules.filter(
+    (r) => r.rule_type === 'telematics_accident' || r.metric === 'impact_g_force',
   );
   const autoSettled = triggers.filter((t) => t.claim_created).length;
   const oracleTriggered = triggers.filter((t) => t.trigger_source === 'oracle_poll' && t.claim_created).length;
@@ -286,7 +343,7 @@ export function ParametricPage() {
       <PageHeader
         icon={Radio}
         title="Parametric insurance"
-        subtitle="Flight delay oracle and trip cancellation simulation for Canton-minted travel policies"
+        subtitle="Flight delay oracle, trip cancellation, and motor telematics simulation for Canton-minted policies"
         metrics={[
           { label: 'Active rules', value: rules.filter((r) => r.active).length },
           { label: 'Oracle triggers', value: oracleTriggered, tone: 'success' },
@@ -334,9 +391,10 @@ export function ParametricPage() {
         </div>
       </Card>
 
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+      <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 mb-6">
         <StatCard label="Flight delay rules" value={String(flightRules.length)} change="Travel parametric" icon={Plane} trend="neutral" />
         <StatCard label="Cancellation rules" value={String(cancellationRules.length)} change="Trip cancellation" icon={XCircle} trend="neutral" />
+        <StatCard label="Telematics rules" value={String(telematicsRules.length)} change="Motor IoT" icon={Car} trend="neutral" />
         <StatCard label="Total auto payouts" value={String(autoSettled)} change="Settled on-chain + wallet" icon={Radio} trend="up" />
       </div>
 
@@ -529,6 +587,76 @@ export function ParametricPage() {
         </Card>
       </div>
 
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 mb-6">
+        <Card className="p-5 border-blue-200/60 bg-blue-50/20">
+          <h3 className="font-bold text-lbg-black mb-1 flex items-center gap-2">
+            <Car className="w-4 h-4 text-blue-600" /> Motor telematics accident
+          </h3>
+          <p className="text-xs text-lbg-gray-400 mb-4">
+            Simulate IoT impact events for Motor Protect Plus policies. Rules are provisioned automatically when
+            accident detection cover is selected at mint.
+          </p>
+          <div className="space-y-3">
+            <label className="block text-sm">
+              <span className="font-medium">Telematics rule</span>
+              <select
+                className="mt-1 w-full border border-lbg-gray-100 rounded-lg px-3 py-2 text-sm"
+                value={selectedTelematicsRuleId}
+                onChange={(e) => setSelectedTelematicsRuleId(e.target.value)}
+              >
+                <option value="">Select rule…</option>
+                {telematicsRules.map((r) => (
+                  <option key={r.id} value={r.id}>
+                    {r.name} · {r.policy_ref} → {formatGBP(r.payout_amount)}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <div className="grid grid-cols-2 gap-3">
+              <label className="block text-sm">
+                <span className="font-medium">Vehicle reg</span>
+                <input className="mt-1 w-full border rounded-lg px-3 py-2 text-sm" value={vehicleReg} onChange={(e) => setVehicleReg(e.target.value)} />
+              </label>
+              <label className="block text-sm">
+                <span className="font-medium">Incident date</span>
+                <input type="date" className="mt-1 w-full border rounded-lg px-3 py-2 text-sm" value={incidentDate} onChange={(e) => setIncidentDate(e.target.value)} />
+              </label>
+            </div>
+            <div className="grid grid-cols-3 gap-3">
+              <label className="block text-sm">
+                <span className="font-medium">Impact (g-force)</span>
+                <input className="mt-1 w-full border rounded-lg px-3 py-2 text-sm" value={impactGForce} onChange={(e) => setImpactGForce(e.target.value)} />
+              </label>
+              <label className="block text-sm">
+                <span className="font-medium">Threshold (g)</span>
+                <input className="mt-1 w-full border rounded-lg px-3 py-2 text-sm" value={telematicsThreshold} onChange={(e) => setTelematicsThreshold(e.target.value)} />
+              </label>
+              <label className="block text-sm">
+                <span className="font-medium">Payout (£)</span>
+                <input className="mt-1 w-full border rounded-lg px-3 py-2 text-sm" value={telematicsPayout} onChange={(e) => setTelematicsPayout(e.target.value)} />
+              </label>
+            </div>
+            <label className="block text-sm">
+              <span className="font-medium">Device ID</span>
+              <input className="mt-1 w-full border rounded-lg px-3 py-2 text-sm" value={telematicsDeviceId} onChange={(e) => setTelematicsDeviceId(e.target.value)} />
+            </label>
+            <Button
+              variant="hero"
+              onClick={() => void simulateTelematics()}
+              disabled={busy || !selectedTelematicsRuleId}
+            >
+              <Zap className="w-4 h-4" /> Simulate telematics accident
+            </Button>
+            {telematicsRules.length === 0 ? (
+              <p className="text-xs text-amber-700 bg-amber-100/60 rounded-lg p-3">
+                No telematics rules yet — complete a Motor Protect Plus quote with accident detection, pay, and mint on
+                Canton (rules are provisioned automatically).
+              </p>
+            ) : null}
+          </div>
+        </Card>
+      </div>
+
       <ContentPanel title="Parametric rules" description="Oracle monitoring status per Canton-minted policy">
         {loading ? (
           <p className="p-6 text-sm text-lbg-gray-500">Loading…</p>
@@ -540,7 +668,7 @@ export function ParametricPage() {
               <thead>
                 <tr className="text-left text-lbg-gray-400 border-b">
                   <th className="py-2 pr-4">Rule</th>
-                  <th className="py-2 pr-4">Flight</th>
+                  <th className="py-2 pr-4">Flight / Vehicle</th>
                   <th className="py-2 pr-4">Oracle status</th>
                   <th className="py-2 pr-4">Observed</th>
                   <th className="py-2 pr-4">Threshold</th>
@@ -572,14 +700,20 @@ export function ParametricPage() {
                     <td className="py-3 pr-4 font-bold">
                       {r.rule_type === 'trip_cancellation' || r.metric === 'trip_cancelled'
                         ? 'Cancellation'
-                        : r.last_observed_delay != null
-                          ? `${r.last_observed_delay} min`
-                          : '—'}
+                        : r.rule_type === 'telematics_accident' || r.metric === 'impact_g_force'
+                          ? r.last_observed_delay != null
+                            ? `${r.last_observed_delay}g`
+                            : '—'
+                          : r.last_observed_delay != null
+                            ? `${r.last_observed_delay} min`
+                            : '—'}
                     </td>
                     <td className="py-3 pr-4">
                       {r.rule_type === 'trip_cancellation' || r.metric === 'trip_cancelled'
                         ? `Cancelled → ${formatGBP(r.payout_amount)}`
-                        : `≥${r.threshold} min → ${formatGBP(r.payout_amount)}`}
+                        : r.rule_type === 'telematics_accident' || r.metric === 'impact_g_force'
+                          ? `≥${r.threshold}g → ${formatGBP(r.payout_amount)}`
+                          : `≥${r.threshold} min → ${formatGBP(r.payout_amount)}`}
                     </td>
                     <td className="py-3">
                       {r.rule_type === 'trip_cancellation' || r.metric === 'trip_cancelled' ? (
@@ -590,6 +724,18 @@ export function ParametricPage() {
                           onClick={() => {
                             setSelectedCancellationRuleId(r.id);
                             void simulateCancellation(r.id);
+                          }}
+                        >
+                          Simulate
+                        </Button>
+                      ) : r.rule_type === 'telematics_accident' || r.metric === 'impact_g_force' ? (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          disabled={busy}
+                          onClick={() => {
+                            setSelectedTelematicsRuleId(r.id);
+                            void simulateTelematics(r.id);
                           }}
                         >
                           Simulate
@@ -632,7 +778,7 @@ export function ParametricPage() {
                   <th className="py-2 pr-4">Time</th>
                   <th className="py-2 pr-4">Source</th>
                   <th className="py-2 pr-4">Policy</th>
-                  <th className="py-2 pr-4">Flight</th>
+                  <th className="py-2 pr-4">Flight / Vehicle</th>
                   <th className="py-2 pr-4">Observed</th>
                   <th className="py-2 pr-4">Result</th>
                   <th className="py-2">Claim</th>
@@ -644,6 +790,10 @@ export function ParametricPage() {
                     t.rule_type === 'trip_cancellation'
                     || rules.find((r) => r.id === t.rule_id)?.rule_type === 'trip_cancellation'
                     || rules.find((r) => r.id === t.rule_id)?.metric === 'trip_cancelled';
+                  const isTelematics =
+                    t.rule_type === 'telematics_accident'
+                    || rules.find((r) => r.id === t.rule_id)?.rule_type === 'telematics_accident'
+                    || rules.find((r) => r.id === t.rule_id)?.metric === 'impact_g_force';
                   return (
                   <tr key={t.id} className="border-b border-lbg-gray-50">
                     <td className="py-3 pr-4 whitespace-nowrap">{formatWhen(t.triggered_at)}</td>
@@ -662,7 +812,7 @@ export function ParametricPage() {
                         <p className="text-[10px] text-lbg-gray-400">{t.flight_status}</p>
                       ) : null}
                     </td>
-                    <td className="py-3 pr-4">{isCancellation ? 'Trip cancelled' : `${t.observed_value} min`}</td>
+                    <td className="py-3 pr-4">{isCancellation ? 'Trip cancelled' : isTelematics ? `${t.observed_value}g` : `${t.observed_value} min`}</td>
                     <td className="py-3 pr-4">
                       <Badge variant={t.claim_created ? 'success' : t.matched ? 'warning' : t.status === 'already_settled' ? 'info' : t.status === 'blocked' ? 'error' : 'neutral'}>
                         {t.status}
