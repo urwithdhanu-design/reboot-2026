@@ -42,7 +42,12 @@ public class PolicyNftMintService {
 	}
 
 	public Map<String, Object> status() {
-		return ledgerRegistry.allStatus();
+		LedgerAdapter activeAdapter = ledgerRegistry.resolveMintAdapter();
+		Map<String, Object> status = new java.util.LinkedHashMap<>(activeAdapter.status());
+		status.put("primaryLedger", ledgerRegistry.primaryLedgerId());
+		status.put("activeLedger", activeAdapter.ledgerId());
+		status.put("adapters", ledgerRegistry.allStatus().get("adapters"));
+		return status;
 	}
 
 	@Transactional
