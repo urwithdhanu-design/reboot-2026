@@ -10,6 +10,7 @@ import {
   kycStatusPillVariant,
   type KycStatus,
 } from "../kycStatus";
+import { runKycDemoFill } from "../kycDemoFill";
 import { useSession } from "../session";
 
 const STEPS = ["Identity", "Verify", "Liveness", "Complete"] as const;
@@ -120,6 +121,7 @@ export function KycPage() {
   const [selfie, setSelfie] = useState(false);
   const [loading, setLoading] = useState(false);
   const [docUploading, setDocUploading] = useState(false);
+  const [demoFilling, setDemoFilling] = useState(false);
   const [refreshing, setRefreshing] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const docInputRef = useRef<HTMLInputElement>(null);
@@ -162,6 +164,24 @@ export function KycPage() {
       setError(err instanceof Error ? err.message : "Document upload failed");
     } finally {
       setDocUploading(false);
+    }
+  }
+
+  async function runDemoFill() {
+    if (!token) {
+      navigate("/login");
+      return;
+    }
+    setDemoFilling(true);
+    setError(null);
+    try {
+      await runKycDemoFill(token, documentType);
+      setUploaded(true);
+      setSelfie(true);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Demo fill failed");
+    } finally {
+      setDemoFilling(false);
     }
   }
 
@@ -242,6 +262,23 @@ export function KycPage() {
       ) : null}
 
       <KycProgressCard status={kycStatus} stepStates={stepStates} />
+
+      <div className="kyc-page-demo-actions">
+        <button
+          type="button"
+          className="demo-fill-btn"
+          disabled={demoFilling || loading || docUploading}
+          onClick={() => void runDemoFill()}
+        >
+          {demoFilling ? "Filling…" : "Demo fill (doc + selfie)"}
+        </button>
+      </div>
+
+      {demoFilling ? (
+        <p className="demo-fill-banner" role="status">
+          Uploading demo passport and selfie for <strong>{user?.full_name ?? "your account"}</strong>…
+        </p>
+      ) : null}
 
       <form className="kyc-page-form" onSubmit={onSubmit}>
         <section className="kyc-page-card" aria-labelledby="kyc-doc-title">
@@ -334,3 +371,4 @@ export function KycPage() {
     </CustomerAppShell>
   );
 }
+

@@ -4599,6 +4599,12 @@ a.link-quiet:hover {
   gap: 14px;
 }
 
+.kyc-page-demo-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin: 4px 0 2px;
+}
+
 .kyc-page-card {
   border-radius: var(--radius);
   border: 1px solid rgba(0, 106, 77, 0.1);

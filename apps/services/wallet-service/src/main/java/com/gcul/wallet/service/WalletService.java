@@ -87,9 +87,14 @@ public class WalletService {
 					"Complete KYC verification before linking a wallet");
 		}
 
-		CustomerWallet wallet = repository.findByUserId(userId).orElseGet(CustomerWallet::new);
+		var existing = repository.findByUserId(userId);
+		Map<String, String> profile = kycStatusClient.fetchAccountProfile(bearerToken);
+		String accountEmail = resolveAccountEmail(email, profile, existing.orElse(null));
+		String recipientName = resolveRecipientName(profile, accountEmail);
+
+		CustomerWallet wallet = existing.orElseGet(CustomerWallet::new);
 		wallet.setUserId(userId);
-		wallet.setUserEmail(email);
+		wallet.setUserEmail(accountEmail);
 		wallet.setAddress(address.trim().toLowerCase());
 		wallet.setStatus(WalletConsentService.STATUS_PENDING);
 		wallet.setProvider("ethereum");
@@ -103,7 +108,7 @@ public class WalletService {
 		wallet = repository.saveAndFlush(wallet);
 
 		Map<String, Object> response = toResponse(wallet);
-		response.putAll(consentService.issueConsentEmail(wallet, email));
+		response.putAll(consentService.issueConsentEmail(wallet, accountEmail, recipientName));
 		response.put("linked", false);
 		return response;
 	}
@@ -117,6 +122,10 @@ public class WalletService {
 	@Transactional
 	public Map<String, Object> createWallet(String userId, String email, String bearerToken) {
 		var existing = repository.findByUserId(userId);
+		Map<String, String> profile = kycStatusClient.fetchAccountProfile(bearerToken);
+		String accountEmail = resolveAccountEmail(email, profile, existing.orElse(null));
+		String recipientName = resolveRecipientName(profile, accountEmail);
+
 		if (existing.isPresent() && existing.get().isConnected()) {
 			Map<String, Object> map = toResponse(existing.get());
 			map.put("reused", true);
@@ -124,11 +133,11 @@ public class WalletService {
 		}
 		if (existing.isPresent() && existing.get().isPendingConsent()) {
 			CustomerWallet pending = existing.get();
-			pending.setUserEmail(email);
+			pending.setUserEmail(accountEmail);
 			pending.setUpdatedAt(Instant.now());
 			pending = repository.saveAndFlush(pending);
 			Map<String, Object> map = toResponse(pending);
-			map.putAll(consentService.issueConsentEmail(pending, email));
+			map.putAll(consentService.issueConsentEmail(pending, accountEmail, recipientName));
 			map.put("reused", true);
 			return map;
 		}
@@ -140,8 +149,8 @@ public class WalletService {
 
 		CustomerWallet wallet = existing.orElseGet(CustomerWallet::new);
 		wallet.setUserId(userId);
-		wallet.setUserEmail(email);
-		wallet.setAddress(generateAddress(userId, email));
+		wallet.setUserEmail(accountEmail);
+		wallet.setAddress(generateAddress(userId, accountEmail));
 		wallet.setStatus(WalletConsentService.STATUS_PENDING);
 		wallet.setProvider("secure_wallet");
 		wallet.setMode("demo");
@@ -160,8 +169,8 @@ public class WalletService {
 					.orElseThrow(() -> new ResponseStatusException(HttpStatus.CONFLICT,
 							"Wallet already exists for this account"));
 			if (!wallet.isConnected()) {
-				wallet.setUserEmail(email);
-				wallet.setAddress(generateAddress(userId, email));
+				wallet.setUserEmail(accountEmail);
+				wallet.setAddress(generateAddress(userId, accountEmail));
 				wallet.setStatus(WalletConsentService.STATUS_PENDING);
 				wallet.setProvider("secure_wallet");
 				wallet.setMode("demo");
@@ -173,7 +182,7 @@ public class WalletService {
 		}
 
 		Map<String, Object> response = toResponse(wallet);
-		response.putAll(consentService.issueConsentEmail(wallet, email));
+		response.putAll(consentService.issueConsentEmail(wallet, accountEmail, recipientName));
 		response.put("ledger", "gcul");
 		response.put("reused", existing.isPresent());
 		return response;
@@ -343,6 +352,32 @@ public class WalletService {
 		}
 		String normalized = value.trim().toLowerCase(Locale.ROOT);
 		return !normalized.equals("unknown") && !normalized.equals("n/a") && !normalized.equals("-");
+	}
+
+	private String resolveAccountEmail(
+			String jwtEmail,
+			Map<String, String> profile,
+			CustomerWallet existingWallet) {
+		String fromAccount = profile.get("email");
+		if (isKnown(fromAccount)) {
+			return fromAccount.trim().toLowerCase(Locale.ROOT);
+		}
+		if (isKnown(jwtEmail)) {
+			return jwtEmail.trim().toLowerCase(Locale.ROOT);
+		}
+		if (existingWallet != null && isKnown(existingWallet.getUserEmail())) {
+			return existingWallet.getUserEmail().trim().toLowerCase(Locale.ROOT);
+		}
+		throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+				"Account email not found — sign in again and retry");
+	}
+
+	private static String resolveRecipientName(Map<String, String> profile, String accountEmail) {
+		String fullName = profile.get("full_name");
+		if (fullName != null && !fullName.isBlank()) {
+			return fullName.trim();
+		}
+		return accountEmail;
 	}
 
 	private static String normalizeAddress(String address) {

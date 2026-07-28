@@ -59,11 +59,12 @@ function Ensure-EmailEnvFiles {
     "EMAIL_USER=$($source.map['EMAIL_USER'])"
     "EMAIL_PASS=$($source.map['EMAIL_PASS'])"
     "EMAIL_FROM_NAME=$fromName"
-    "EMAIL_ENABLED=true"
+    "EMAIL_ENABLED=true",
+    "WEB_BASE_URL=http://localhost:5174"
   )
   $lines | Set-Content -Path $kycEnv -Encoding utf8
 
-  foreach ($service in @("policy-service", "notification-service")) {
+  foreach ($service in @("policy-service", "notification-service", "wallet-service")) {
     $target = Join-Path $RepoRoot "apps\services\$service\.env"
     if (-not (Test-Path $target)) {
       $lines | Set-Content -Path $target -Encoding utf8

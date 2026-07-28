@@ -130,6 +130,7 @@ export type WalletInfo = {
   note?: string;
   provider?: string;
   consent_email_sent?: boolean;
+  consent_email_to?: string;
   pending_approval?: boolean;
   dev_approve_url?: string;
 };

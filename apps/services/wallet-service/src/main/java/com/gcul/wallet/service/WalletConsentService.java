@@ -7,6 +7,7 @@ import java.time.Instant;
 import java.util.HexFormat;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 
 import org.springframework.beans.factory.annotation.Value;
@@ -52,8 +53,19 @@ public class WalletConsentService {
 				: webBaseUrl;
 	}
 
-	public Map<String, Object> issueConsentEmail(CustomerWallet wallet, String recipientEmail) {
+	public Map<String, Object> issueConsentEmail(
+			CustomerWallet wallet,
+			String recipientEmail,
+			String recipientName) {
 		invalidatePendingTokens(wallet.getUserId());
+
+		if (recipientEmail == null || recipientEmail.isBlank()) {
+			throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+					"Account email is required to send wallet approval");
+		}
+
+		String to = recipientEmail.trim().toLowerCase(Locale.ROOT);
+		String name = recipientName == null || recipientName.isBlank() ? to : recipientName.trim();
 
 		String rawToken = generateToken();
 		WalletConsentToken row = new WalletConsentToken();
@@ -64,10 +76,11 @@ public class WalletConsentService {
 		tokens.save(row);
 
 		String approveUrl = webBaseUrl + "/wallet/approve?token=" + rawToken;
-		boolean emailed = mail.sendWalletConsent(recipientEmail, recipientEmail, approveUrl, expiryHours);
+		boolean emailed = mail.sendWalletConsent(to, name, approveUrl, expiryHours);
 
 		Map<String, Object> result = new LinkedHashMap<>();
 		result.put("consent_email_sent", emailed);
+		result.put("consent_email_to", to);
 		result.put("pending_approval", true);
 		if (!emailed) {
 			result.put("dev_approve_url", approveUrl);

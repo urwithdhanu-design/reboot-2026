@@ -124,6 +124,8 @@ export function WalletPage() {
   const [transactions, setTransactions] = useState<WalletTransaction[]>([]);
   const [linkAddress, setLinkAddress] = useState("");
   const [devApproveUrl, setDevApproveUrl] = useState<string | null>(null);
+  const [consentEmailSent, setConsentEmailSent] = useState<boolean | null>(null);
+  const [consentEmailTo, setConsentEmailTo] = useState<string | null>(null);
 
   const kycStatus = user?.kyc_status;
   const kycVerified = isKycVerified(kycStatus);
@@ -150,6 +152,24 @@ export function WalletPage() {
     });
   }
 
+  function applyConsentMeta(res: {
+    dev_approve_url?: string;
+    consent_email_sent?: boolean;
+    consent_email_to?: string;
+  }) {
+    if (res.consent_email_sent != null) {
+      setConsentEmailSent(res.consent_email_sent);
+    }
+    if (res.consent_email_to) {
+      setConsentEmailTo(res.consent_email_to);
+    }
+    if (res.dev_approve_url) {
+      setDevApproveUrl(res.dev_approve_url);
+    } else if (res.consent_email_sent) {
+      setDevApproveUrl(null);
+    }
+  }
+
   async function loadWallet() {
     if (!token) return;
     const res = await api.getWallet(token);
@@ -157,6 +177,7 @@ export function WalletPage() {
     setStatus(res.status);
     setBalance(res.balance_gbp ?? 0);
     setCurrency(res.currency ?? "GBP");
+    applyConsentMeta(res);
     syncSessionWallet({
       address: res.address,
       status: res.status,
@@ -207,7 +228,7 @@ export function WalletPage() {
       setBalance(res.balance_gbp ?? 0);
       setCurrency(res.currency ?? "GBP");
       setNote(res.note ?? null);
-      setDevApproveUrl(res.dev_approve_url ?? null);
+      applyConsentMeta(res);
       setView("overview");
       syncSessionWallet({
         address: res.address,
@@ -236,7 +257,7 @@ export function WalletPage() {
       setBalance(res.balance_gbp ?? 0);
       setCurrency(res.currency ?? "GBP");
       setNote(res.note ?? null);
-      setDevApproveUrl(res.dev_approve_url ?? null);
+      applyConsentMeta(res);
       setView("overview");
       syncSessionWallet({
         address: res.address,
@@ -246,6 +267,55 @@ export function WalletPage() {
       });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Wallet creation failed");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  function extractApprovalToken(url: string): string | null {
+    const match = url.match(/[?&]token=([^&]+)/);
+    return match ? decodeURIComponent(match[1]) : null;
+  }
+
+  async function approveWalletNow() {
+    if (!token) {
+      navigate("/login");
+      return;
+    }
+    setLoading(true);
+    setError(null);
+    try {
+      let approveUrl = devApproveUrl;
+      if (!approveUrl) {
+        const res = await api.createWallet(token);
+        setAddress(res.address);
+        setStatus(res.status);
+        setNote(res.note ?? null);
+        applyConsentMeta(res);
+        approveUrl = res.dev_approve_url ?? null;
+      }
+      const approvalToken = approveUrl ? extractApprovalToken(approveUrl) : null;
+      if (approvalToken) {
+        const res = await api.approveWalletConsent(approvalToken);
+        setStatus(res.status);
+        setNote(res.message);
+        setDevApproveUrl(null);
+        syncSessionWallet({
+          address: res.address,
+          status: res.status,
+          balance_gbp: balance,
+          currency,
+        });
+        await loadWallet();
+        return;
+      }
+      if (approveUrl) {
+        navigate(approveUrl.startsWith("/") ? approveUrl : approveUrl);
+        return;
+      }
+      setError("Approval link unavailable. Try resend approval email, or check your inbox.");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Wallet approval failed");
     } finally {
       setLoading(false);
     }
@@ -289,6 +359,8 @@ export function WalletPage() {
     }
     void rechargeWallet(amount);
   }
+
+  const accountEmail = consentEmailTo ?? user?.email ?? null;
 
   const headerMetrics = walletConnected
     ? [
@@ -418,9 +490,45 @@ export function WalletPage() {
           description="We sent you a consent link — your wallet activates after you approve"
         >
           <p className="manage-notice" role="status">
-            Open the email we sent to <strong>{user?.email ?? "your inbox"}</strong> and click
-            <strong> Approve wallet</strong> to enable payouts and premium payments.
+            {consentEmailSent === false ? (
+              <>
+                Email could not be sent. Click <strong>Approve wallet now</strong> below to enable
+                payouts and premium payments
+                {accountEmail ? (
+                  <>
+                    {" "}
+                    for <strong>{accountEmail}</strong>
+                  </>
+                ) : null}
+                .
+              </>
+            ) : (
+              <>
+                Open the email we sent to <strong>{accountEmail ?? "your inbox"}</strong> and click
+                <strong> Approve wallet</strong> to enable payouts and premium payments.
+              </>
+            )}
           </p>
+          <div className="wallet-actions">
+            {consentEmailSent === false ? (
+              <button
+                className="btn-primary"
+                type="button"
+                disabled={loading}
+                onClick={() => void approveWalletNow()}
+              >
+                {loading ? "Approving…" : "Approve wallet now"}
+              </button>
+            ) : null}
+            <button
+              className={consentEmailSent === false ? "btn-secondary" : "btn-primary"}
+              type="button"
+              disabled={loading}
+              onClick={() => void createWallet()}
+            >
+              Resend approval email
+            </button>
+          </div>
           {address ? (
             <div className="wallet-status">
               <div className="meta">
@@ -433,16 +541,6 @@ export function WalletPage() {
             </div>
           ) : null}
           {note ? <p className="muted wallet-note">{note}</p> : null}
-          <div className="wallet-actions">
-            <button
-              className="btn-secondary"
-              type="button"
-              disabled={loading}
-              onClick={() => void createWallet()}
-            >
-              Resend approval email
-            </button>
-          </div>
           {devApproveUrl ? (
             <p className="muted" style={{ fontSize: "0.85rem", marginTop: 12 }}>
               Dev:{" "}
