@@ -18,6 +18,7 @@ import { BlockchainLedgerPage } from './pages/BlockchainLedgerPage';
 import { SmartContractsPage } from './pages/SmartContractsPage';
 import { SettingsPage } from './pages/SettingsPage';
 import { VendorsPage } from './pages/VendorsPage';
+import { CompliancePage } from './pages/CompliancePage';
 import { VendorLoginPage, VendorPortalPage } from './pages/VendorPortalPages';
 import type { ReactNode } from 'react';
 
@@ -53,6 +54,7 @@ export default function App() {
           <Route path="/observability" element={<ProtectedRoute><ChainObservabilityPage /></ProtectedRoute>} />
           <Route path="/blockchain" element={<ProtectedRoute><BlockchainLedgerPage /></ProtectedRoute>} />
           <Route path="/contracts" element={<ProtectedRoute><SmartContractsPage /></ProtectedRoute>} />
+          <Route path="/compliance" element={<ProtectedRoute><CompliancePage /></ProtectedRoute>} />
           <Route path="/wallet" element={<ProtectedRoute><WalletOpsPage /></ProtectedRoute>} />
           <Route path="/vendors" element={<ProtectedRoute><VendorsPage /></ProtectedRoute>} />
           <Route path="/products" element={<ProtectedRoute><ProductsPage /></ProtectedRoute>} />

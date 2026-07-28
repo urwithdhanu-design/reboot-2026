@@ -149,7 +149,7 @@ export type CustomerPolicyRecord = {
   contract_address?: string | null;
   block_number?: number | null;
   blockchain_network?: string | null;
-  ledger_type?: "canton" | "ethereum" | "simulated" | string;
+  ledger_type?: "canton" | "simulated" | string;
   mint_status?: string;
   payment_status?: string;
   issued_at?: string;

@@ -7,7 +7,6 @@ End-to-end reference for how policies are minted on Canton, how premium money fl
 | Topic | Document |
 |-------|----------|
 | Canton sandbox & Daml templates | [`canton/README.md`](../canton/README.md) |
-| Ethereum / insurer mint (optional) | [`docs/BLOCKCHAIN-INSURER-MINT.md`](BLOCKCHAIN-INSURER-MINT.md) |
 | Insurance chain (PoA blocks) | [`docs/GCUL-INSURANCE-CHAIN.md`](GCUL-INSURANCE-CHAIN.md) |
 | Domain events (Pub/Sub) | [`docs/EVENT-CATALOG.md`](EVENT-CATALOG.md) |
 | Local dev ports & commands | [`apps/services/LOCAL-DEV.md`](../apps/services/LOCAL-DEV.md) |
@@ -93,8 +92,7 @@ Configured in `blockchain-orchestrator-service` via `gcul.ledger.backend` (defau
 | Backend | Policy mint | Claim settlement |
 |---------|-------------|------------------|
 | **Canton** | Daml `Gcul.InsurancePolicy:InsurancePolicy` via JSON API `/v1/create` | GCUL sidecar transfer (`claim_settlement`) |
-| **Ethereum** | ERC-721 `mintPolicy` on Sepolia (when enabled) | Same sidecar path |
-| **Simulated** | `SIM-{policyId}` token IDs when Canton/Ethereum unavailable | Sidecar fallback → `local_only` ledger row |
+| **Simulated** | `SIM-{policyId}` token IDs when Canton is unavailable | Sidecar fallback → `local_only` ledger row |
 
 ---
 
@@ -523,7 +521,7 @@ Also recorded on the insurance chain as workflow/claims ledger entries. See [`do
 | Mint audit | `policy_nft_records` (orchestrator H2) |
 | Insurance chain | `chain_transactions` — `POLICY_ISSUED`, `WORKFLOW_STEP`, claim events |
 | Claim settlement | GCUL sidecar GBP transfer (`gcul.sidecar.url`, port 8091) |
-| Backend selection | `GCUL_LEDGER_BACKEND` — `canton` (default), `ethereum`, or simulated fallback |
+| Backend selection | `GCUL_LEDGER_BACKEND` — `canton` (default) with simulated fallback |
 
 Start Canton locally: `local-dev.cmd canton` (see [`canton/README.md`](../canton/README.md)).
 
@@ -555,7 +553,6 @@ Orchestrator config: `apps/services/blockchain-orchestrator-service/src/main/res
 | `GCUL_CANTON_JSON_API_URL` | `http://127.0.0.1:7575` | Canton JSON API |
 | `GCUL_CANTON_INSURER_PARTY` | `GCUL_Insurer` | Insurer party |
 | `GCUL_CANTON_PACKAGE_ID` | (daml hash) | Template package |
-| `GCUL_ETHEREUM_ENABLED` | `false` | Sepolia fallback |
 | `GCUL_SIDECAR_URL` | `http://127.0.0.1:8091` | Claim settlement transfers |
 
 ### Parametric oracle

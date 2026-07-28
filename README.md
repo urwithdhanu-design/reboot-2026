@@ -14,7 +14,7 @@ Insurance platform (`apps/`) plus the reusable Universal Ledger Python SDK (`pac
 | `apps/services/blockchain-orchestrator-service` | Ledger orchestration API (calls sidecar) |
 | `apps/api` | Legacy FastAPI API (optional; install SDK from `packages/gcul-sdk`) |
 
-**Blockchain / insurer mint (Ethereum Alchemy, MetaMask, GCUL):** [`docs/BLOCKCHAIN-INSURER-MINT.md`](docs/BLOCKCHAIN-INSURER-MINT.md)
+**Canton policy minting:** [`docs/MINT-DEPOSITS-CLAIMS.md`](docs/MINT-DEPOSITS-CLAIMS.md)
 
 **Minting, deposits & claim processing:** [`docs/MINT-DEPOSITS-CLAIMS.md`](docs/MINT-DEPOSITS-CLAIMS.md)
 

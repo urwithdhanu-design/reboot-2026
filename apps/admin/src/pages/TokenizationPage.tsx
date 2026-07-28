@@ -81,10 +81,10 @@ export function TokenizationPage() {
   });
 
   const isCanton = blockchain?.ledger_type === 'canton' || (blockchain?.mode?.includes('canton') ?? false);
-  const networkLabel = blockchain?.network_name ?? (isCanton ? 'Canton Local Sandbox' : 'Ethereum Sepolia');
+  const networkLabel = blockchain?.network_name ?? (isCanton ? 'Canton Local Sandbox' : 'Local simulation');
   const modeLabel = isCanton
     ? (blockchain?.live ? 'Live Canton minting' : 'Canton offline (simulated fallback)')
-    : (blockchain?.mode === 'ethereum' ? 'Live Sepolia minting' : 'Simulated minting');
+    : 'Simulated minting';
 
   const handleApproveMint = async (policyId: string) => {
     setActionPolicyId(policyId);
@@ -127,7 +127,7 @@ export function TokenizationPage() {
         metrics={[
           { label: 'Policy NFTs', value: formatNumber(stats?.policy_nfts ?? 0) },
           { label: 'Pending mints', value: String(stats?.pending_mints ?? 0), tone: 'warning' },
-          { label: 'Network', value: isCanton ? (blockchain?.live ? 'Canton live' : 'Canton') : (blockchain?.live ? 'Sepolia live' : 'Simulated'), tone: blockchain?.live ? 'success' : 'default' },
+          { label: 'Network', value: isCanton ? (blockchain?.live ? 'Canton live' : 'Canton') : 'Simulated', tone: blockchain?.live ? 'success' : 'default' },
         ]}
         actions={
           <>
@@ -171,7 +171,7 @@ export function TokenizationPage() {
       </Card>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-6">
-        <StatCard label="Minted policy certificates" value={formatNumber(stats?.policy_nfts ?? 0)} change={isCanton ? 'Daml on Canton' : 'ERC-721 on Sepolia'} icon={Coins} trend="up" />
+        <StatCard label="Minted policy certificates" value={formatNumber(stats?.policy_nfts ?? 0)} change={isCanton ? 'Daml on Canton' : 'Local simulation'} icon={Coins} trend="up" />
         <StatCard label="Issued policies" value={formatNumber(stats?.total_issued ?? 0)} change="All issuance records" icon={Coins} trend="neutral" />
         <StatCard label="Mint queue" value={String(stats?.pending_mints ?? 0)} change="Pending insurer mint" icon={Coins} trend="neutral" />
         <StatCard label="Failed mints" value={String(stats?.failed_mints ?? 0)} change="Needs investigation" icon={Coins} trend={stats?.failed_mints ? 'down' : 'neutral'} />

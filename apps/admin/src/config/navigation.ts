@@ -16,6 +16,7 @@ import {
   Building2,
   Server,
   Zap,
+  ClipboardCheck,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -37,6 +38,7 @@ export const navItems: NavItem[] = [
   { to: '/workflows', label: 'Workflows', icon: GitBranch, section: 'Operations' },
   { to: '/services', label: 'Platform Services', icon: Server, section: 'Operations' },
   { to: '/tokenization', label: 'Tokenization', icon: Coins, section: 'Blockchain' },
+  { to: '/compliance', label: 'Compliance Controls', icon: ClipboardCheck, section: 'Blockchain' },
   { to: '/observability', label: 'Chain Monitor', icon: Radio, section: 'Blockchain' },
   { to: '/blockchain', label: 'Blockchain Ledger', icon: Link2, section: 'Blockchain' },
   { to: '/contracts', label: 'Smart Contracts', icon: FileCode2, section: 'Blockchain' },

@@ -108,7 +108,7 @@ Type-specific fields are documented below. Samples: [`deploy/events/samples/`](.
   "timestamp": "2026-07-18T12:00:00Z",
   "customerId": "C10001",
   "walletAddress": "0xABCD12345",
-  "network": "Ethereum Sepolia",
+  "network": "Canton Local Sandbox",
   "status": "SUCCESS"
 }
 ```
@@ -142,7 +142,7 @@ Type-specific fields are documented below. Samples: [`deploy/events/samples/`](.
 ### 5. PolicyCreated
 
 **Topic:** `policy-events`  
-After policy creation, downstream mint is triggered (insurer-only — see [`BLOCKCHAIN-INSURER-MINT.md`](BLOCKCHAIN-INSURER-MINT.md)).
+After policy creation, downstream Canton minting is triggered by the insurer workflow.
 
 ```json
 {

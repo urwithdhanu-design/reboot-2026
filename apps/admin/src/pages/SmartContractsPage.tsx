@@ -215,7 +215,7 @@ export function SmartContractsPage() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 mb-6">
         <StatCard
-          label={isCanton ? 'Canton ledger' : 'Ethereum network'}
+          label={isCanton ? 'Canton ledger' : 'Simulated ledger'}
           value={networkLabel}
           change={isCanton ? (cantonStatus?.live ? 'Live minting' : 'Offline / simulated') : blockchain?.mode ?? '—'}
           icon={Layers}

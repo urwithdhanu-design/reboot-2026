@@ -236,7 +236,7 @@ export function WalletOpsPage() {
       {tab === 'wallets' && (
         <ContentPanel
           title="Customer wallets"
-          description="Connected demo and linked Ethereum wallets with live balances"
+          description="Connected demo and Canton-linked wallets with live balances"
           className="mt-4"
         >
           <PaginatedTable

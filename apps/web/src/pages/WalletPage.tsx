@@ -197,7 +197,7 @@ export function WalletPage() {
       return;
     }
     if (!/^0x[0-9a-fA-F]{40}$/.test(linkAddress.trim())) {
-      setError("Enter a valid Ethereum address (0x + 40 hex characters)");
+      setError("Enter a valid wallet address (0x + 40 hex characters)");
       return;
     }
     setLoading(true);
@@ -365,7 +365,7 @@ export function WalletPage() {
       {!kycBlocksWallet && !walletConnected && !walletPendingConsent ? (
         <CustomerPanel
           title="Step 2 · Connect your wallet"
-          description="Create a secure wallet or link an existing Ethereum address"
+          description="Create a secure wallet or link an existing wallet address"
         >
           <button
             className="customer-wallet-3d"
@@ -391,7 +391,7 @@ export function WalletPage() {
           </button>
 
           <div className="wallet-link-section">
-            <p className="options-label">Or link an existing Ethereum wallet</p>
+            <p className="options-label">Or link an existing wallet</p>
             <div className="stack" style={{ gap: 8 }}>
               <input
                 className="input"

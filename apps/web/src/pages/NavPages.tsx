@@ -211,7 +211,7 @@ function PolicyCard({ policy }: { policy: CustomerPolicyRecord }) {
               ) : null}
               {policy.explorer_url ? (
                 <a className="btn-link" href={policy.explorer_url} target="_blank" rel="noreferrer">
-                  View on Sepolia explorer
+                  View transaction record
                 </a>
               ) : null}
             </div>

@@ -41,7 +41,7 @@ const sections = [
     title: 'Integrations',
     icon: Globe,
     items: [
-      { label: 'Blockchain Node', desc: 'Ethereum L2 – Connected · 99.97% uptime', action: 'Status' },
+      { label: 'Blockchain Node', desc: 'Canton Local Sandbox · Connected', action: 'Status' },
       { label: 'Smart Contract Registry', desc: '6 contracts deployed · 1 paused', action: 'Manage' },
       { label: 'Stripe / PayPal', desc: 'UK payment gateways active', action: 'Configure' },
     ],

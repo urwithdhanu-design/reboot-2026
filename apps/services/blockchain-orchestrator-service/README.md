@@ -2,7 +2,7 @@
 
 Java orchestration API for ledger transactions, **insurer-only policy mint**, and claim settlements.
 
-**Design (payment → mint → token id, Alchemy, MetaMask, GCUL):** [`docs/BLOCKCHAIN-INSURER-MINT.md`](../../../docs/BLOCKCHAIN-INSURER-MINT.md)
+**Design (payment → mint → policy certificate):** [`docs/MINT-DEPOSITS-CLAIMS.md`](../../../docs/MINT-DEPOSITS-CLAIMS.md)
 
 ## GCUL integration
 
