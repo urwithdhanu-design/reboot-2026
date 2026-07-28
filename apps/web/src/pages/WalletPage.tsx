@@ -126,6 +126,7 @@ export function WalletPage() {
   const [devApproveUrl, setDevApproveUrl] = useState<string | null>(null);
   const [consentEmailSent, setConsentEmailSent] = useState<boolean | null>(null);
   const [consentEmailTo, setConsentEmailTo] = useState<string | null>(null);
+  const [consentNotice, setConsentNotice] = useState<string | null>(null);
 
   const kycStatus = user?.kyc_status;
   const kycVerified = isKycVerified(kycStatus);
@@ -167,6 +168,35 @@ export function WalletPage() {
       setDevApproveUrl(res.dev_approve_url);
     } else if (res.consent_email_sent) {
       setDevApproveUrl(null);
+    }
+    if (res.consent_email_sent) {
+      const to = res.consent_email_to ?? user?.email ?? "your inbox";
+      setConsentNotice(
+        `Approval email sent to ${to}. Look for subject "Approve your wallet" from Reboot 2026 Insurance (check spam/promotions).`,
+      );
+    } else if (res.consent_email_sent === false) {
+      setConsentNotice(null);
+    }
+  }
+
+  async function resendApprovalEmail() {
+    if (!token) {
+      navigate("/login");
+      return;
+    }
+    setLoading(true);
+    setError(null);
+    setConsentNotice(null);
+    try {
+      const res = await api.resendWalletConsent(token);
+      setAddress(res.address);
+      setStatus(res.status);
+      setNote(res.note ?? null);
+      applyConsentMeta(res);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not resend approval email");
+    } finally {
+      setLoading(false);
     }
   }
 
@@ -250,6 +280,7 @@ export function WalletPage() {
     }
     setLoading(true);
     setError(null);
+    setConsentNotice(null);
     try {
       const res = await api.createWallet(token);
       setAddress(res.address);
@@ -505,10 +536,16 @@ export function WalletPage() {
             ) : (
               <>
                 Open the email we sent to <strong>{accountEmail ?? "your inbox"}</strong> and click
-                <strong> Approve wallet</strong> to enable payouts and premium payments.
+                <strong> Approve wallet</strong> to enable payouts and premium payments. The subject
+                line is <strong>Approve your wallet · Reboot 2026 Insurance</strong>.
               </>
             )}
           </p>
+          {consentNotice ? (
+            <p className="demo-fill-banner" role="status">
+              {consentNotice}
+            </p>
+          ) : null}
           <div className="wallet-actions">
             {consentEmailSent === false ? (
               <button
@@ -524,9 +561,9 @@ export function WalletPage() {
               className={consentEmailSent === false ? "btn-secondary" : "btn-primary"}
               type="button"
               disabled={loading}
-              onClick={() => void createWallet()}
+              onClick={() => void resendApprovalEmail()}
             >
-              Resend approval email
+              {loading ? "Sending…" : "Resend approval email"}
             </button>
           </div>
           {address ? (

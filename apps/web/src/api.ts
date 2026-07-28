@@ -407,6 +407,13 @@ export const api = {
       token,
     ),
 
+  resendWalletConsent: (token: string) =>
+    request<WalletInfo & { resent?: boolean }>(
+      "/api/wallet/resend-consent",
+      { method: "POST" },
+      token,
+    ),
+
   rechargeWallet: (token: string, amount: number) =>
     request<WalletInfo & { transaction: WalletTransaction }>(
       "/api/wallet/recharge",

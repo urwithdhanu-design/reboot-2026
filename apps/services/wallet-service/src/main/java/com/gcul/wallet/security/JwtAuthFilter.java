@@ -30,7 +30,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
 		String path = request.getRequestURI();
 		if (path.startsWith("/health")
 				|| path.startsWith("/error")
-				|| path.startsWith("/api/wallet/consent/")
+				|| path.startsWith("/api/wallet/consent/approve")
 				|| "OPTIONS".equalsIgnoreCase(request.getMethod())) {
 			filterChain.doFilter(request, response);
 			return;

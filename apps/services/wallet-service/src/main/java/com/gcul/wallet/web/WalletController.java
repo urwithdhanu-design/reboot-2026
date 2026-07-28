@@ -51,6 +51,15 @@ public class WalletController {
 				token);
 	}
 
+	@PostMapping("/resend-consent")
+	public Map<String, Object> resendConsentEmail(HttpServletRequest request) {
+		String token = requireBearer(request);
+		return walletService.resendConsentEmail(
+				requireUserId(request),
+				(String) request.getAttribute("userEmail"),
+				token);
+	}
+
 	@PostMapping("/recharge")
 	public Map<String, Object> rechargeWallet(
 			HttpServletRequest request,

@@ -1,5 +1,5 @@
 #Requires -Version 5.1
-# Bootstrap Gmail SMTP .env files for local Java services (kyc, policy, notification).
+# Bootstrap Gmail SMTP .env files for local Java services (kyc, wallet, policy, notification).
 
 function Read-DotEnvMap([string] $Path) {
   $map = @{}
@@ -33,13 +33,37 @@ function Get-EmailEnvSource {
   return $null
 }
 
+function Write-EmailEnvLines([string[]] $Lines, [string[]] $Targets) {
+  foreach ($target in $Targets) {
+    if (-not (Test-Path $target)) {
+      $Lines | Set-Content -Path $target -Encoding utf8
+    }
+  }
+}
+
 function Ensure-EmailEnvFiles {
   param([string] $RepoRoot)
 
   $kycEnv = Join-Path $RepoRoot "apps\services\kyc-service\.env"
+  $serviceTargets = @(
+    (Join-Path $RepoRoot "apps\services\policy-service\.env"),
+    (Join-Path $RepoRoot "apps\services\notification-service\.env"),
+    (Join-Path $RepoRoot "apps\services\wallet-service\.env")
+  )
+
   if (Test-Path $kycEnv) {
     $existing = Read-DotEnvMap $kycEnv
     if ($existing["EMAIL_USER"] -and $existing["EMAIL_PASS"]) {
+      $fromName = if ($existing["EMAIL_FROM_NAME"]) { $existing["EMAIL_FROM_NAME"] } else { "Reboot 2026 Insurance" }
+      $lines = @(
+        "# Gmail SMTP - synced from kyc-service/.env"
+        "EMAIL_USER=$($existing['EMAIL_USER'])"
+        "EMAIL_PASS=$($existing['EMAIL_PASS'])"
+        "EMAIL_FROM_NAME=$fromName"
+        "EMAIL_ENABLED=true"
+        "WEB_BASE_URL=http://localhost:5174"
+      )
+      Write-EmailEnvLines -Lines $lines -Targets $serviceTargets
       return $existing
     }
   }
@@ -59,17 +83,11 @@ function Ensure-EmailEnvFiles {
     "EMAIL_USER=$($source.map['EMAIL_USER'])"
     "EMAIL_PASS=$($source.map['EMAIL_PASS'])"
     "EMAIL_FROM_NAME=$fromName"
-    "EMAIL_ENABLED=true",
+    "EMAIL_ENABLED=true"
     "WEB_BASE_URL=http://localhost:5174"
   )
   $lines | Set-Content -Path $kycEnv -Encoding utf8
-
-  foreach ($service in @("policy-service", "notification-service", "wallet-service")) {
-    $target = Join-Path $RepoRoot "apps\services\$service\.env"
-    if (-not (Test-Path $target)) {
-      $lines | Set-Content -Path $target -Encoding utf8
-    }
-  }
+  Write-EmailEnvLines -Lines $lines -Targets $serviceTargets
 
   Write-Host "Email env ready for local services (from $($source.path))"
   return Read-DotEnvMap $kycEnv
@@ -80,10 +98,13 @@ function Get-EmailEnvCmdPrefix([hashtable] $EmailMap) {
     return ""
   }
   $parts = @()
-  foreach ($key in @("EMAIL_USER", "EMAIL_PASS", "EMAIL_FROM_NAME", "EMAIL_ENABLED")) {
+  foreach ($key in @("EMAIL_USER", "EMAIL_PASS", "EMAIL_FROM_NAME", "EMAIL_ENABLED", "WEB_BASE_URL")) {
     if ($EmailMap[$key]) {
       $parts += "set $key=$($EmailMap[$key])"
     }
+  }
+  if (-not $EmailMap["WEB_BASE_URL"]) {
+    $parts += "set WEB_BASE_URL=http://localhost:5174"
   }
   if ($parts.Count -eq 0) { return "" }
   return ($parts -join " && ") + " && "

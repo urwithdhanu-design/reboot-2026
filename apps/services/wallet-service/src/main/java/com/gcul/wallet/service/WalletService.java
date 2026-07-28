@@ -189,6 +189,31 @@ public class WalletService {
 	}
 
 	@Transactional
+	public Map<String, Object> resendConsentEmail(String userId, String email, String bearerToken) {
+		CustomerWallet wallet = repository.findByUserId(userId)
+				.orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST,
+						"Create a wallet before requesting approval email"));
+
+		if (!wallet.isPendingConsent()) {
+			throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+					"Wallet is not awaiting email approval");
+		}
+
+		Map<String, String> profile = kycStatusClient.fetchAccountProfile(bearerToken);
+		String accountEmail = resolveAccountEmail(email, profile, wallet);
+		String recipientName = resolveRecipientName(profile, accountEmail);
+
+		wallet.setUserEmail(accountEmail);
+		wallet.setUpdatedAt(Instant.now());
+		wallet = repository.saveAndFlush(wallet);
+
+		Map<String, Object> response = toResponse(wallet);
+		response.putAll(consentService.issueConsentEmail(wallet, accountEmail, recipientName));
+		response.put("resent", true);
+		return response;
+	}
+
+	@Transactional
 	public Map<String, Object> rechargeWallet(String userId, double amount) {
 		if (amount <= 0) {
 			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Recharge amount must be greater than zero");
@@ -473,6 +498,9 @@ public class WalletService {
 		result.put("currency", wallet.getCurrency() == null ? "GBP" : wallet.getCurrency());
 		if (wallet.getNote() != null) {
 			result.put("note", wallet.getNote());
+		}
+		if (wallet.getUserEmail() != null && !wallet.getUserEmail().isBlank()) {
+			result.put("consent_email_to", wallet.getUserEmail().trim().toLowerCase(Locale.ROOT));
 		}
 		return result;
 	}

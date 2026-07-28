@@ -45,8 +45,7 @@ public class MailService {
 			helper.setTo(to.trim());
 			helper.setSubject(subject);
 			String html = EmailTemplates.walletConsent(recipientName, platform, approveUrl, expiryHours);
-			String plain = EmailTemplates.walletConsentPlainText(recipientName, platform, approveUrl, expiryHours);
-			helper.setText(plain, html, true);
+			helper.setText(html, true);
 			mailSender.send(message);
 			log.info("Wallet consent email sent to {}", to);
 			return true;

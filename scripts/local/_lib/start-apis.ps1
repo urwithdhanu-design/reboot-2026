@@ -11,7 +11,7 @@ Ensure-LocalDevDirs
 
 $emailEnv = Ensure-EmailEnvFiles -RepoRoot $RepoRoot
 $emailCmdPrefix = Get-EmailEnvCmdPrefix $emailEnv
-$mailServices = @{ kyc = $true; policy = $true; notification = $true }
+$mailServices = @{ kyc = $true; wallet = $true; policy = $true; notification = $true }
 
 function Start-JavaService($Service) {
   $port = $Service.port
