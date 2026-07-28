@@ -228,7 +228,7 @@ export function SmartContractsPage() {
           icon={FileCode2}
         />
         <StatCard
-          label="GCUL sidecar"
+          label="Insurance sidecar"
           value={String(sidecarHealth?.status ?? sidecarHealth?.mode ?? 'unknown')}
           change={String(sidecarHealth?.live_ready ?? sidecarHealth?.message ?? 'Bridge status')}
           icon={Link2}

@@ -55,7 +55,7 @@ export function LoginPage() {
             Run products, vendors, and compliance from one console
           </h1>
           <p className="text-white/85 text-lg leading-relaxed max-w-md">
-            Review KYC, manage policies and claims, monitor ledger activity, and coordinate microservices across the GCUL stack.
+            Review KYC, manage policies and claims, monitor ledger activity, and coordinate microservices across the Insurance platform.
           </p>
           <ul className="mt-10 space-y-3 text-sm text-white/90">
             {['Customer & KYC review', 'Policy and claims oversight', 'Blockchain & wallet operations'].map((item) => (

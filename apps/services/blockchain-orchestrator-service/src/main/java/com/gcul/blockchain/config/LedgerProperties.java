@@ -12,7 +12,7 @@ import org.springframework.util.StringUtils;
 @ConfigurationProperties(prefix = "gcul.ledger")
 public class LedgerProperties {
 
-	/** Primary ledger for minting: canton | ethereum | simulated */
+	/** Primary ledger for minting: canton or simulated. */
 	private String primary = "canton";
 
 	/** Legacy alias for primary — kept for GCUL_LEDGER_BACKEND deployments */

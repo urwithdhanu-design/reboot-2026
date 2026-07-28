@@ -10,21 +10,12 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 
-import com.gcul.blockchain.config.EthereumProperties;
-import com.gcul.blockchain.ethereum.PolicyNftMintResult;
-import com.gcul.blockchain.ethereum.PolicyNftMintService.MintRequest;
 
 @Component
 public class SimulatedLedgerAdapter implements LedgerAdapter {
 
 	private static final Logger log = LoggerFactory.getLogger(SimulatedLedgerAdapter.class);
-	private static final String NETWORK = "Ethereum Sepolia";
-
-	private final EthereumProperties ethereumProperties;
-
-	public SimulatedLedgerAdapter(EthereumProperties ethereumProperties) {
-		this.ethereumProperties = ethereumProperties;
-	}
+	private static final String NETWORK = "Canton local simulation";
 
 	@Override
 	public String ledgerId() {
@@ -43,7 +34,7 @@ public class SimulatedLedgerAdapter implements LedgerAdapter {
 		status.put("live", isActive());
 		status.put("mode", "simulated");
 		status.put("network", NETWORK);
-		status.put("chainId", ethereumProperties.getChainId());
+		status.put("chainId", 0L);
 		return status;
 	}
 
@@ -63,7 +54,7 @@ public class SimulatedLedgerAdapter implements LedgerAdapter {
 				txHash,
 				walletAddress,
 				"simulated",
-				ethereumProperties.getChainId(),
+				0L,
 				0L,
 				NETWORK,
 				metadataUri,

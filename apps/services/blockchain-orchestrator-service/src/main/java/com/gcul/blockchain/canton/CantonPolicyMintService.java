@@ -8,8 +8,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
 import com.gcul.blockchain.config.CantonProperties;
-import com.gcul.blockchain.ethereum.PolicyNftMintResult;
-import com.gcul.blockchain.ethereum.PolicyNftMintService.MintRequest;
+import com.gcul.blockchain.ledger.MintRequest;
+import com.gcul.blockchain.ledger.PolicyNftMintResult;
 
 @Service
 public class CantonPolicyMintService {

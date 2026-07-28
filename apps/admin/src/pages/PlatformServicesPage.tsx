@@ -19,9 +19,9 @@ export const PLATFORM_SERVICES: PlatformService[] = [
   { id: 'claims-service', name: 'Claims Service', port: 8085, api: '/api/claims', description: 'Claim intake and status workflow' },
   { id: 'parametric-claim-service', name: 'Parametric Claim Service', port: 8086, api: '/api/parametric', description: 'Parametric rules and auto claim triggers' },
   { id: 'premium-deposit-service', name: 'Premium Deposit Service', port: 8087, api: '/api/premium-deposits', description: 'Premium deposits, holds, and release' },
-  { id: 'blockchain-orchestrator-service', name: 'Blockchain Orchestrator', port: 8088, api: '/api/blockchain', description: 'GCUL ledger orchestration for payouts and settlements' },
+  { id: 'blockchain-orchestrator-service', name: 'Blockchain Orchestrator', port: 8088, api: '/api/blockchain', description: 'Insurance ledger orchestration for payouts and settlements' },
   { id: 'chatbot-assistance-service', name: 'Chatbot Assistance', port: 8090, api: '/api/chatbot', description: 'RAG insurance chatbot (FAISS / Pinecone)' },
-  { id: 'gcul-sidecar', name: 'GCUL Sidecar', port: 8091, api: '/api/gcul', description: 'Python bridge to packages/gcul-sdk' },
+  { id: 'gcul-sidecar', name: 'Insurance Sidecar', port: 8091, api: '/api/gcul', description: 'Python bridge to the insurance SDK' },
 ];
 
 type HealthState = 'checking' | 'up' | 'down';

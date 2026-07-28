@@ -1,4 +1,4 @@
-package com.gcul.blockchain.ethereum;
+package com.gcul.blockchain.ledger;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
@@ -22,8 +22,8 @@ public class PolicyMintValidator {
 	}
 
 	public void validate(MintContext context) {
-		if (!EthereumAddressValidator.isValid(context.walletAddress())) {
-			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid Ethereum wallet address");
+		if (!WalletAddressValidator.isValid(context.walletAddress())) {
+			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid wallet address");
 		}
 		if (!StringUtils.hasText(context.policyId())) {
 			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "policyId is required");

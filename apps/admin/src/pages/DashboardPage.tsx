@@ -314,7 +314,7 @@ function TokenizationTab({ metrics, networkLabel }: { metrics: NonNullable<Retur
             <StatCard label="Issued total" value={formatNumber(metrics.tokenization?.total_issued ?? 0)} change="All policies" icon={FileText} trend="neutral" />
             <StatCard label="Pending mints" value={String(metrics.tokenization?.pending_mints ?? 0)} change={`${metrics.tokenization?.pending_wallet ?? 0} awaiting wallet`} icon={Zap} trend="neutral" />
             <StatCard label="Failed mints" value={String(metrics.tokenization?.failed_mints ?? 0)} change="Needs retry" icon={AlertCircle} trend="down" />
-            <StatCard label="Chain tx (24h)" value={formatNumber(metrics.observability?.dashboard.transactions_24h ?? 0)} change="GCUL PoA chain" icon={Activity} trend="neutral" />
+            <StatCard label="Chain tx (24h)" value={formatNumber(metrics.observability?.dashboard.transactions_24h ?? 0)} change="Insurance chain" icon={Activity} trend="neutral" />
           </div>
 
           <div className="mb-4">

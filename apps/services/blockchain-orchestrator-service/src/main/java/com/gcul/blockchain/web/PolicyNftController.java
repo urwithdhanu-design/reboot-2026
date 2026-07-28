@@ -13,8 +13,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
 
-import com.gcul.blockchain.ethereum.PolicyNftMintResult;
-import com.gcul.blockchain.ethereum.PolicyNftMintService;
+import com.gcul.blockchain.ledger.PolicyNftMintResult;
+import com.gcul.blockchain.ledger.PolicyNftMintService;
 import com.gcul.blockchain.ledger.LedgerAdapter;
 import com.gcul.blockchain.ledger.LedgerAdapterRegistry;
 import com.gcul.blockchain.messaging.PolicyMintService;

@@ -50,19 +50,13 @@ public class LedgerAdapterRegistry {
 
 	/**
 	 * Resolves the adapter for minting. Honors {@code gcul.ledger.primary} when active;
-	 * preserves legacy fallback: canton offline → ethereum → simulated.
+	 * falls back to the local simulated adapter when Canton is unavailable.
 	 */
 	public LedgerAdapter resolveMintAdapter() {
 		String primaryId = primaryLedgerId();
 		LedgerAdapter primary = requireAdapter(primaryId);
 		if (primary.isActive()) {
 			return primary;
-		}
-		if ("canton".equalsIgnoreCase(primaryId)) {
-			LedgerAdapter ethereum = adaptersById.get("ethereum");
-			if (ethereum != null && ethereum.isActive()) {
-				return ethereum;
-			}
 		}
 		return requireAdapter("simulated");
 	}

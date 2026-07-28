@@ -122,7 +122,7 @@ public class AdminWalletService {
 			return "demo top-up";
 		}
 		if (wallet != null && "linked".equals(wallet.getMode())) {
-			return "ethereum linked";
+			return "canton linked";
 		}
 		return "demo ledger";
 	}

@@ -53,7 +53,7 @@ export function BlockchainLedgerPage() {
     <AdminLayout>
       <PageHeader
         icon={Link2}
-        title="GCUL insurance chain"
+        title="Insurance chain"
         subtitle="Proof-of-authority ledger — policy, claims, identity, and audit blocks"
         metrics={[
           { label: 'Blocks', value: chain ? String(chain.blocks.length) : '—' },

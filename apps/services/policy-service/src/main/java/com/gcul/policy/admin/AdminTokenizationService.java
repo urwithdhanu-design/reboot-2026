@@ -173,26 +173,24 @@ public class AdminTokenizationService {
 	private static Map<String, Object> toBlockchainSummary(Map<String, Object> status) {
 		Map<String, Object> summary = new LinkedHashMap<>();
 		String mode = str(status.getOrDefault("mode", "simulated"));
-		String network = str(status.getOrDefault("network", "Ethereum Sepolia"));
+		String network = str(status.getOrDefault("network", "Canton Local Sandbox"));
 		summary.put("network_name", network);
-		summary.put("chain_id", status.getOrDefault("chainId", mode.contains("canton") ? 0L : 11155111L));
+		summary.put("chain_id", status.getOrDefault("chainId", 0L));
 		summary.put("mode", mode);
 		summary.put("live", Boolean.TRUE.equals(status.get("live")));
 		summary.put("contract_address", str(status.get("contractAddress")));
 		summary.put("enabled", Boolean.TRUE.equals(status.get("enabled")));
-		summary.put("ledger_type", mode.contains("canton") ? "canton" : "ethereum");
+		summary.put("ledger_type", mode.contains("canton") ? "canton" : "simulated");
 		return summary;
 	}
 
 	private static Map<String, Object> buildPolicyNftStandard(long supply, String contractAddress, String mode) {
-		boolean canton = mode.contains("canton");
+		boolean canton = true;
 		Map<String, Object> standard = new LinkedHashMap<>();
-		standard.put("standard", canton ? "Daml/Canton" : "ERC-721");
-		standard.put("symbol", canton ? "GCULPOL-C" : "GCULPOL");
-		standard.put("name", canton ? "Policy Certificate (Canton)" : "Policy NFT");
-		standard.put("description", canton
-				? "Insurance policy certificates minted on Canton local sandbox by the insurer."
-				: "Unique insurance policy certificates minted to customer wallets on Sepolia.");
+		standard.put("standard", "Daml/Canton");
+		standard.put("symbol", "GCULPOL-C");
+		standard.put("name", "Policy Certificate (Canton)");
+		standard.put("description", "Insurance policy certificates minted on the Canton local sandbox by the insurer.");
 		standard.put("total_supply", supply);
 		standard.put("circulating", supply);
 		standard.put("enabled", true);

@@ -9,7 +9,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.gcul.blockchain.canton.CantonPolicyMintService;
-import com.gcul.blockchain.ethereum.PolicyNftMintService;
+import com.gcul.blockchain.ledger.PolicyNftMintService;
 import com.gcul.blockchain.model.PolicyNftRecord;
 
 @RestController

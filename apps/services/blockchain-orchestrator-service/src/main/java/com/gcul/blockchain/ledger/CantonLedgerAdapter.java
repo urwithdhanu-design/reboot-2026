@@ -6,8 +6,6 @@ import java.util.Optional;
 import org.springframework.stereotype.Component;
 
 import com.gcul.blockchain.canton.CantonPolicyMintService;
-import com.gcul.blockchain.ethereum.PolicyNftMintResult;
-import com.gcul.blockchain.ethereum.PolicyNftMintService.MintRequest;
 
 @Component
 public class CantonLedgerAdapter implements LedgerAdapter {

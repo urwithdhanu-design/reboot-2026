@@ -3,8 +3,6 @@ package com.gcul.blockchain.ledger;
 import java.util.Map;
 import java.util.Optional;
 
-import com.gcul.blockchain.ethereum.PolicyNftMintResult;
-import com.gcul.blockchain.ethereum.PolicyNftMintService.MintRequest;
 
 /**
  * Pluggable ledger backend for policy NFT minting and verification.
@@ -12,7 +10,7 @@ import com.gcul.blockchain.ethereum.PolicyNftMintService.MintRequest;
  */
 public interface LedgerAdapter {
 
-	/** Stable ledger identifier: {@code canton}, {@code ethereum}, or {@code simulated}. */
+	/** Stable ledger identifier: {@code canton} or {@code simulated}. */
 	String ledgerId();
 
 	boolean isActive();

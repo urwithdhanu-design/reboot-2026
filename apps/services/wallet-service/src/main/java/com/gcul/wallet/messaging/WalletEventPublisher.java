@@ -24,7 +24,7 @@ public class WalletEventPublisher {
 		payload.put("eventType", "WalletLinked");
 		payload.put("customerId", userId);
 		payload.put("walletAddress", wallet.getAddress());
-		payload.put("network", "Ethereum Sepolia");
+		payload.put("network", "Canton Local Sandbox");
 		payload.put("status", "SUCCESS");
 		publisher.publish(EventTopics.WALLET, payload);
 	}

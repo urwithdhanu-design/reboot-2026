@@ -1,4 +1,4 @@
-package com.gcul.blockchain.ethereum;
+package com.gcul.blockchain.ledger;
 
 import java.time.Instant;
 import java.util.List;
@@ -10,10 +10,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 import org.springframework.web.server.ResponseStatusException;
 
-import com.gcul.blockchain.config.EthereumProperties;
-import com.gcul.blockchain.ethereum.PolicyMintValidator.MintContext;
-import com.gcul.blockchain.ledger.LedgerAdapter;
-import com.gcul.blockchain.ledger.LedgerAdapterRegistry;
+import com.gcul.blockchain.ledger.PolicyMintValidator.MintContext;
 import com.gcul.blockchain.model.PolicyLedgerAttestation;
 import com.gcul.blockchain.model.PolicyNftRecord;
 import com.gcul.blockchain.repository.PolicyLedgerAttestationRepository;
@@ -22,19 +19,16 @@ import com.gcul.blockchain.repository.PolicyNftRecordRepository;
 @Service
 public class PolicyNftMintService {
 
-	private final EthereumProperties props;
 	private final PolicyNftRecordRepository repository;
 	private final PolicyLedgerAttestationRepository attestationRepository;
 	private final PolicyMintValidator validator;
 	private final LedgerAdapterRegistry ledgerRegistry;
 
 	public PolicyNftMintService(
-			EthereumProperties props,
 			PolicyNftRecordRepository repository,
 			PolicyLedgerAttestationRepository attestationRepository,
 			PolicyMintValidator validator,
 			LedgerAdapterRegistry ledgerRegistry) {
-		this.props = props;
 		this.repository = repository;
 		this.attestationRepository = attestationRepository;
 		this.validator = validator;
@@ -54,7 +48,7 @@ public class PolicyNftMintService {
 	public PolicyNftMintResult mintPolicyNft(MintRequest request) {
 		String policyId = requireText(request.policyId(), "policyId");
 		String policyReferenceHash = requireText(request.policyReferenceHash(), "policyReferenceHash");
-		String walletAddress = EthereumAddressValidator.normalize(request.walletAddress());
+		String walletAddress = WalletAddressValidator.normalize(request.walletAddress());
 		String metadataUri = requireText(
 				StringUtils.hasText(request.metadataUri()) ? request.metadataUri() : buildMetadataUri(policyId),
 				"metadataURI");
@@ -151,20 +145,10 @@ public class PolicyNftMintService {
 	}
 
 	private String buildMetadataUri(String policyId) {
-		if (StringUtils.hasText(props.getTokenUriBase())) {
-			String base = props.getTokenUriBase().trim();
-			return base.endsWith("/") ? base + policyId : base + "/" + policyId;
-		}
 		return "ipfs://gcul-policy/" + policyId;
 	}
 
 	private static String buildExplorerUrl(PolicyNftMintResult result) {
-		if (result.transactionHash() == null || result.transactionHash().startsWith("0xsim")) {
-			return null;
-		}
-		if ("ethereum".equalsIgnoreCase(result.mode())) {
-			return "https://sepolia.etherscan.io/tx/" + result.transactionHash();
-		}
 		return null;
 	}
 
@@ -184,15 +168,4 @@ public class PolicyNftMintService {
 		return "";
 	}
 
-	public record MintRequest(
-			String policyId,
-			String policyNumber,
-			String customerId,
-			String walletAddress,
-			String policyReferenceHash,
-			String metadataUri,
-			boolean kycVerified,
-			boolean policyEligible,
-			Map<String, Object> metadata) {
-	}
 }

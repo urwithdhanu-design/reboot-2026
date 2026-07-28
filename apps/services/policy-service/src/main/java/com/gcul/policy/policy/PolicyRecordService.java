@@ -477,7 +477,7 @@ public class PolicyRecordService {
 		if (record.getTransactionHash() != null && record.getTransactionHash().startsWith("0xsim")) {
 			return "simulated";
 		}
-		return "ethereum";
+		return "simulated";
 	}
 
 	private static String buildExplorerUrl(PolicyRecord record) {
@@ -490,9 +490,6 @@ public class PolicyRecordService {
 		}
 		if (transactionHash.startsWith("0xsim")) {
 			return null;
-		}
-		if ("ethereum".equalsIgnoreCase(ledgerId)) {
-			return "https://sepolia.etherscan.io/tx/" + transactionHash;
 		}
 		return null;
 	}

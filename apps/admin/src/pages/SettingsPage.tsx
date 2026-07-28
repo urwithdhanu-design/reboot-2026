@@ -31,7 +31,7 @@ const sections = [
     title: 'Blockchain & Tokenization',
     icon: Coins,
     items: [
-      { label: 'Network Configuration', desc: 'GCUL L2 · Chain ID 88421', action: 'Configure' },
+      { label: 'Network Configuration', desc: 'Canton local sandbox', action: 'Configure' },
       { label: 'Token Minting Rules', desc: 'Auto-mint ERC-721 on policy purchase', action: 'Edit' },
       { label: 'Gas Price Limits', desc: 'Max 50 gwei per transaction', action: 'Edit' },
       { label: 'IPFS Metadata Gateway', desc: 'Pinata · policy metadata storage', action: 'Configure' },

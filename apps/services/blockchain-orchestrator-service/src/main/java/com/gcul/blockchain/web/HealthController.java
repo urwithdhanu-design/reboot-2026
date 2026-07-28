@@ -8,7 +8,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.gcul.blockchain.config.LedgerProperties;
-import com.gcul.blockchain.ethereum.PolicyNftMintService;
+import com.gcul.blockchain.ledger.PolicyNftMintService;
 import com.gcul.blockchain.service.BlockchainOrchestratorService;
 
 @RestController

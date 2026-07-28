@@ -14,10 +14,10 @@ import com.gcul.blockchain.chain.ChainLedger;
 import com.gcul.blockchain.chain.ChainTransactionType;
 import com.gcul.blockchain.chain.InsuranceChainService;
 import com.gcul.blockchain.chain.InsuranceChainService.RecordTxRequest;
-import com.gcul.blockchain.ethereum.EthereumAddressValidator;
-import com.gcul.blockchain.ethereum.PolicyNftMintResult;
-import com.gcul.blockchain.ethereum.PolicyNftMintService;
-import com.gcul.blockchain.ethereum.PolicyNftMintService.MintRequest;
+import com.gcul.blockchain.ledger.MintRequest;
+import com.gcul.blockchain.ledger.PolicyNftMintResult;
+import com.gcul.blockchain.ledger.PolicyNftMintService;
+import com.gcul.blockchain.ledger.WalletAddressValidator;
 import com.gcul.messaging.EventTopics;
 import com.gcul.messaging.GculEventPublisher;
 
@@ -61,7 +61,7 @@ public class PolicyMintService {
 		}
 
 		String walletAddress = str(payload.get("walletAddress"));
-		if (!EthereumAddressValidator.isValid(walletAddress)) {
+		if (!WalletAddressValidator.isValid(walletAddress)) {
 			log.error("Policy mint skipped — invalid or missing wallet address for policy {}", policyId);
 			mintedPolicies.remove(policyId);
 			return true;

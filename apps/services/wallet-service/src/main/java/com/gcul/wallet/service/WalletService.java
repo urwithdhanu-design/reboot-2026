@@ -82,8 +82,8 @@ public class WalletService {
 
 	@Transactional
 	public Map<String, Object> linkWallet(String userId, String email, String address, String bearerToken) {
-		if (!isValidEthereumAddress(address)) {
-			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid Ethereum wallet address");
+		if (!isValidWalletAddress(address)) {
+			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid wallet address");
 		}
 		if (!"verified".equals(kycStatusClient.fetchKycStatus(bearerToken))) {
 			throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
@@ -95,7 +95,7 @@ public class WalletService {
 		wallet.setUserEmail(email);
 		wallet.setAddress(address.trim().toLowerCase());
 		wallet.setStatus("connected");
-		wallet.setProvider("ethereum");
+		wallet.setProvider("canton");
 		wallet.setMode("linked");
 		wallet.setNote("Linked wallet is active and ready for payouts and payments.");
 		wallet.setCurrency("GBP");
@@ -431,7 +431,7 @@ public class WalletService {
 		return disconnected;
 	}
 
-	private static boolean isValidEthereumAddress(String address) {
+	private static boolean isValidWalletAddress(String address) {
 		return address != null && address.matches("^0x[0-9a-fA-F]{40}$");
 	}
 

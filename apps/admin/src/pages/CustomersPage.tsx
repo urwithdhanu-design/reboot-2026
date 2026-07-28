@@ -3,7 +3,7 @@ import { RefreshCw, Users } from 'lucide-react';
 import { AdminLayout } from '../components/layout/AdminLayout';
 import { PageHeader, FilterTabs, ContentPanel, AlertBanner, Badge, Button, SearchInput, PaginatedTable } from '../components/ui';
 import { enrichPoliciesWithPayments, policyCountByEmail, type AdminCustomer } from '../api';
-import { formatCacheAge, FIRESTORE_CACHE_PROJECT } from '../firestore/adminCache';
+import { formatCacheAge } from '../firestore/adminCache';
 import { cachedAdminApi, filterCustomers } from '../firestore/cachedAdminApi';
 
 const statusBadge: Record<string, 'success' | 'warning' | 'error' | 'neutral'> = {
@@ -99,7 +99,7 @@ export function CustomersPage() {
       <PageHeader
         icon={Users}
         title="Customer management"
-        subtitle={`Registered customers and KYC status · cache in ${FIRESTORE_CACHE_PROJECT}/gcul_cache`}
+        subtitle="Registered customers and KYC status"
         metrics={[
           { label: 'Customers', value: customers.length },
           { label: 'KYC verified', value: customers.filter((c) => c.kyc_status === 'verified').length, tone: 'success' },
