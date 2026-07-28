@@ -38,7 +38,7 @@ public class PaymentLedgerService {
 		record.setCustomerEmail(str(body.get("customer_email")));
 		record.setAmount(num(body.get("amount"), 0));
 		record.setCurrency(firstNonBlank(str(body.get("currency")), "GBP"));
-		record.setStatus("pending");
+		record.setStatus(firstNonBlank(str(body.get("status")), "pending"));
 		record.setProvider(firstNonBlank(str(body.get("provider")), "stripe"));
 		record.setCreatedAt(Instant.now());
 		record.setUpdatedAt(Instant.now());

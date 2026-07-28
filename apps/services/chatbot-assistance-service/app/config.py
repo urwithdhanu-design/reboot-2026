@@ -51,8 +51,18 @@ class AppConfig:
         self.openai_api_key = raw.get("openai.api.key", "")
         self.openai_model = raw.get("openai.model", "gpt-4o-mini")
         self.auto_ingest = raw.get("chatbot.auto.ingest", "true").lower() == "true"
+        self.policy_service_url = raw.get(
+            "policy.service.url", "http://127.0.0.1:8082"
+        ).rstrip("/")
+        self.claims_service_url = raw.get(
+            "claims.service.url", "http://127.0.0.1:8085"
+        ).rstrip("/")
         if "CHATBOT_AUTO_INGEST" in os.environ:
             self.auto_ingest = os.environ["CHATBOT_AUTO_INGEST"].lower() == "true"
+        if "POLICY_SERVICE_URL" in os.environ:
+            self.policy_service_url = os.environ["POLICY_SERVICE_URL"].rstrip("/")
+        if "CLAIMS_SERVICE_URL" in os.environ:
+            self.claims_service_url = os.environ["CLAIMS_SERVICE_URL"].rstrip("/")
 
 
 config = AppConfig()

@@ -93,7 +93,7 @@ export default defineConfig(({ mode }) => {
   console.log(
     useCloud
       ? `[vite] API target: cloud (wallet → ${loadCloudTargets().services.wallet ?? "?"})`
-      : "[vite] API target: local (127.0.0.1:8081-8089) — scripts\\start-local-apis.cmd",
+      : "[vite] API target: local (127.0.0.1:8081-8090) — local-dev.cmd apis",
   );
 
   return {

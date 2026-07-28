@@ -11,6 +11,7 @@ export type CustomerPolicy = {
   premium: number;
   price_unit: string;
   paid: boolean;
+  status?: string;
   mint_status?: string;
   token_id?: string | null;
   ledger_type?: string;
@@ -68,6 +69,7 @@ export function issuedPolicyToCustomerPolicy(
     premium: quote?.estimated_premium ?? 0,
     price_unit: quote?.price_unit ?? "month",
     paid: true,
+    status: policy.status,
     mint_status: policy.mint_status,
     token_id: policy.token_id,
     ledger_type: policy.ledger_type,
@@ -83,6 +85,7 @@ export function issuedPolicyToCustomerPolicy(
 }
 
 export function isClaimablePolicy(policy: CustomerPolicy): boolean {
+  if ((policy.status ?? "").toLowerCase() === "cancelled") return false;
   if (policy.mint_status !== "MINTED" && !policy.token_id) return false;
   if (policy.coverage_pending_mint) return false;
   if (policy.coverage_expired) return false;
@@ -94,6 +97,14 @@ export function isClaimablePolicy(policy: CustomerPolicy): boolean {
     }
   }
   return policy.coverage_active !== false;
+}
+
+export function isCancelledPolicy(policy: Pick<CustomerPolicyRecord, "status">): boolean {
+  return (policy.status ?? "").toLowerCase() === "cancelled";
+}
+
+export function isCancellablePolicy(policy: CustomerPolicyRecord): boolean {
+  return !isCancelledPolicy(policy);
 }
 
 export async function fetchIssuedPolicies(token: string): Promise<CustomerPolicyRecord[]> {
@@ -112,14 +123,46 @@ export function buildIssuedQuoteIdSet(
   return ids;
 }
 
+/** Keep the first occurrence of each quote_id (compare basket is newest-first). */
+export function dedupeQuotesById(quotes: QuoteEstimate[]): QuoteEstimate[] {
+  const byId = new Map<string, QuoteEstimate>();
+  for (const q of quotes) {
+    if (!byId.has(q.quote_id)) byId.set(q.quote_id, q);
+  }
+  return Array.from(byId.values());
+}
+
 /** Unpaid saved quotes for the Policies page (excludes issued/premium-paid policies). */
 export function getUnpaidSavedQuotes(
   userEmail: string | undefined,
   issuedQuoteIds: Set<string>,
 ): QuoteEstimate[] {
-  return readCompareQuotes().filter(
+  return dedupeQuotesById(readCompareQuotes()).filter(
     (q) => quoteMatchesUser(q, userEmail) && !issuedQuoteIds.has(q.quote_id),
   );
+}
+
+/**
+ * Merge saved quotes with an optional navigation quote, deduplicating by quote_id.
+ * Navigation quote wins when the same id appears in both sources.
+ */
+export function mergeDisplayQuotes(
+  savedQuotes: QuoteEstimate[],
+  navigationQuote: QuoteEstimate | undefined,
+  issuedQuoteIds: Set<string>,
+): QuoteEstimate[] {
+  const byId = new Map<string, QuoteEstimate>();
+
+  if (navigationQuote && !issuedQuoteIds.has(navigationQuote.quote_id)) {
+    byId.set(navigationQuote.quote_id, navigationQuote);
+  }
+
+  for (const q of dedupeQuotesById(savedQuotes)) {
+    if (issuedQuoteIds.has(q.quote_id)) continue;
+    if (!byId.has(q.quote_id)) byId.set(q.quote_id, q);
+  }
+
+  return Array.from(byId.values());
 }
 
 /** Saved quotes for this customer — treated as policies they can claim on. */

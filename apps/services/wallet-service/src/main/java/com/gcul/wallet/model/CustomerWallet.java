@@ -124,4 +124,8 @@ public class CustomerWallet {
 	public boolean isConnected() {
 		return "connected".equals(status) && address != null;
 	}
+
+	public boolean isPendingConsent() {
+		return "pending_consent".equals(status);
+	}
 }

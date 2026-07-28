@@ -21,7 +21,7 @@ public class CantonPolicyMintService {
 	public CantonPolicyMintService(
 			CantonProperties props,
 			CantonJsonApiClient client,
-			@Value("${gcul.ledger.backend:ethereum}") String ledgerBackend) {
+			@Value("${gcul.ledger.backend:canton}") String ledgerBackend) {
 		this.props = props;
 		this.client = client;
 		this.ledgerBackend = ledgerBackend;

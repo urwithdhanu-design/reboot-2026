@@ -26,7 +26,13 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   );
   const [user, setUser] = useState<AuthUser | null>(() => {
     const raw = localStorage.getItem(USER_KEY);
-    return raw ? (JSON.parse(raw) as AuthUser) : null;
+    if (!raw) return null;
+    try {
+      return JSON.parse(raw) as AuthUser;
+    } catch {
+      localStorage.removeItem(USER_KEY);
+      return null;
+    }
   });
 
   const setSession = useCallback((nextToken: string, nextUser: AuthUser) => {

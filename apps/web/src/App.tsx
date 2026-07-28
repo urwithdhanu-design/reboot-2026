@@ -3,6 +3,7 @@ import { SessionProvider, useSession } from "./session";
 import { ChatbotProvider } from "./chatbot/ChatbotContext";
 import { ChatbotWidget } from "./chatbot/ChatbotWidget";
 import { ViewModeProvider, useViewMode } from "./viewMode";
+import { CustomerNavProvider } from "./customerNav";
 import { ViewModeToggle } from "./components/ViewModeToggle";
 import { ComparePage } from "./pages/ComparePage";
 import { KycPage } from "./pages/KycPage";
@@ -17,6 +18,7 @@ import { QuoteBuilderPage } from "./pages/QuoteBuilderPage";
 import { RegisterPage } from "./pages/RegisterPage";
 import { ResetPasswordPage } from "./pages/ResetPasswordPage";
 import { WalletPage } from "./pages/WalletPage";
+import { WalletApprovePage } from "./pages/WalletApprovePage";
 import type { ReactNode } from "react";
 
 function RequireAuth({ children }: { children: ReactNode }) {
@@ -50,6 +52,7 @@ function AppShell() {
           <Route path="/login" element={<LoginPage />} />
           <Route path="/forgot-password" element={<ForgotPasswordPage />} />
           <Route path="/reset-password" element={<ResetPasswordPage />} />
+          <Route path="/wallet/approve" element={<WalletApprovePage />} />
           <Route
             path="/kyc"
             element={
@@ -124,7 +127,9 @@ function AppShell() {
             }
           />
         </Routes>
-        <ChatbotWidget />
+        <div className="phone-overlay-layer">
+          <ChatbotWidget />
+        </div>
       </div>
     </div>
   );
@@ -134,11 +139,13 @@ export default function App() {
   return (
     <SessionProvider>
       <ViewModeProvider>
-        <ChatbotProvider>
-          <BrowserRouter>
-            <AppShell />
-          </BrowserRouter>
-        </ChatbotProvider>
+        <CustomerNavProvider>
+          <ChatbotProvider>
+            <BrowserRouter>
+              <AppShell />
+            </BrowserRouter>
+          </ChatbotProvider>
+        </CustomerNavProvider>
       </ViewModeProvider>
     </SessionProvider>
   );

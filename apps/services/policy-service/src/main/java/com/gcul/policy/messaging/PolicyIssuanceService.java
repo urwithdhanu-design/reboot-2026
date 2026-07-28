@@ -321,6 +321,10 @@ public class PolicyIssuanceService {
 		if ("MINTED".equalsIgnoreCase(record.getMintStatus())) {
 			return;
 		}
+		if (policyRecords.isCancelled(record)) {
+			log.warn("Mint skipped for cancelled policy {}", record.getPolicyId());
+			return;
+		}
 		Map<String, Object> mintRequest = blockchainMintClient.buildMintRequest(toView(record), kycVerified);
 		Map<String, Object> requested = new LinkedHashMap<>(mintRequest);
 		requested.put("eventType", "PolicyMintRequested");

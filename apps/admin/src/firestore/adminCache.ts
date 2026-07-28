@@ -20,7 +20,10 @@ type CacheDoc = {
 let db: Firestore | null = null;
 
 function configured(): boolean {
-  return import.meta.env.VITE_FIRESTORE_CACHE !== 'false';
+  if (import.meta.env.VITE_FIRESTORE_CACHE === 'false') return false;
+  // Local APIs must not serve cloud Firestore snapshots (stale / wrong environment).
+  if (import.meta.env.VITE_API_TARGET === 'local') return false;
+  return true;
 }
 
 function firestore(): Firestore | null {

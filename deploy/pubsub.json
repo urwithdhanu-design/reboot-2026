@@ -25,7 +25,7 @@
     {
       "suffix": "policy-events",
       "description": "PolicyCreated, PolicyMintRequested, PolicyActivated",
-      "eventTypes": ["PolicyCreated", "PolicyMintRequested", "PolicyActivated"],
+      "eventTypes": ["PolicyCreated", "PolicyMintRequested", "PolicyActivated", "PolicyCancelled"],
       "publishers": ["gcul-policy"],
       "subscribers": ["gcul-blockchain-orchestrator", "gcul-notification", "gcul-audit"]
     },

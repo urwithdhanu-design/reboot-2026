@@ -33,17 +33,20 @@ public class WalletService {
 	private final WalletTransactionRepository transactions;
 	private final KycStatusClient kycStatusClient;
 	private final WalletEventPublisher walletEvents;
+	private final WalletConsentService consentService;
 	private final SecureRandom random = new SecureRandom();
 
 	public WalletService(
 			CustomerWalletRepository repository,
 			WalletTransactionRepository transactions,
 			KycStatusClient kycStatusClient,
-			WalletEventPublisher walletEvents) {
+			WalletEventPublisher walletEvents,
+			WalletConsentService consentService) {
 		this.repository = repository;
 		this.transactions = transactions;
 		this.kycStatusClient = kycStatusClient;
 		this.walletEvents = walletEvents;
+		this.consentService = consentService;
 	}
 
 	public Map<String, Object> getWallet(String userId) {
@@ -88,20 +91,20 @@ public class WalletService {
 		wallet.setUserId(userId);
 		wallet.setUserEmail(email);
 		wallet.setAddress(address.trim().toLowerCase());
-		wallet.setStatus("connected");
+		wallet.setStatus(WalletConsentService.STATUS_PENDING);
 		wallet.setProvider("ethereum");
 		wallet.setMode("linked");
-		wallet.setNote("Verified Ethereum wallet for policy NFT delivery.");
+		wallet.setNote("Pending email approval — verify to enable policy NFT delivery and payouts.");
 		wallet.setCurrency("GBP");
 		if (wallet.getBalanceGbp() < 0) {
 			wallet.setBalanceGbp(0.0);
 		}
 		wallet.setUpdatedAt(Instant.now());
 		wallet = repository.saveAndFlush(wallet);
-		walletEvents.walletLinked(userId, wallet);
 
 		Map<String, Object> response = toResponse(wallet);
-		response.put("linked", true);
+		response.putAll(consentService.issueConsentEmail(wallet, email));
+		response.put("linked", false);
 		return response;
 	}
 
@@ -119,6 +122,16 @@ public class WalletService {
 			map.put("reused", true);
 			return map;
 		}
+		if (existing.isPresent() && existing.get().isPendingConsent()) {
+			CustomerWallet pending = existing.get();
+			pending.setUserEmail(email);
+			pending.setUpdatedAt(Instant.now());
+			pending = repository.saveAndFlush(pending);
+			Map<String, Object> map = toResponse(pending);
+			map.putAll(consentService.issueConsentEmail(pending, email));
+			map.put("reused", true);
+			return map;
+		}
 
 		if (!"verified".equals(kycStatusClient.fetchKycStatus(bearerToken))) {
 			throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
@@ -129,10 +142,10 @@ public class WalletService {
 		wallet.setUserId(userId);
 		wallet.setUserEmail(email);
 		wallet.setAddress(generateAddress(userId, email));
-		wallet.setStatus("connected");
+		wallet.setStatus(WalletConsentService.STATUS_PENDING);
 		wallet.setProvider("secure_wallet");
 		wallet.setMode("demo");
-		wallet.setNote("Demo digital account for policy storage and payouts.");
+		wallet.setNote("Pending email approval — check your inbox to activate your demo wallet.");
 		wallet.setCurrency("GBP");
 		if (wallet.getBalanceGbp() < 0) {
 			wallet.setBalanceGbp(0.0);
@@ -149,19 +162,18 @@ public class WalletService {
 			if (!wallet.isConnected()) {
 				wallet.setUserEmail(email);
 				wallet.setAddress(generateAddress(userId, email));
-				wallet.setStatus("connected");
+				wallet.setStatus(WalletConsentService.STATUS_PENDING);
 				wallet.setProvider("secure_wallet");
 				wallet.setMode("demo");
-				wallet.setNote("Demo digital account for policy storage and payouts.");
+				wallet.setNote("Pending email approval — check your inbox to activate your demo wallet.");
 				wallet.setCurrency("GBP");
 				wallet.setUpdatedAt(Instant.now());
 				wallet = repository.saveAndFlush(wallet);
 			}
 		}
 
-		walletEvents.walletLinked(userId, wallet);
-
 		Map<String, Object> response = toResponse(wallet);
+		response.putAll(consentService.issueConsentEmail(wallet, email));
 		response.put("ledger", "gcul");
 		response.put("reused", existing.isPresent());
 		return response;
@@ -182,7 +194,7 @@ public class WalletService {
 						"Create a wallet before recharging"));
 		if (!wallet.isConnected()) {
 			throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-					"Create a wallet before recharging");
+					"Wallet not active — approve the email link or create a wallet before recharging");
 		}
 
 		wallet.setBalanceGbp(roundMoney(wallet.getBalanceGbp() + amount));
@@ -233,7 +245,7 @@ public class WalletService {
 		CustomerWallet wallet = resolveWallet(userId, email, walletAddress);
 		if (!wallet.isConnected()) {
 			throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-					"Customer wallet not connected — create or link a wallet before claim payout");
+					"Customer wallet not active — approve the email link before claim payout");
 		}
 
 		double credit = roundMoney(amount);
@@ -364,7 +376,8 @@ public class WalletService {
 				.orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST,
 						"Create a wallet before paying"));
 		if (!wallet.isConnected()) {
-			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Create a wallet before paying");
+			throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+					"Wallet not active — approve the email link before paying");
 		}
 
 		double charge = roundMoney(amount);

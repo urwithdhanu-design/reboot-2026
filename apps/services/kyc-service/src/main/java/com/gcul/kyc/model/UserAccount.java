@@ -67,6 +67,14 @@ public class UserAccount {
 	@Column(nullable = false, length = 32)
 	private String role = PlatformRoles.CUSTOMER;
 
+	/** Start of the current authenticated session (updated on each login). */
+	@Column(name = "current_login_at", length = 40)
+	private String currentLoginAt;
+
+	/** Start of the previous session (for "last login" display). */
+	@Column(name = "last_login_at", length = 40)
+	private String lastLoginAt;
+
 	public String getRole() {
 		return role;
 	}
@@ -217,5 +225,21 @@ public class UserAccount {
 
 	public boolean hasConnectedWallet() {
 		return "connected".equals(walletStatus) && walletAddress != null;
+	}
+
+	public String getCurrentLoginAt() {
+		return currentLoginAt;
+	}
+
+	public void setCurrentLoginAt(String currentLoginAt) {
+		this.currentLoginAt = currentLoginAt;
+	}
+
+	public String getLastLoginAt() {
+		return lastLoginAt;
+	}
+
+	public void setLastLoginAt(String lastLoginAt) {
+		this.lastLoginAt = lastLoginAt;
 	}
 }

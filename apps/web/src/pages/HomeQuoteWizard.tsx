@@ -1,6 +1,5 @@
 import { useState, type Dispatch, type FormEvent, type SetStateAction } from "react";
 import type { Product, QuoteEstimate, QuoteSchema } from "../api";
-import { PayQuoteButton } from "../components/PayQuoteButton";
 
 const DEMO_ADDRESS = "BUCKINGHAM PALACE\nTHE MALL\nLONDON\nSW1A 1AA";
 
@@ -48,6 +47,11 @@ type Props = {
   quote: QuoteEstimate | null;
   submitting: boolean;
   error: string | null;
+  demoFilling?: boolean;
+  demoFlash?: boolean;
+  userName?: string;
+  canDemoFill?: boolean;
+  onDemoFill?: () => void;
   onBack: () => void;
   onNext: (e: FormEvent) => void;
   onCancel: () => void;
@@ -63,6 +67,11 @@ export function HomeQuoteWizard({
   quote,
   submitting,
   error,
+  demoFilling = false,
+  demoFlash = false,
+  userName,
+  canDemoFill = false,
+  onDemoFill,
   onBack,
   onNext,
   onCancel,
@@ -79,11 +88,28 @@ export function HomeQuoteWizard({
           <BrandMark />
           <span>REBOOT 2026</span>
         </div>
-        <div className="lloyds-secure">
-          <LockIcon />
-          <span>Safe &amp; Secure</span>
+        <div className="lloyds-header-actions">
+          {onDemoFill ? (
+            <button
+              type="button"
+              className="demo-fill-btn lloyds-demo-fill-btn"
+              disabled={demoFilling || submitting || !canDemoFill}
+              onClick={onDemoFill}
+            >
+              {demoFilling ? "Filling…" : "Demo fill"}
+            </button>
+          ) : null}
+          <div className="lloyds-secure">
+            <LockIcon />
+            <span>Safe &amp; Secure</span>
+          </div>
         </div>
       </header>
+      {demoFilling && userName ? (
+        <p className="demo-fill-banner lloyds-demo-fill-banner" role="status">
+          Auto-filling your details as <strong>{userName}</strong>…
+        </p>
+      ) : null}
       <div
         className="lloyds-progress"
         role="progressbar"
@@ -109,7 +135,6 @@ export function HomeQuoteWizard({
               {quote.product_title} · {quote.quote_id}
             </p>
           </div>
-          <PayQuoteButton quote={quote} label="Pay first premium" />
           <button
             className="btn-outline lloyds-cancel"
             type="button"
@@ -120,7 +145,7 @@ export function HomeQuoteWizard({
           <PlatformSiteFooter />
         </div>
       ) : (
-        <form className="lloyds-body" onSubmit={onNext}>
+        <form className={`lloyds-body${demoFlash ? " demo-flash-active" : ""}`} onSubmit={onNext}>
           {wizardStep === 1 ? <LandingStep /> : null}
           {wizardStep === 2 ? (
             <DetailsStep answers={answers} setAnswers={setAnswers} />
@@ -192,7 +217,7 @@ export function HomeQuoteWizard({
               <button type="button" className="btn-outline lloyds-retrieve" disabled>
                 Retrieve an existing quote
               </button>
-              <button type="submit" className="btn-primary btn-dark" disabled={submitting}>
+              <button type="submit" className="btn-primary btn-dark" disabled={submitting || demoFilling}>
                 Get a quote
               </button>
               <button type="button" className="lloyds-text-link lloyds-cancel-link" onClick={onCancel}>
@@ -201,17 +226,29 @@ export function HomeQuoteWizard({
             </div>
           ) : (
             <div className="wizard-footer-nav">
-              <button type="button" className="lloyds-prev" onClick={onBack} aria-label="Previous step">
+              <button
+                type="button"
+                className="lloyds-prev"
+                onClick={onBack}
+                disabled={demoFilling}
+                aria-label="Previous step"
+              >
                 &lt; Previous
               </button>
               <div className="wizard-footer-actions">
-                <button type="button" className="btn-outline lloyds-cancel" onClick={onCancel} aria-label="Cancel quote">
+                <button
+                  type="button"
+                  className="btn-outline lloyds-cancel"
+                  onClick={onCancel}
+                  disabled={demoFilling}
+                  aria-label="Cancel quote"
+                >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   className="btn-primary btn-dark"
-                  disabled={submitting}
+                  disabled={submitting || demoFilling}
                   aria-label={
                     submitting
                       ? "Calculating quote"
@@ -220,7 +257,11 @@ export function HomeQuoteWizard({
                         : "Next step"
                   }
                 >
-                  {submitting ? "Calculating…" : wizardStep === totalSteps ? "Get quote" : "Next"}
+                  {submitting || demoFilling
+                    ? "Calculating…"
+                    : wizardStep === totalSteps
+                      ? "Get quote"
+                      : "Next"}
                 </button>
               </div>
             </div>

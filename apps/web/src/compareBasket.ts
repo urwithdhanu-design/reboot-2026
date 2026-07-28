@@ -8,7 +8,12 @@ export function readCompareQuotes(): QuoteEstimate[] {
   if (!raw) return [];
   try {
     const parsed = JSON.parse(raw) as QuoteEstimate[];
-    return Array.isArray(parsed) ? parsed : [];
+    if (!Array.isArray(parsed)) return [];
+    const byId = new Map<string, QuoteEstimate>();
+    for (const q of parsed) {
+      if (q?.quote_id && !byId.has(q.quote_id)) byId.set(q.quote_id, q);
+    }
+    return Array.from(byId.values());
   } catch {
     return [];
   }

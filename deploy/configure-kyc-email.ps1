@@ -102,4 +102,12 @@ gcloud run services update gcul-policy `
   --update-secrets "EMAIL_PASS=${secretPass}:latest" `
   --quiet
 
+Write-Host "Updating gcul-wallet with same Gmail SMTP (wallet consent approval emails) ..."
+gcloud run services update gcul-wallet `
+  --region $Region `
+  --project $ProjectId `
+  --update-env-vars $envVars `
+  --update-secrets "EMAIL_PASS=${secretPass}:latest" `
+  --quiet
+
 Write-Host "Done. Emails send as '$fromName' from $emailUser"

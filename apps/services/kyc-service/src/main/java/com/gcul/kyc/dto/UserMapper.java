@@ -30,6 +30,9 @@ public final class UserMapper {
 			// Wallet data is owned by wallet-service; use GET /api/wallet when needed.
 			map.put("wallet", null);
 		}
+		if (user.getLastLoginAt() != null) {
+			map.put("last_login_at", user.getLastLoginAt());
+		}
 		return map;
 	}
 

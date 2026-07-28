@@ -148,6 +148,7 @@ public class PolicyMintService {
 		minted.put("network", result.network());
 		minted.put("metadataURI", result.metadataUri());
 		minted.put("mode", result.mode());
+		minted.put("ledgerId", result.mode());
 		minted.put("mintStatus", result.mintStatus());
 		publisher.publish(EventTopics.BLOCKCHAIN, minted);
 	}

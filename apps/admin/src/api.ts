@@ -2,6 +2,13 @@ const API_BASE = import.meta.env.VITE_API_BASE ?? '';
 
 export const ADMIN_TOKEN_KEY = 'gcul-admin-token';
 
+let onUnauthorized: (() => void) | null = null;
+
+/** Clears admin session when a stored bearer token is rejected (401). */
+export function setAdminUnauthorizedHandler(handler: (() => void) | null): void {
+  onUnauthorized = handler;
+}
+
 export function getAdminToken(): string | null {
   return localStorage.getItem(ADMIN_TOKEN_KEY);
 }
@@ -22,6 +29,10 @@ async function request<T>(path: string, options: RequestInit = {}, token?: strin
   }
   if (!res.ok) {
     const body = data as { detail?: string; message?: string; error?: string };
+    if (res.status === 401 && token) {
+      onUnauthorized?.();
+      throw new Error('Session expired. Sign in again (local and cloud tokens are not interchangeable).');
+    }
     throw new Error(body.detail ?? body.message ?? body.error ?? res.statusText);
   }
   return data as T;
@@ -542,6 +553,8 @@ export const adminApi = {
       method: 'POST',
       body: JSON.stringify({ identifier, password }),
     }),
+
+  getMe: () => adminRequest<AdminAuthUser>('/api/auth/me'),
 
   listProducts: () =>
     adminRequest<{ categories: string[]; products: AdminProduct[]; count: number }>(

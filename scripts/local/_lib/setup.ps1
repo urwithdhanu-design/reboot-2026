@@ -40,18 +40,29 @@ foreach ($app in $UiApps) {
 
 # 3. Default API target for local full-stack
 if (-not (Test-Path $ApiTargetFile)) {
-  Write-Host "[3/4] Creating $ApiTargetFile (VITE_API_TARGET=local) ..."
+  Write-Host "[3/5] Creating $ApiTargetFile (VITE_API_TARGET=local) ..."
   @(
     "# Shared dev API target (used by apps/web and apps/admin Vite)"
     "VITE_API_TARGET=local"
   ) | Set-Content -Path $ApiTargetFile -Encoding utf8
 } else {
-  Write-Host "[3/4] Keeping existing $ApiTargetFile (target=$(Get-ApiTarget))"
+  Write-Host "[3/5] Keeping existing $ApiTargetFile (target=$(Get-ApiTarget))"
 }
 
-# 4. Gmail SMTP for welcome / reset emails
+# 4. Python venv for Stallion chatbot (first API start is faster)
+$chatbotDir = Join-Path $RepoRoot "apps\services\chatbot-assistance-service"
+$chatbotVenv = Join-Path $chatbotDir ".venv"
+if (-not (Test-Path $chatbotVenv)) {
+  Write-Host "[4/5] Creating chatbot venv (Stallion on :8090) ..."
+  python -m venv $chatbotVenv
+  & "$chatbotVenv\Scripts\pip.exe" install -q -r (Join-Path $chatbotDir "requirements.txt")
+} else {
+  Write-Host "[4/5] Chatbot venv already exists"
+}
+
+# 5. Gmail SMTP for welcome / reset emails
 . (Join-Path $PSScriptRoot "email-env.ps1")
-Write-Host "[4/4] Email configuration ..."
+Write-Host "[5/5] Email configuration ..."
 Ensure-EmailEnvFiles -RepoRoot $RepoRoot | Out-Null
 
 Write-Host ""

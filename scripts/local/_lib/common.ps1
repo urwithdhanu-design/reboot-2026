@@ -57,7 +57,7 @@ function Show-Help {
   Write-Host "  local-dev.cmd cloud              UI only, APIs on Cloud Run (default for demos)"
   Write-Host ""
   Write-Host "  local-dev.cmd apis               Start Java backends only"
-  Write-Host "  local-dev.cmd apis python        Also chatbot (:8090) + sidecar (:8091)"
+  Write-Host "  local-dev.cmd apis python        Also GCUL sidecar (:8091); chatbot (:8090) starts with apis"
   Write-Host "  local-dev.cmd ui                 Start customer + admin Vite dev servers"
   Write-Host "  local-dev.cmd status             Ports, DB mode, API target"
   Write-Host "  local-dev.cmd stop               Stop APIs and UIs"

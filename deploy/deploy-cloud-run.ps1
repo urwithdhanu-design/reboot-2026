@@ -260,6 +260,31 @@ if ($deployedUrls.ContainsKey("gcul-policy") -and $deployedUrls.ContainsKey("gcu
     --quiet
 }
 
+$claimsUrl = Get-DeployedServiceUrl "gcul-claims"
+if ($deployedUrls.ContainsKey("gcul-policy") -and $claimsUrl) {
+  Write-Host "`nLinking gcul-policy to gcul-claims (cancel open-claims check) ..." -ForegroundColor Cyan
+  gcloud run services update gcul-policy `
+    --region $Region `
+    --project $ProjectId `
+    --cpu-boost `
+    --update-env-vars "GCUL_CLAIMS_SERVICE_URL=$claimsUrl" `
+    --quiet
+}
+
+if ($deployedUrls.ContainsKey("gcul-chatbot")) {
+  $policyUrl = Get-DeployedServiceUrl "gcul-policy"
+  $claimsUrl = Get-DeployedServiceUrl "gcul-claims"
+  Write-Host "`nLinking gcul-chatbot (Stallion) to policy and claims ..." -ForegroundColor Cyan
+  $chatbotEnv = @("CHATBOT_AUTO_INGEST=true")
+  if ($policyUrl) { $chatbotEnv += "POLICY_SERVICE_URL=$policyUrl" }
+  if ($claimsUrl) { $chatbotEnv += "CLAIMS_SERVICE_URL=$claimsUrl" }
+  gcloud run services update gcul-chatbot `
+    --region $Region `
+    --project $ProjectId `
+    --update-env-vars ($chatbotEnv -join ",") `
+    --quiet
+}
+
 if ($ServiceIds.Count -gt 0 -and $deployedUrls.ContainsKey("gcul-canton") -and $deployedUrls["gcul-canton"]) {
   $orchUrl = Get-DeployedServiceUrl "gcul-blockchain-orchestrator"
   if ($orchUrl) {

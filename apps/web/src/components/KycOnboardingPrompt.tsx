@@ -1,6 +1,12 @@
 import { Link } from "react-router-dom";
 import { IconId, IconShield } from "../icons";
-import { formatKycStatus, isKycVerified, kycPromptCopy, type KycStatus } from "../kycStatus";
+import {
+  formatKycStatus,
+  isKycVerified,
+  kycPromptCopy,
+  kycStatusPillVariant,
+  type KycStatus,
+} from "../kycStatus";
 
 type KycOnboardingPromptProps = {
   status: KycStatus | null | undefined;
@@ -21,6 +27,8 @@ export function KycOnboardingPrompt({
   const kycPath = "/kyc";
   const walletPath = "/wallet";
   const ctaTo = status === "verified" ? walletPath : kycPath;
+  const statusLabel = formatKycStatus(status);
+  const statusPill = kycStatusPillVariant(status);
 
   if (variant === "inline") {
     return (
@@ -44,35 +52,43 @@ export function KycOnboardingPrompt({
       className={`kyc-onboarding kyc-onboarding--${variant} kyc-onboarding--${copy.tone} ${className}`.trim()}
       aria-labelledby="kyc-onboarding-title"
     >
-      <div className="kyc-onboarding-icon" aria-hidden>
-        {status === "in_progress" ? <IconShield size={24} /> : <IconId />}
-      </div>
-      <div className="kyc-onboarding-copy">
-        <p className="kyc-onboarding-eyebrow">{copy.eyebrow}</p>
-        <h2 id="kyc-onboarding-title">{copy.title}</h2>
-        <p>{copy.body}</p>
-        <p className="kyc-onboarding-status">
-          Current status: <strong>{formatKycStatus(status)}</strong>
-        </p>
-        {variant === "card" ? (
-          <ol className="kyc-onboarding-steps" aria-label="Verification steps">
-            {steps.map((step) => (
-              <li key={step.label} className={step.done ? "done" : undefined}>
-                <span aria-hidden>{step.done ? "✓" : "○"}</span>
-                {step.label}
-              </li>
-            ))}
-          </ol>
-        ) : null}
-        <div className="kyc-onboarding-actions">
-          <Link to={ctaTo} className="kyc-onboarding-cta">
-            {copy.cta}
-          </Link>
-          {status === "in_progress" ? (
-            <Link to={walletPath} className="kyc-onboarding-secondary">
-              Go to wallet
-            </Link>
+      {variant === "card" ? <div className="kyc-onboarding-edge" aria-hidden /> : null}
+      <div className="kyc-onboarding-inner">
+        <div className="kyc-onboarding-icon" aria-hidden>
+          {status === "in_progress" ? <IconShield size={20} /> : <IconId size={20} />}
+        </div>
+        <div className="kyc-onboarding-copy">
+          <div className="kyc-onboarding-header">
+            <p className="kyc-onboarding-eyebrow">{copy.eyebrow}</p>
+            <span className={`kyc-status-pill kyc-status-pill--${statusPill}`}>
+              <span className="kyc-status-pill-dot" aria-hidden />
+              {statusLabel}
+            </span>
+          </div>
+          <h2 id="kyc-onboarding-title">{copy.title}</h2>
+          <p className="kyc-onboarding-body">{copy.body}</p>
+          {variant === "card" ? (
+            <ol className="kyc-onboarding-steps" aria-label="Verification steps">
+              {steps.map((step, index) => (
+                <li key={step.label} className={step.done ? "done" : undefined}>
+                  <span className="kyc-step-marker" aria-hidden>
+                    {step.done ? "✓" : index + 1}
+                  </span>
+                  {step.label}
+                </li>
+              ))}
+            </ol>
           ) : null}
+          <div className="kyc-onboarding-actions">
+            <Link to={ctaTo} className="kyc-onboarding-cta">
+              {copy.cta}
+            </Link>
+            {status === "in_progress" ? (
+              <Link to={walletPath} className="kyc-onboarding-secondary">
+                Go to wallet
+              </Link>
+            ) : null}
+          </div>
         </div>
       </div>
     </section>

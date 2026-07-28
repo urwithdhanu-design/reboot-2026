@@ -13,10 +13,12 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
 
-import com.gcul.blockchain.canton.CantonPolicyMintService;
 import com.gcul.blockchain.ethereum.PolicyNftMintResult;
 import com.gcul.blockchain.ethereum.PolicyNftMintService;
+import com.gcul.blockchain.ledger.LedgerAdapter;
+import com.gcul.blockchain.ledger.LedgerAdapterRegistry;
 import com.gcul.blockchain.messaging.PolicyMintService;
+import com.gcul.blockchain.model.PolicyLedgerAttestation;
 import com.gcul.blockchain.model.PolicyNftRecord;
 
 import jakarta.validation.Valid;
@@ -28,15 +30,15 @@ public class PolicyNftController {
 
 	private final PolicyNftMintService mintService;
 	private final PolicyMintService policyMintService;
-	private final CantonPolicyMintService cantonPolicyMintService;
+	private final LedgerAdapterRegistry ledgerRegistry;
 
 	public PolicyNftController(
 			PolicyNftMintService mintService,
 			PolicyMintService policyMintService,
-			CantonPolicyMintService cantonPolicyMintService) {
+			LedgerAdapterRegistry ledgerRegistry) {
 		this.mintService = mintService;
 		this.policyMintService = policyMintService;
-		this.cantonPolicyMintService = cantonPolicyMintService;
+		this.ledgerRegistry = ledgerRegistry;
 	}
 
 	@GetMapping("/status")
@@ -56,9 +58,20 @@ public class PolicyNftController {
 	public Map<String, Object> get(@PathVariable String policyId) {
 		PolicyNftRecord record = mintService.findByPolicyId(policyId)
 				.orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Mint record not found"));
-		return toResponse(record);
+		Map<String, Object> response = new LinkedHashMap<>(toResponse(record));
+		List<Map<String, Object>> attestations = mintService.findAttestationsByPolicyId(policyId).stream()
+				.map(this::toAttestationResponse)
+				.toList();
+		response.put("attestations", attestations);
+		response.put("primaryLedger", ledgerRegistry.primaryLedgerId());
+		return response;
 	}
 
+	/**
+	 * On-ledger verification for the primary configured ledger.
+	 * Claims verification should use the primary attestation in policy_ledger_attestations;
+	 * secondary ledger mirrors are a Phase 2 concern.
+	 */
 	@GetMapping("/{policyId}/verify")
 	public Map<String, Object> verify(
 			@PathVariable String policyId,
@@ -66,7 +79,17 @@ public class PolicyNftController {
 		if (policyReferenceHash == null || policyReferenceHash.isBlank()) {
 			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "policyReferenceHash is required");
 		}
-		return cantonPolicyMintService.verifyPolicy(policyId, policyReferenceHash.trim());
+		LedgerAdapter adapter = ledgerRegistry.primaryAdapter();
+		return adapter.verify(policyId, policyReferenceHash.trim())
+				.orElseGet(() -> {
+					Map<String, Object> offline = new LinkedHashMap<>();
+					offline.put("policyId", policyId);
+					offline.put("policyReferenceHash", policyReferenceHash.trim());
+					offline.put("verified", false);
+					offline.put("ledgerId", adapter.ledgerId());
+					offline.put("reason", "Verification not available for ledger " + adapter.ledgerId());
+					return offline;
+				});
 	}
 
 	@PostMapping("/mint")
@@ -100,6 +123,7 @@ public class PolicyNftController {
 		map.put("network", result.network());
 		map.put("metadataURI", result.metadataUri());
 		map.put("mode", result.mode());
+		map.put("ledgerId", result.mode());
 		map.put("mintStatus", result.mintStatus());
 		return map;
 	}
@@ -119,8 +143,27 @@ public class PolicyNftController {
 		map.put("network", record.getNetwork());
 		map.put("metadataURI", record.getTokenUri());
 		map.put("mode", record.getMintMode());
+		map.put("ledgerId", record.getMintMode());
 		map.put("mintStatus", record.getMintStatus());
 		map.put("mintedAt", record.getMintedAt().toString());
+		return map;
+	}
+
+	private Map<String, Object> toAttestationResponse(PolicyLedgerAttestation attestation) {
+		Map<String, Object> map = new LinkedHashMap<>();
+		map.put("policyId", attestation.getPolicyId());
+		map.put("ledgerId", attestation.getLedgerId());
+		map.put("policyReferenceHash", attestation.getPolicyReferenceHash());
+		map.put("tokenId", attestation.getTokenId());
+		map.put("transactionHash", attestation.getTransactionHash());
+		map.put("contractRef", attestation.getContractRef());
+		map.put("chainId", attestation.getChainId());
+		map.put("blockNumber", attestation.getBlockNumber());
+		map.put("network", attestation.getNetwork());
+		map.put("metadataURI", attestation.getMetadataUri());
+		map.put("mintStatus", attestation.getMintStatus());
+		map.put("mintedAt", attestation.getMintedAt().toString());
+		map.put("explorerUrl", attestation.getExplorerUrl());
 		return map;
 	}
 

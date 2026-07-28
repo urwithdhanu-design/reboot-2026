@@ -13,8 +13,12 @@ import {
   healthDemoAnswersThroughStep,
   sleep,
 } from "../healthDemoFill";
-import { AssistantBar, BottomNav, StepHeader } from "../components";
-import { PayQuoteButton } from "../components/PayQuoteButton";
+import {
+  buildHomeDemoAnswers,
+  homeDemoAnswersThroughStep,
+  homeDemoStepSequence,
+} from "../homeDemoFill";
+import { AssistantBar, CustomerAppShell, StepHeader } from "../components";
 import { productIcon } from "../icons";
 import { useSession } from "../session";
 import { HOME_DEMO_ADDRESS, HomeQuoteWizard } from "./HomeQuoteWizard";
@@ -209,6 +213,31 @@ export function QuoteBuilderPage() {
     }
   }
 
+  async function runHomeDemoFill() {
+    if (!user || !product || demoFilling || submitting) return;
+    setDemoFilling(true);
+    setDemoFlash(true);
+    setError(null);
+    setShowQuote(false);
+    const full = buildHomeDemoAnswers(user);
+    const steps = homeDemoStepSequence(full.claims_count);
+
+    try {
+      for (let i = 0; i < steps.length; i++) {
+        const step = steps[i];
+        setWizardStep(step);
+        const partial = homeDemoAnswersThroughStep(step, full);
+        setAnswers((prev) => ({ ...prev, ...partial }));
+        await sleep(i === steps.length - 1 ? 900 : 600);
+      }
+      await submitQuote(full, true);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Demo fill failed");
+      setDemoFilling(false);
+      setDemoFlash(false);
+    }
+  }
+
   function nextHomeStep(from: number): number {
     let next = from + 1;
     if (next === 10 && (answers.claims_count ?? "").startsWith("0")) {
@@ -341,17 +370,16 @@ export function QuoteBuilderPage() {
 
   if (loading) {
     return (
-      <div className="screen has-nav">
+      <CustomerAppShell active="home">
         <StepHeader title="Quote Builder" />
         <p className="muted">Loading quote builder…</p>
-        <BottomNav active="home" />
-      </div>
+      </CustomerAppShell>
     );
   }
 
   if (!product || !schema) {
     return (
-      <div className="screen has-nav">
+      <CustomerAppShell active="home">
         <StepHeader title="Quote Builder" />
         <p className="error" role="alert">
           {error ?? "Product not found"}
@@ -359,8 +387,7 @@ export function QuoteBuilderPage() {
         <Link to="/marketplace" className="btn-primary" style={{ textAlign: "center", textDecoration: "none" }}>
           Back to marketplace
         </Link>
-        <BottomNav active="home" />
-      </div>
+      </CustomerAppShell>
     );
   }
 
@@ -396,6 +423,7 @@ export function QuoteBuilderPage() {
         error={error}
         onBack={onBack}
         onNext={onNextStep}
+        onContinueToPolicies={() => navigate("/policies", { state: { quote } })}
       />
     );
   }
@@ -413,6 +441,11 @@ export function QuoteBuilderPage() {
         quote={quote}
         submitting={submitting}
         error={error}
+        demoFilling={demoFilling}
+        demoFlash={demoFlash}
+        userName={user?.full_name}
+        canDemoFill={!!user}
+        onDemoFill={() => void runHomeDemoFill()}
         onBack={onBack}
         onNext={onNextStep}
         onCancel={() => navigate("/marketplace")}
@@ -423,7 +456,7 @@ export function QuoteBuilderPage() {
 
   if (showQuote && quote) {
     return (
-      <div className="screen has-nav">
+      <CustomerAppShell active="home">
         <div className="vitality-top">
           <button type="button" className="back-link" onClick={onBack}>
             ← Back
@@ -458,7 +491,6 @@ export function QuoteBuilderPage() {
               </div>
             ))}
         </div>
-        <PayQuoteButton quote={quote} label="Pay first premium" />
         <button
           className="btn-secondary"
           type="button"
@@ -466,8 +498,7 @@ export function QuoteBuilderPage() {
         >
           Save quote without paying
         </button>
-        <BottomNav active="home" />
-      </div>
+      </CustomerAppShell>
     );
   }
 
@@ -478,7 +509,7 @@ export function QuoteBuilderPage() {
         : currentStep.title;
 
     return (
-      <div className="screen has-nav vitality-screen">
+      <CustomerAppShell active="home" className="vitality-screen">
         <div className="vitality-top">
           <button type="button" className="back-link" onClick={onBack} disabled={demoFilling}>
             ← Back
@@ -645,14 +676,13 @@ export function QuoteBuilderPage() {
           © Reboot 2026 Insurance. Health Plan brought to you in partnership with Vitality.
           VitalityHealth and VitalityLife are trading names of Vitality Corporate Services Limited.
         </p>
-        <BottomNav active="home" />
-      </div>
+      </CustomerAppShell>
     );
   }
 
   // Default form flow for Travel / Vehicle / Pet / Life
   return (
-    <div className="screen has-nav">
+    <CustomerAppShell active="home">
       <StepHeader title={`${product.category} Quote Builder`} />
       <div className="quote-product">
         <div className="product-icon">{productIcon(product.icon)}</div>
@@ -706,8 +736,7 @@ export function QuoteBuilderPage() {
         </button>
       </form>
       <AssistantBar screen="marketplace" />
-      <BottomNav active="home" />
-    </div>
+    </CustomerAppShell>
   );
 }
 

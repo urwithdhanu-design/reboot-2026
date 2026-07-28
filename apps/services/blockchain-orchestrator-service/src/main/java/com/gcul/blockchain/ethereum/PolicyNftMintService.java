@@ -1,107 +1,48 @@
 package com.gcul.blockchain.ethereum;
 
-import java.math.BigInteger;
 import java.time.Instant;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.UUID;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 import org.springframework.web.server.ResponseStatusException;
-import org.web3j.abi.EventEncoder;
-import org.web3j.abi.FunctionEncoder;
-import org.web3j.abi.FunctionReturnDecoder;
-import org.web3j.abi.TypeReference;
-import org.web3j.abi.datatypes.Address;
-import org.web3j.abi.datatypes.Event;
-import org.web3j.abi.datatypes.Function;
-import org.web3j.abi.datatypes.Type;
-import org.web3j.abi.datatypes.Utf8String;
-import org.web3j.abi.datatypes.generated.Uint256;
-import org.web3j.crypto.Credentials;
-import org.web3j.protocol.Web3j;
-import org.web3j.protocol.core.DefaultBlockParameterName;
-import org.web3j.protocol.core.methods.request.Transaction;
-import org.web3j.protocol.core.methods.response.EthCall;
-import org.web3j.protocol.core.methods.response.EthSendTransaction;
-import org.web3j.protocol.core.methods.response.Log;
-import org.web3j.protocol.core.methods.response.TransactionReceipt;
-import org.web3j.tx.RawTransactionManager;
-import org.web3j.tx.response.PollingTransactionReceiptProcessor;
-import org.web3j.utils.Numeric;
 
-import com.gcul.blockchain.canton.CantonPolicyMintService;
 import com.gcul.blockchain.config.EthereumProperties;
 import com.gcul.blockchain.ethereum.PolicyMintValidator.MintContext;
+import com.gcul.blockchain.ledger.LedgerAdapter;
+import com.gcul.blockchain.ledger.LedgerAdapterRegistry;
+import com.gcul.blockchain.model.PolicyLedgerAttestation;
 import com.gcul.blockchain.model.PolicyNftRecord;
+import com.gcul.blockchain.repository.PolicyLedgerAttestationRepository;
 import com.gcul.blockchain.repository.PolicyNftRecordRepository;
 
 @Service
 public class PolicyNftMintService {
 
-	private static final Logger log = LoggerFactory.getLogger(PolicyNftMintService.class);
-	private static final String NETWORK = "Ethereum Sepolia";
-	private static final Event POLICY_MINTED_EVENT = new Event(
-			"PolicyMinted",
-			Arrays.asList(
-					new TypeReference<Uint256>(true) {},
-					new TypeReference<Address>(true) {},
-					new TypeReference<Utf8String>() {},
-					new TypeReference<Utf8String>() {}));
-
 	private final EthereumProperties props;
 	private final PolicyNftRecordRepository repository;
+	private final PolicyLedgerAttestationRepository attestationRepository;
 	private final PolicyMintValidator validator;
-	private final Optional<Web3j> web3j;
-	private final Optional<Credentials> insurerCredentials;
-	private final CantonPolicyMintService cantonPolicyMintService;
+	private final LedgerAdapterRegistry ledgerRegistry;
 
 	public PolicyNftMintService(
 			EthereumProperties props,
 			PolicyNftRecordRepository repository,
+			PolicyLedgerAttestationRepository attestationRepository,
 			PolicyMintValidator validator,
-			Optional<Web3j> web3j,
-			Optional<Credentials> insurerCredentials,
-			CantonPolicyMintService cantonPolicyMintService) {
+			LedgerAdapterRegistry ledgerRegistry) {
 		this.props = props;
 		this.repository = repository;
+		this.attestationRepository = attestationRepository;
 		this.validator = validator;
-		this.web3j = web3j;
-		this.insurerCredentials = insurerCredentials;
-		this.cantonPolicyMintService = cantonPolicyMintService;
-	}
-
-	public boolean isEthereumLive() {
-		return props.isEnabled()
-				&& web3j.isPresent()
-				&& insurerCredentials.isPresent()
-				&& StringUtils.hasText(props.getContractAddress());
+		this.ledgerRegistry = ledgerRegistry;
 	}
 
 	public Map<String, Object> status() {
-		if (cantonPolicyMintService.isActive()) {
-			return cantonPolicyMintService.status();
-		}
-		Map<String, Object> status = new LinkedHashMap<>();
-		status.put("enabled", props.isEnabled());
-		status.put("live", isEthereumLive());
-		status.put("chainId", props.getChainId());
-		status.put("network", NETWORK);
-		status.put("contractAddress", props.getContractAddress());
-		status.put("insurerAddress", insurerCredentials.map(c -> c.getAddress()).orElse(null));
-		status.put("rpcConfigured", StringUtils.hasText(props.getRpcUrl()));
-		status.put("mode", isEthereumLive() ? "ethereum" : "simulated");
-		status.put("canton", cantonPolicyMintService.status());
-		return status;
+		return ledgerRegistry.allStatus();
 	}
 
 	@Transactional
@@ -115,6 +56,7 @@ public class PolicyNftMintService {
 		String policyNumber = firstNonBlank(request.policyNumber(), policyId);
 		String customerId = firstNonBlank(request.customerId(), "unknown");
 
+		LedgerAdapter adapter = ledgerRegistry.resolveMintAdapter();
 		validator.validate(new MintContext(
 				policyId,
 				policyReferenceHash,
@@ -122,29 +64,22 @@ public class PolicyNftMintService {
 				metadataUri,
 				customerId,
 				request.kycVerified(),
-				request.policyEligible()));
+				request.policyEligible(),
+				adapter.ledgerId()));
 
-		PolicyNftMintResult result;
-		if (cantonPolicyMintService.isActive()) {
-			result = cantonPolicyMintService.mintPolicy(new MintRequest(
-					policyId,
-					policyNumber,
-					customerId,
-					walletAddress,
-					policyReferenceHash,
-					metadataUri,
-					request.kycVerified(),
-					request.policyEligible(),
-					request.metadata()));
-		}
-		else if (isEthereumLive()) {
-			result = mintOnChain(policyId, policyReferenceHash, policyNumber, customerId, walletAddress, metadataUri);
-		}
-		else {
-			result = mintSimulated(policyId, policyReferenceHash, policyNumber, customerId, walletAddress, metadataUri);
-		}
+		PolicyNftMintResult result = adapter.mint(new MintRequest(
+				policyId,
+				policyNumber,
+				customerId,
+				walletAddress,
+				policyReferenceHash,
+				metadataUri,
+				request.kycVerified(),
+				request.policyEligible(),
+				request.metadata()));
 
-		saveRecord(result, policyNumber, customerId);
+		saveAttestation(result, adapter.ledgerId(), policyNumber, customerId);
+		saveLegacyRecord(result, policyNumber, customerId);
 		return result;
 	}
 
@@ -156,114 +91,41 @@ public class PolicyNftMintService {
 		return repository.findByPolicyId(policyId);
 	}
 
-	private PolicyNftMintResult mintOnChain(
-			String policyId,
-			String policyReferenceHash,
-			String policyNumber,
-			String customerId,
-			String walletAddress,
-			String metadataUri) {
-		Web3j client = web3j.orElseThrow();
-		Credentials credentials = insurerCredentials.orElseThrow();
-		String contractAddress = props.getContractAddress().trim();
-
-		try {
-			RawTransactionManager txManager = new RawTransactionManager(
-					client,
-					credentials,
-					props.getChainId(),
-					new PollingTransactionReceiptProcessor(client, 3_000, 40));
-
-			@SuppressWarnings("unchecked")
-			List<TypeReference<?>> mintOutputs = (List<TypeReference<?>>) (List<?>)
-					List.of(new TypeReference<Uint256>() {});
-			String data = FunctionEncoder.encode(new Function(
-					"mintPolicy",
-					Arrays.asList(
-							new Address(walletAddress),
-							new Utf8String(policyReferenceHash),
-							new Utf8String(metadataUri)),
-					mintOutputs));
-
-			BigInteger gasPrice = client.ethGasPrice().send().getGasPrice();
-			BigInteger gasLimit = BigInteger.valueOf(350_000L);
-
-			EthSendTransaction sent = txManager.sendTransaction(
-					gasPrice,
-					gasLimit,
-					contractAddress,
-					data,
-					BigInteger.ZERO);
-			if (sent.hasError()) {
-				throw new IllegalStateException("Mint transaction rejected: " + sent.getError().getMessage());
-			}
-
-			String txHash = sent.getTransactionHash();
-			PollingTransactionReceiptProcessor receiptProcessor =
-					new PollingTransactionReceiptProcessor(client, 3_000, 40);
-			TransactionReceipt receipt = receiptProcessor.waitForTransactionReceipt(txHash);
-
-			if (!"0x1".equalsIgnoreCase(receipt.getStatus())) {
-				throw new IllegalStateException("Mint transaction reverted: " + txHash);
-			}
-
-			String tokenId = extractTokenIdFromReceipt(receipt)
-					.orElseGet(() -> readTokenIdForPolicyHash(client, contractAddress, policyReferenceHash));
-			long blockNumber = parseBlockNumber(receipt.getBlockNumber());
-
-			log.info("On-chain policy NFT minted policyId={} tokenId={} txHash={} block={} wallet={}",
-					policyId, tokenId, txHash, blockNumber, walletAddress);
-
-			return new PolicyNftMintResult(
-					policyId,
-					policyReferenceHash,
-					tokenId,
-					txHash,
-					walletAddress,
-					contractAddress,
-					props.getChainId(),
-					blockNumber,
-					NETWORK,
-					metadataUri,
-					"ethereum",
-					"MINTED");
-		}
-		catch (ResponseStatusException ex) {
-			throw ex;
-		}
-		catch (Exception ex) {
-			log.error("Ethereum mint failed for policy {}: {}", policyId, ex.getMessage(), ex);
-			throw new ResponseStatusException(HttpStatus.BAD_GATEWAY,
-					"Ethereum mint failed: " + ex.getMessage(), ex);
-		}
+	public List<PolicyLedgerAttestation> findAttestationsByPolicyId(String policyId) {
+		return attestationRepository.findByPolicyIdOrderByMintedAtDesc(policyId);
 	}
 
-	private PolicyNftMintResult mintSimulated(
-			String policyId,
-			String policyReferenceHash,
-			String policyNumber,
-			String customerId,
-			String walletAddress,
-			String metadataUri) {
-		String tokenId = "SIM-" + policyId.replace("POL-", "");
-		String txHash = "0xsim" + UUID.randomUUID().toString().replace("-", "");
-		log.info("Simulated policy NFT mint policyId={} tokenId={} wallet={}", policyId, tokenId, walletAddress);
-		return new PolicyNftMintResult(
-				policyId,
-				policyReferenceHash,
-				tokenId,
-				txHash,
-				walletAddress,
-				"simulated",
-				props.getChainId(),
-				0L,
-				NETWORK,
-				metadataUri,
-				"simulated",
-				"MINTED");
+	public Optional<PolicyLedgerAttestation> findPrimaryAttestation(String policyId) {
+		return attestationRepository.findByPolicyIdAndLedgerId(policyId, ledgerRegistry.primaryLedgerId())
+				.or(() -> attestationRepository.findByPolicyIdOrderByMintedAtDesc(policyId).stream().findFirst());
 	}
 
-	private void saveRecord(PolicyNftMintResult result, String policyNumber, String customerId) {
+	private void saveAttestation(
+			PolicyNftMintResult result,
+			String ledgerId,
+			String policyNumber,
+			String customerId) {
+		PolicyLedgerAttestation attestation = new PolicyLedgerAttestation();
+		attestation.setPolicyId(result.policyId());
+		attestation.setLedgerId(ledgerId);
+		attestation.setPolicyReferenceHash(result.policyReferenceHash());
+		attestation.setPolicyNumber(policyNumber);
+		attestation.setCustomerId(customerId);
+		attestation.setWalletAddress(result.walletAddress());
+		attestation.setTokenId(result.tokenId());
+		attestation.setTransactionHash(result.transactionHash());
+		attestation.setContractRef(result.contractAddress());
+		attestation.setChainId(result.chainId());
+		attestation.setNetwork(result.network());
+		attestation.setMetadataUri(result.metadataUri());
+		attestation.setBlockNumber(result.blockNumber());
+		attestation.setMintStatus(result.mintStatus());
+		attestation.setMintedAt(Instant.now());
+		attestation.setExplorerUrl(buildExplorerUrl(result));
+		attestationRepository.save(attestation);
+	}
+
+	private void saveLegacyRecord(PolicyNftMintResult result, String policyNumber, String customerId) {
 		PolicyNftRecord record = new PolicyNftRecord();
 		record.setPolicyId(result.policyId());
 		record.setPolicyReferenceHash(result.policyReferenceHash());
@@ -291,60 +153,19 @@ public class PolicyNftMintService {
 		return "ipfs://gcul-policy/" + policyId;
 	}
 
-	private Optional<String> extractTokenIdFromReceipt(TransactionReceipt receipt) {
-		String signature = EventEncoder.encode(POLICY_MINTED_EVENT);
-		for (Log eventLog : receipt.getLogs()) {
-			if (eventLog.getTopics() == null || eventLog.getTopics().isEmpty()) {
-				continue;
-			}
-			if (!signature.equalsIgnoreCase(eventLog.getTopics().get(0))) {
-				continue;
-			}
-			if (eventLog.getTopics().size() > 1) {
-				return Optional.of(Numeric.toBigInt(eventLog.getTopics().get(1)).toString());
-			}
+	private static String buildExplorerUrl(PolicyNftMintResult result) {
+		if (result.transactionHash() == null || result.transactionHash().startsWith("0xsim")) {
+			return null;
 		}
-		return Optional.empty();
-	}
-
-	private String readTokenIdForPolicyHash(Web3j client, String contractAddress, String policyReferenceHash) {
-		try {
-			@SuppressWarnings("unchecked")
-			List<TypeReference<?>> outputTypes = (List<TypeReference<?>>) (List<?>)
-					List.of(new TypeReference<Uint256>() {});
-			String data = FunctionEncoder.encode(new Function(
-					"getTokenIdForPolicyHash",
-					Collections.singletonList(new Utf8String(policyReferenceHash)),
-					outputTypes));
-			EthCall response = client.ethCall(
-					Transaction.createEthCallTransaction(null, contractAddress, data),
-					DefaultBlockParameterName.LATEST).send();
-			if (response.hasError()) {
-				throw new IllegalStateException(response.getError().getMessage());
-			}
-			@SuppressWarnings("unchecked")
-			List<TypeReference<Type>> decoderTypes = (List<TypeReference<Type>>) (List<?>) outputTypes;
-			List<Type> decoded = FunctionReturnDecoder.decode(response.getValue(), decoderTypes);
-			return ((Uint256) decoded.get(0)).getValue().toString();
+		if ("ethereum".equalsIgnoreCase(result.mode())) {
+			return "https://sepolia.etherscan.io/tx/" + result.transactionHash();
 		}
-		catch (Exception ex) {
-			throw new IllegalStateException("Unable to read tokenId for policy hash " + policyReferenceHash, ex);
-		}
-	}
-
-	private static long parseBlockNumber(Object blockNumber) {
-		if (blockNumber == null) {
-			return 0L;
-		}
-		if (blockNumber instanceof BigInteger value) {
-			return value.longValue();
-		}
-		return Numeric.decodeQuantity(String.valueOf(blockNumber)).longValue();
+		return null;
 	}
 
 	private static String requireText(String value, String field) {
 		if (!StringUtils.hasText(value)) {
-			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, field + " is required");
+			throw new ResponseStatusException(org.springframework.http.HttpStatus.BAD_REQUEST, field + " is required");
 		}
 		return value.trim();
 	}

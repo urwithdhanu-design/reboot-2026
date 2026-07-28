@@ -11,23 +11,28 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
+import com.gcul.policy.model.PolicyLedgerAttestation;
 import com.gcul.policy.model.PolicyRecord;
 import com.gcul.policy.motor.MotorCoverageLimits;
 import com.gcul.policy.quote.QuoteService;
+import com.gcul.policy.repository.PolicyLedgerAttestationRepository;
 import com.gcul.policy.repository.PolicyRecordRepository;
 
 @Service
 public class PolicyRecordService {
 
 	private final PolicyRecordRepository repository;
+	private final PolicyLedgerAttestationRepository attestationRepository;
 	private final PolicyCoverageResolver coverageResolver;
 	private final QuoteService quoteService;
 
 	public PolicyRecordService(
 			PolicyRecordRepository repository,
+			PolicyLedgerAttestationRepository attestationRepository,
 			PolicyCoverageResolver coverageResolver,
 			QuoteService quoteService) {
 		this.repository = repository;
+		this.attestationRepository = attestationRepository;
 		this.coverageResolver = coverageResolver;
 		this.quoteService = quoteService;
 	}
@@ -89,10 +94,12 @@ public class PolicyRecordService {
 	@Transactional
 	public PolicyRecord applyMintResult(String policyId, Map<String, Object> mintResult) {
 		PolicyRecord record = repository.findById(policyId).orElseThrow();
+		String ledgerId = firstNonBlank(str(mintResult.get("ledgerId")), str(mintResult.get("mode")), "canton");
 		record.setTokenId(str(mintResult.get("tokenId")));
 		record.setTransactionHash(str(mintResult.get("transactionHash")));
 		record.setContractAddress(str(mintResult.get("contractAddress")));
 		record.setBlockchainNetwork(str(mintResult.get("network")));
+		record.setPrimaryLedgerId(ledgerId);
 		record.setMintStatus(str(mintResult.getOrDefault("mintStatus", "MINTED")));
 		Object blockNumber = mintResult.get("blockNumber");
 		if (blockNumber instanceof Number number) {
@@ -102,7 +109,31 @@ public class PolicyRecordService {
 		Instant activatedAt = Instant.now();
 		record.setActivatedAt(activatedAt);
 		activateCoverageOnMint(record, activatedAt);
+		saveAttestation(record, mintResult, ledgerId);
 		return repository.save(record);
+	}
+
+	private void saveAttestation(PolicyRecord record, Map<String, Object> mintResult, String ledgerId) {
+		PolicyLedgerAttestation attestation = attestationRepository
+				.findByPolicyIdAndLedgerId(record.getPolicyId(), ledgerId)
+				.orElseGet(PolicyLedgerAttestation::new);
+		attestation.setPolicyId(record.getPolicyId());
+		attestation.setLedgerId(ledgerId);
+		attestation.setPolicyReferenceHash(firstNonBlank(
+				str(mintResult.get("policyReferenceHash")),
+				record.getPolicyReferenceHash()));
+		attestation.setTokenId(str(mintResult.get("tokenId")));
+		attestation.setTransactionHash(str(mintResult.get("transactionHash")));
+		attestation.setContractRef(str(mintResult.get("contractAddress")));
+		attestation.setNetwork(str(mintResult.get("network")));
+		attestation.setMintStatus(str(mintResult.getOrDefault("mintStatus", "MINTED")));
+		Object blockNumber = mintResult.get("blockNumber");
+		if (blockNumber instanceof Number number) {
+			attestation.setBlockNumber(number.longValue());
+		}
+		attestation.setExplorerUrl(buildExplorerUrl(ledgerId, str(mintResult.get("transactionHash"))));
+		attestation.setAttestedAt(Instant.now());
+		attestationRepository.save(attestation);
 	}
 
 	private void activateCoverageOnMint(PolicyRecord record, Instant activatedAt) {
@@ -190,6 +221,10 @@ public class PolicyRecordService {
 	@Transactional
 	public PolicyRecord resetMintForRetry(String policyId) {
 		PolicyRecord record = repository.findById(policyId).orElseThrow();
+		if (isCancelled(record)) {
+			throw new org.springframework.web.server.ResponseStatusException(
+					org.springframework.http.HttpStatus.CONFLICT, "Policy is cancelled");
+		}
 		if ("MINTED".equalsIgnoreCase(record.getMintStatus())) {
 			return record;
 		}
@@ -214,6 +249,31 @@ public class PolicyRecordService {
 			record.setMintStatus("PENDING");
 		}
 		return repository.save(record);
+	}
+
+	@Transactional
+	public PolicyRecord cancelPolicy(
+			String policyId,
+			String cancellationReason,
+			String cancellationType,
+			String cancellationNote,
+			String refundStatus,
+			double refundAmountGbp,
+			String refundPaymentId) {
+		PolicyRecord record = repository.findById(policyId).orElseThrow();
+		record.setStatus("cancelled");
+		record.setCancelledAt(Instant.now());
+		record.setCancellationReason(cancellationReason);
+		record.setCancellationType(cancellationType);
+		record.setCancellationNote(cancellationNote);
+		record.setRefundStatus(refundStatus);
+		record.setRefundAmountGbp(refundAmountGbp);
+		record.setRefundPaymentId(refundPaymentId);
+		return repository.save(record);
+	}
+
+	public boolean isCancelled(PolicyRecord record) {
+		return "cancelled".equalsIgnoreCase(record.getStatus());
 	}
 
 	public Optional<PolicyRecord> findByPolicyId(String policyId) {
@@ -300,6 +360,7 @@ public class PolicyRecordService {
 		map.put("contract_address", record.getContractAddress());
 		map.put("block_number", record.getBlockNumber());
 		map.put("blockchain_network", record.getBlockchainNetwork());
+		map.put("primary_ledger_id", record.getPrimaryLedgerId());
 		map.put("mint_status", record.getMintStatus());
 		map.put("payment_status", "paid");
 		map.put("issued_at", record.getIssuedAt() == null ? null : record.getIssuedAt().toString());
@@ -317,10 +378,20 @@ public class PolicyRecordService {
 		map.put("coverage_expired", isCoverageExpired(record));
 		map.put("coverage_active", isCoverageActive(record));
 		map.put("coverage_pending_mint", isCoveragePendingMint(record));
+		map.put("cancelled_at", record.getCancelledAt() == null ? null : record.getCancelledAt().toString());
+		map.put("cancellation_reason", record.getCancellationReason());
+		map.put("cancellation_type", record.getCancellationType());
+		map.put("cancellation_note", record.getCancellationNote());
+		map.put("refund_status", record.getRefundStatus());
+		map.put("refund_amount_gbp", record.getRefundAmountGbp());
+		map.put("refund_payment_id", record.getRefundPaymentId());
 		return map;
 	}
 
 	private static boolean isCoverageActive(PolicyRecord record) {
+		if ("cancelled".equalsIgnoreCase(record.getStatus())) {
+			return false;
+		}
 		if (!"MINTED".equalsIgnoreCase(record.getMintStatus())) {
 			return false;
 		}
@@ -345,6 +416,9 @@ public class PolicyRecordService {
 	}
 
 	private static String ledgerType(PolicyRecord record) {
+		if (StringUtils.hasText(record.getPrimaryLedgerId())) {
+			return record.getPrimaryLedgerId();
+		}
 		String network = record.getBlockchainNetwork() == null ? "" : record.getBlockchainNetwork().toLowerCase();
 		if (network.contains("canton")) {
 			return "canton";
@@ -356,17 +430,29 @@ public class PolicyRecordService {
 	}
 
 	private static String buildExplorerUrl(PolicyRecord record) {
-		if (record.getTransactionHash() == null || record.getTransactionHash().isBlank()) {
+		return buildExplorerUrl(ledgerType(record), record.getTransactionHash());
+	}
+
+	private static String buildExplorerUrl(String ledgerId, String transactionHash) {
+		if (transactionHash == null || transactionHash.isBlank()) {
 			return null;
 		}
-		if (record.getTransactionHash().startsWith("0xsim")) {
+		if (transactionHash.startsWith("0xsim")) {
 			return null;
 		}
-		String network = record.getBlockchainNetwork() == null ? "" : record.getBlockchainNetwork().toLowerCase();
-		if (network.contains("canton")) {
-			return null;
+		if ("ethereum".equalsIgnoreCase(ledgerId)) {
+			return "https://sepolia.etherscan.io/tx/" + transactionHash;
 		}
-		return "https://sepolia.etherscan.io/tx/" + record.getTransactionHash();
+		return null;
+	}
+
+	private static String firstNonBlank(String... values) {
+		for (String value : values) {
+			if (StringUtils.hasText(value)) {
+				return value.trim();
+			}
+		}
+		return "";
 	}
 
 	private static String str(Object value) {

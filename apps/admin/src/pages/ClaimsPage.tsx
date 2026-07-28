@@ -90,26 +90,39 @@ export function ClaimsPage() {
   const [rules, setRules] = useState<ParametricRuleRow[]>([]);
   const [filter, setFilter] = useState<Filter>('all');
   const [error, setError] = useState<string | null>(null);
+  const [parametricWarning, setParametricWarning] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [reviewClaim, setReviewClaim] = useState<AdminClaimRow | null>(null);
 
-  const load = useCallback((silent = false) => {
+  const load = useCallback(async (silent = false) => {
     if (!silent) setLoading(true);
-    Promise.all([adminApi.listClaims(), adminApi.listParametricTriggers(), adminApi.listParametricRules()])
-      .then(([claimsRes, triggersRes, rulesRes]) => {
-        setClaims(claimsRes.claims);
-        setTriggers(triggersRes.triggers);
-        setRules(rulesRes.rules);
-        setError(null);
-      })
-      .catch((err) => {
-        setError(err instanceof Error ? err.message : 'Failed to load claims');
-      })
-      .finally(() => {
-        if (!silent) setLoading(false);
-      });
+    try {
+      const claimsRes = await adminApi.listClaims();
+      setClaims(claimsRes.claims);
+      setError(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load claims');
+    }
+
+    try {
+      const [triggersRes, rulesRes] = await Promise.all([
+        adminApi.listParametricTriggers(),
+        adminApi.listParametricRules(),
+      ]);
+      setTriggers(triggersRes.triggers);
+      setRules(rulesRes.rules);
+      setParametricWarning(null);
+    } catch {
+      setTriggers([]);
+      setRules([]);
+      setParametricWarning(
+        'Parametric oracle data is unavailable. Claims still load; start parametric-claim-service on port 8086 for trigger details.',
+      );
+    } finally {
+      if (!silent) setLoading(false);
+    }
   }, []);
 
   useEffect(() => {
@@ -195,6 +208,7 @@ export function ClaimsPage() {
       />
 
       {error ? <AlertBanner>{error}</AlertBanner> : null}
+      {parametricWarning ? <AlertBanner variant="info">{parametricWarning}</AlertBanner> : null}
       {success ? <AlertBanner variant="success">{success}</AlertBanner> : null}
 
       <FilterTabs
