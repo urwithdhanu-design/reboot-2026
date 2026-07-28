@@ -6,6 +6,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatusCode;
+import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.server.ResponseStatusException;
@@ -73,6 +74,26 @@ public class PolicyValidationClient {
 			throw new ResponseStatusException(
 					org.springframework.http.HttpStatus.BAD_REQUEST,
 					"Policy cover has not started — wait for mint approval to complete");
+		}
+	}
+
+	@SuppressWarnings("unchecked")
+	public Map<String, Object> consumeCoverage(String policyRef, double amount) {
+		try {
+			Map<String, Object> response = restClient.post()
+					.uri("/api/internal/policies/{policyId}/coverage/consume", policyRef)
+					.contentType(MediaType.APPLICATION_JSON)
+					.body(Map.of("amount", amount))
+					.retrieve()
+					.body(Map.class);
+			return response == null ? Map.of() : response;
+		}
+		catch (ResponseStatusException ex) {
+			throw ex;
+		}
+		catch (Exception ex) {
+			throw new ResponseStatusException(org.springframework.http.HttpStatus.BAD_GATEWAY,
+					"Could not update remaining policy coverage: " + ex.getMessage());
 		}
 	}
 

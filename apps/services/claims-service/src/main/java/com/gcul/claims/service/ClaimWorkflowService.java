@@ -258,12 +258,20 @@ public class ClaimWorkflowService {
 		claim = repo.save(claim);
 		claimEvents.claimPaidOut(claim);
 
+		Map<String, Object> coverage = policyClient.consumeCoverage(claim.getPolicyRef(), payout);
+		claim.setValidationNotes(appendNote(claim.getValidationNotes(),
+				"Coverage consumed; remaining £" + String.format(Locale.ROOT, "%.2f",
+						num(coverage.get("coverage_remaining_gbp"), 0))));
+		claim = repo.save(claim);
+
 		try {
 			Map<String, Object> settlement = blockchainClient.settleClaim(
 					claim.getId(),
 					claim.getPolicyRef(),
 					payout,
-					claim.getCustomerId());
+					claim.getCustomerId(),
+					num(coverage.get("coverage_limit_gbp"), 0),
+					num(coverage.get("coverage_remaining_gbp"), 0));
 			claim.setSettlementTransactionId(firstNonBlank(
 					str(settlement.get("id")),
 					str(settlement.get("digest"))));

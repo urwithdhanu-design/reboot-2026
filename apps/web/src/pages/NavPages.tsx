@@ -176,6 +176,12 @@ function PolicyCard({ policy }: { policy: CustomerPolicyRecord }) {
             <dd>£{Number(policy.coverage_limit_gbp).toLocaleString("en-GB")}</dd>
           </div>
         ) : null}
+        {policy.coverage_remaining_gbp != null ? (
+          <div className="policy-meta-item">
+            <dt>Cover remaining</dt>
+            <dd>£{Number(policy.coverage_remaining_gbp).toLocaleString("en-GB")}</dd>
+          </div>
+        ) : null}
         <div className="policy-meta-item">
           <dt>Digital policy</dt>
           <dd>{mintLabel}</dd>
@@ -916,7 +922,9 @@ export function ClaimsPage() {
     setCategory(policy.product_category || policy.category || "Property");
   }
 
-  const claimAmountMax = selectedPolicy?.coverage_limit_gbp ?? undefined;
+  const claimAmountMax = selectedPolicy?.coverage_remaining_gbp
+    ?? selectedPolicy?.coverage_limit_gbp
+    ?? undefined;
 
   async function loadClaims() {
     setLoading(true);
@@ -1122,7 +1130,7 @@ export function ClaimsPage() {
                   ? ` · Valid until ${formatPolicyDate(selectedPolicy.cover_expires_at)}`
                   : ""}
                 {selectedPolicy.coverage_limit_gbp != null
-                  ? ` · Max claim £${Number(selectedPolicy.coverage_limit_gbp).toLocaleString("en-GB")}`
+                  ? ` · Remaining cover £${Number(selectedPolicy.coverage_remaining_gbp ?? selectedPolicy.coverage_limit_gbp).toLocaleString("en-GB")}`
                   : ""}
               </p>
             </div>
@@ -1171,7 +1179,7 @@ export function ClaimsPage() {
               />
               {claimAmountMax != null ? (
                 <span className="muted" style={{ display: "block", fontSize: "0.82rem", marginTop: 4 }}>
-                  Must not exceed policy coverage limit of £{claimAmountMax.toLocaleString("en-GB")}
+                  Must not exceed remaining policy coverage of £{claimAmountMax.toLocaleString("en-GB")}
                 </span>
               ) : null}
             </label>

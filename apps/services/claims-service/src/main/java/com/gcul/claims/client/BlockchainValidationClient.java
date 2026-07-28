@@ -75,14 +75,17 @@ public class BlockchainValidationClient {
 	}
 
 	@SuppressWarnings("unchecked")
-	public Map<String, Object> settleClaim(String claimId, String policyRef, double amount, String customerId) {
+	public Map<String, Object> settleClaim(String claimId, String policyRef, double amount, String customerId,
+			double coverageLimit, double coverageRemaining) {
 		try {
 			Map<String, Object> body = Map.of(
 					"claim_id", claimId,
 					"policy_ref", policyRef,
 					"amount", amount,
 					"customer_id", customerId == null ? "" : customerId,
-					"to_wallet", "gcul:customer:" + (customerId == null ? "unknown" : customerId));
+					"to_wallet", "gcul:customer:" + (customerId == null ? "unknown" : customerId),
+					"coverage_limit_gbp", coverageLimit,
+					"coverage_remaining_gbp", coverageRemaining);
 			Map<String, Object> response = restClient.post()
 					.uri("/api/blockchain/internal/claims/settle")
 					.body(body)

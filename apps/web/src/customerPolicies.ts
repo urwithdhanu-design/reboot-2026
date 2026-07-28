@@ -19,6 +19,8 @@ export type CustomerPolicy = {
   cover_start_at?: string | null;
   cover_expires_at?: string | null;
   coverage_limit_gbp?: number | null;
+  coverage_used_gbp?: number | null;
+  coverage_remaining_gbp?: number | null;
   coverage_summary?: string | null;
   coverage_expired?: boolean;
   coverage_active?: boolean;
@@ -77,6 +79,8 @@ export function issuedPolicyToCustomerPolicy(
     cover_start_at: policy.cover_start_at,
     cover_expires_at: policy.cover_expires_at,
     coverage_limit_gbp: policy.coverage_limit_gbp,
+    coverage_used_gbp: policy.coverage_used_gbp,
+    coverage_remaining_gbp: policy.coverage_remaining_gbp,
     coverage_summary: policy.coverage_summary,
     coverage_expired: policy.coverage_expired,
     coverage_active: policy.coverage_active,

@@ -65,6 +65,8 @@ public class PolicyRecord {
 
 	private Double coverageLimitGbp;
 
+	private Double coverageUsedGbp = 0.0;
+
 	@Column(length = 512)
 	private String coverageSummary;
 
@@ -272,6 +274,14 @@ public class PolicyRecord {
 
 	public void setCoverageLimitGbp(Double coverageLimitGbp) {
 		this.coverageLimitGbp = coverageLimitGbp;
+	}
+
+	public Double getCoverageUsedGbp() {
+		return coverageUsedGbp;
+	}
+
+	public void setCoverageUsedGbp(Double coverageUsedGbp) {
+		this.coverageUsedGbp = coverageUsedGbp;
 	}
 
 	public String getCoverageSummary() {

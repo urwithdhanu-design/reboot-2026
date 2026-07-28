@@ -284,6 +284,31 @@ public class PolicyRecordService {
 		return repository.findByQuoteId(quoteId);
 	}
 
+	@Transactional
+	public PolicyRecord consumeCoverage(String policyId, double amount) {
+		if (amount <= 0) {
+			throw new org.springframework.web.server.ResponseStatusException(
+					org.springframework.http.HttpStatus.BAD_REQUEST, "Claim payout amount must be greater than zero");
+		}
+		PolicyRecord record = repository.findById(policyId).orElseThrow(() ->
+				new org.springframework.web.server.ResponseStatusException(
+						org.springframework.http.HttpStatus.NOT_FOUND, "Policy not found"));
+		Double limit = record.getCoverageLimitGbp();
+		if (limit == null || limit <= 0) {
+			throw new org.springframework.web.server.ResponseStatusException(
+					org.springframework.http.HttpStatus.CONFLICT, "Policy has no claimable coverage limit");
+		}
+		double used = record.getCoverageUsedGbp() == null ? 0.0 : record.getCoverageUsedGbp();
+		double remaining = Math.max(0, limit - used);
+		if (amount > remaining + 0.001) {
+			throw new org.springframework.web.server.ResponseStatusException(
+					org.springframework.http.HttpStatus.CONFLICT,
+						"Claim payout exceeds remaining policy coverage of £" + String.format(java.util.Locale.ROOT, "%.2f", remaining));
+		}
+		record.setCoverageUsedGbp(roundMoney(used + amount));
+		return repository.save(record);
+	}
+
 	public List<PolicyRecord> listForCustomer(String customerId, String email, String walletAddress) {
 		java.util.LinkedHashMap<String, PolicyRecord> merged = new java.util.LinkedHashMap<>();
 
@@ -373,6 +398,10 @@ public class PolicyRecordService {
 		map.put("cover_start_at", record.getCoverStartAt() == null ? null : record.getCoverStartAt().toString());
 		map.put("cover_expires_at", record.getCoverExpiresAt() == null ? null : record.getCoverExpiresAt().toString());
 		map.put("coverage_limit_gbp", record.getCoverageLimitGbp());
+		double usedCoverage = record.getCoverageUsedGbp() == null ? 0.0 : record.getCoverageUsedGbp();
+		map.put("coverage_used_gbp", roundMoney(usedCoverage));
+		map.put("coverage_remaining_gbp", record.getCoverageLimitGbp() == null ? null
+				: roundMoney(Math.max(0, record.getCoverageLimitGbp() - usedCoverage)));
 		map.put("coverage_summary", record.getCoverageSummary());
 		map.put("coverage_items", coverageResolver.parseCoverageItems(record.getCoverageDetailsJson()));
 		map.put("coverage_expired", isCoverageExpired(record));
@@ -402,6 +431,10 @@ public class PolicyRecordService {
 			return false;
 		}
 		return !isCoverageExpired(record);
+	}
+
+	private static double roundMoney(double value) {
+		return Math.round(value * 100.0) / 100.0;
 	}
 
 	private static boolean isCoveragePendingMint(PolicyRecord record) {
