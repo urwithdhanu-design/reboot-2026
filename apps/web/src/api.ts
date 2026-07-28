@@ -118,6 +118,7 @@ export type WalletTransaction = {
   currency: string;
   status: string;
   reference?: string;
+  funding_source?: string;
   created_at: string;
 };
 
@@ -406,10 +407,10 @@ export const api = {
       token,
     ),
 
-  rechargeWallet: (token: string, amount: number) =>
+  rechargeWallet: (token: string, amount: number, bankAccount: string) =>
     request<WalletInfo & { transaction: WalletTransaction }>(
       "/api/wallet/recharge",
-      { method: "POST", body: JSON.stringify({ amount }) },
+      { method: "POST", body: JSON.stringify({ amount, bankAccount }) },
       token,
     ),
 

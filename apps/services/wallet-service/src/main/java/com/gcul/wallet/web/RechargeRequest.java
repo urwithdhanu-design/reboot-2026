@@ -1,4 +1,4 @@
 package com.gcul.wallet.web;
 
-public record RechargeRequest(double amount) {
+public record RechargeRequest(double amount, String bankAccount) {
 }

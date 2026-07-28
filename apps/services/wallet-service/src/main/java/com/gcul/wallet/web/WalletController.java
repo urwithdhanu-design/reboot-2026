@@ -55,7 +55,7 @@ public class WalletController {
 	public Map<String, Object> rechargeWallet(
 			HttpServletRequest request,
 			@RequestBody RechargeRequest body) {
-		return walletService.rechargeWallet(requireUserId(request), body.amount());
+		return walletService.rechargeWallet(requireUserId(request), body.amount(), body.bankAccount());
 	}
 
 	@PostMapping("/pay")

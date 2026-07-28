@@ -33,6 +33,9 @@ public class WalletTransaction {
 	@Column(length = 64)
 	private String reference;
 
+	@Column(length = 64)
+	private String fundingSource;
+
 	@Column(nullable = false)
 	private Instant createdAt = Instant.now();
 
@@ -90,6 +93,14 @@ public class WalletTransaction {
 
 	public void setReference(String reference) {
 		this.reference = reference;
+	}
+
+	public String getFundingSource() {
+		return fundingSource;
+	}
+
+	public void setFundingSource(String fundingSource) {
+		this.fundingSource = fundingSource;
 	}
 
 	public Instant getCreatedAt() {

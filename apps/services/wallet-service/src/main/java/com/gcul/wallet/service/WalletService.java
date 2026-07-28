@@ -180,7 +180,7 @@ public class WalletService {
 	}
 
 	@Transactional
-	public Map<String, Object> rechargeWallet(String userId, double amount) {
+	public Map<String, Object> rechargeWallet(String userId, double amount, String bankAccount) {
 		if (amount <= 0) {
 			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Recharge amount must be greater than zero");
 		}
@@ -188,6 +188,8 @@ public class WalletService {
 			throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
 					"Recharge amount cannot exceed £" + (int) MAX_RECHARGE);
 		}
+
+		String fundingSource = normalizeBankAccount(bankAccount);
 
 		CustomerWallet wallet = repository.findByUserId(userId)
 				.orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST,
@@ -209,6 +211,7 @@ public class WalletService {
 		tx.setCurrency(wallet.getCurrency() == null ? "GBP" : wallet.getCurrency());
 		tx.setStatus("completed");
 		tx.setReference("demo-top-up");
+		tx.setFundingSource(fundingSource);
 		tx.setCreatedAt(Instant.now());
 		tx = transactions.saveAndFlush(tx);
 
@@ -450,8 +453,20 @@ public class WalletService {
 		result.put("currency", tx.getCurrency());
 		result.put("status", tx.getStatus());
 		result.put("reference", tx.getReference());
+		result.put("funding_source", tx.getFundingSource());
 		result.put("created_at", tx.getCreatedAt().toString());
 		return result;
+	}
+
+	private String normalizeBankAccount(String bankAccount) {
+		if (bankAccount == null) {
+			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Select a bank account for this demo top-up");
+		}
+		return switch (bankAccount) {
+			case "Lloyds Bank", "Barclays", "HSBC" -> bankAccount;
+			default -> throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+					"Select a supported bank account for this demo top-up");
+		};
 	}
 
 	private static double roundMoney(double value) {

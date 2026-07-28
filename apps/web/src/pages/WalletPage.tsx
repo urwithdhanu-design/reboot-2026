@@ -23,6 +23,7 @@ import {
 import { useSession } from "../session";
 
 const RECHARGE_PRESETS = [25, 50, 100, 250];
+const DEMO_BANK_ACCOUNTS = ["Lloyds Bank", "Barclays", "HSBC"] as const;
 
 const WALLET_STEPS = ["Verify identity", "Connect wallet", "Fund & manage"] as const;
 type WalletStepLabel = (typeof WALLET_STEPS)[number];
@@ -121,6 +122,7 @@ export function WalletPage() {
   const [error, setError] = useState<string | null>(null);
   const [note, setNote] = useState<string | null>(null);
   const [rechargeAmount, setRechargeAmount] = useState("50");
+  const [bankAccount, setBankAccount] = useState<(typeof DEMO_BANK_ACCOUNTS)[number]>("Lloyds Bank");
   const [transactions, setTransactions] = useState<WalletTransaction[]>([]);
   const [linkAddress, setLinkAddress] = useState("");
   const [devApproveUrl, setDevApproveUrl] = useState<string | null>(null);
@@ -263,7 +265,7 @@ export function WalletPage() {
     setRechargeLoading(true);
     setError(null);
     try {
-      const res = await api.rechargeWallet(token, amount);
+      const res = await api.rechargeWallet(token, amount, bankAccount);
       setBalance(res.balance_gbp ?? 0);
       setCurrency(res.currency ?? "GBP");
       syncSessionWallet({
@@ -539,7 +541,9 @@ export function WalletPage() {
                       <li key={tx.id}>
                         <div>
                           <strong>{formatTxType(tx.type)}</strong>
-                          <span className="muted">{tx.id}</span>
+                          <span className="muted">
+                            {tx.funding_source ? `${tx.funding_source} · ` : ""}{tx.id}
+                          </span>
                         </div>
                         <div className="wallet-tx-amount">
                           <span className={tx.amount > 0 ? "positive" : ""}>
@@ -600,17 +604,32 @@ export function WalletPage() {
                 />
               </label>
 
+              <label className="field wallet-recharge-field">
+                <span>Pay from bank account</span>
+                <select
+                  value={bankAccount}
+                  onChange={(e) => setBankAccount(e.target.value as (typeof DEMO_BANK_ACCOUNTS)[number])}
+                  disabled={rechargeLoading}
+                >
+                  {DEMO_BANK_ACCOUNTS.map((account) => (
+                    <option key={account} value={account}>
+                      {account}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
               <button
                 className="btn-primary wallet-recharge-submit"
                 type="button"
                 disabled={rechargeLoading}
                 onClick={submitRecharge}
               >
-                {rechargeLoading ? "Processing…" : "Recharge wallet"}
+                {rechargeLoading ? "Processing…" : `Recharge from ${bankAccount}`}
               </button>
 
               <p className="pay-hint muted">
-                Demo top-up — funds are stored in your wallet balance for future premium payments.
+                Demo top-up from {bankAccount} — funds are stored in your wallet balance for future premium payments.
               </p>
 
               {transactions.length > 0 ? (
@@ -621,7 +640,9 @@ export function WalletPage() {
                       <li key={tx.id}>
                         <div>
                           <strong>{formatTxType(tx.type)}</strong>
-                          <span className="muted">{tx.id}</span>
+                          <span className="muted">
+                            {tx.funding_source ? `${tx.funding_source} · ` : ""}{tx.id}
+                          </span>
                         </div>
                         <div className="wallet-tx-amount">
                           <span className={tx.amount > 0 ? "positive" : ""}>
