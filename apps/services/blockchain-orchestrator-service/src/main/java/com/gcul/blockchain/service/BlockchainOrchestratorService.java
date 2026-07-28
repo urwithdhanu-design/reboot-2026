@@ -20,7 +20,8 @@ import com.gcul.blockchain.model.LedgerTransaction;
 import com.gcul.blockchain.repository.LedgerTransactionRepository;
 
 @Service
-public class BlockchainOrchestratorService {
+public class
+BlockchainOrchestratorService {
 
 	private final LedgerTransactionRepository repo;
 	private final GculSidecarClient gcul;

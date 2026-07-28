@@ -325,6 +325,10 @@ public class PolicyIssuanceService {
 			log.warn("Mint skipped for cancelled policy {}", record.getPolicyId());
 			return;
 		}
+		if (!approveCompliance(record, kycVerified)) {
+			policyRecords.markMintFailed(record.getPolicyId(), "Compliance checks did not approve policy minting");
+			return;
+		}
 		Map<String, Object> mintRequest = blockchainMintClient.buildMintRequest(toView(record), kycVerified);
 		Map<String, Object> requested = new LinkedHashMap<>(mintRequest);
 		requested.put("eventType", "PolicyMintRequested");
@@ -343,6 +347,19 @@ public class PolicyIssuanceService {
 						"Canton mint failed: " + ex.getMessage());
 			}
 		}
+	}
+
+	private boolean approveCompliance(PolicyRecord record, boolean kycVerified) {
+		boolean consent = record.getCustomerEmail() != null && !record.getCustomerEmail().isBlank();
+		boolean duplicate = record.getTokenId() != null && !record.getTokenId().isBlank();
+		double fraudScore = Math.abs((record.getPolicyReferenceHash() + record.getCustomerId()).hashCode() % 100) / 100.0;
+		boolean approved = consent && kycVerified && !duplicate && fraudScore < 0.80;
+		record.setComplianceFraudScore(fraudScore);
+		record.setComplianceDecision(approved ? "APPROVED" : "REJECTED");
+		String payload = record.getPolicyId() + "|" + record.getPolicyReferenceHash() + "|" + consent + "|" + kycVerified + "|" + fraudScore;
+		record.setComplianceAttestation("DEMO-COMP-" + Integer.toHexString(payload.hashCode()).toUpperCase(java.util.Locale.ROOT));
+		policyRecords.save(record);
+		return approved;
 	}
 
 	private PolicyRecordView toView(PolicyRecord record) {

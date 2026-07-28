@@ -230,6 +230,8 @@ public class PolicyRecordService {
 		}
 		record.setMintStatus("PENDING");
 		record.setStatus("issued");
+		record.setMintFailureReason(null);
+		record.setMintFailedAt(null);
 		return repository.save(record);
 	}
 
@@ -238,6 +240,8 @@ public class PolicyRecordService {
 		PolicyRecord record = repository.findById(policyId).orElseThrow();
 		record.setMintStatus("FAILED");
 		record.setStatus("mint_failed");
+		record.setMintFailureReason(reason);
+		record.setMintFailedAt(Instant.now());
 		return repository.save(record);
 	}
 
@@ -278,6 +282,11 @@ public class PolicyRecordService {
 
 	public Optional<PolicyRecord> findByPolicyId(String policyId) {
 		return repository.findById(policyId);
+	}
+
+	@Transactional
+	public PolicyRecord save(PolicyRecord record) {
+		return repository.save(record);
 	}
 
 	public Optional<PolicyRecord> findByQuoteId(String quoteId) {
@@ -353,7 +362,11 @@ public class PolicyRecordService {
 
 	public List<PolicyRecord> listMintQueue() {
 		return repository.findByMintStatusInOrderByIssuedAtAsc(
-				java.util.List.of("PENDING", "PENDING_WALLET", "FAILED"));
+				java.util.List.of("PENDING", "PENDING_WALLET"));
+	}
+
+	public List<PolicyRecord> listFailedMints() {
+		return repository.findByMintStatusOrderByIssuedAtDesc("FAILED");
 	}
 
 	public List<PolicyRecord> listMinted() {
@@ -387,6 +400,11 @@ public class PolicyRecordService {
 		map.put("blockchain_network", record.getBlockchainNetwork());
 		map.put("primary_ledger_id", record.getPrimaryLedgerId());
 		map.put("mint_status", record.getMintStatus());
+		map.put("mint_failure_reason", record.getMintFailureReason());
+		map.put("mint_failed_at", record.getMintFailedAt() == null ? null : record.getMintFailedAt().toString());
+		map.put("compliance_decision", record.getComplianceDecision());
+		map.put("compliance_attestation", record.getComplianceAttestation());
+		map.put("compliance_fraud_score", record.getComplianceFraudScore());
 		map.put("payment_status", "paid");
 		map.put("issued_at", record.getIssuedAt() == null ? null : record.getIssuedAt().toString());
 		map.put("activated_at", record.getActivatedAt() == null ? null : record.getActivatedAt().toString());

@@ -53,6 +53,15 @@ public class PolicyRecord {
 
 	private String mintStatus = "PENDING";
 
+	@Column(length = 512)
+	private String mintFailureReason;
+
+	private Instant mintFailedAt;
+
+	private String complianceDecision;
+	private String complianceAttestation;
+	private Double complianceFraudScore;
+
 	private Instant issuedAt = Instant.now();
 
 	private Instant activatedAt;
@@ -227,6 +236,29 @@ public class PolicyRecord {
 	public void setMintStatus(String mintStatus) {
 		this.mintStatus = mintStatus;
 	}
+
+	public String getMintFailureReason() {
+		return mintFailureReason;
+	}
+
+	public void setMintFailureReason(String mintFailureReason) {
+		this.mintFailureReason = mintFailureReason;
+	}
+
+	public Instant getMintFailedAt() {
+		return mintFailedAt;
+	}
+
+	public void setMintFailedAt(Instant mintFailedAt) {
+		this.mintFailedAt = mintFailedAt;
+	}
+
+	public String getComplianceDecision() { return complianceDecision; }
+	public void setComplianceDecision(String complianceDecision) { this.complianceDecision = complianceDecision; }
+	public String getComplianceAttestation() { return complianceAttestation; }
+	public void setComplianceAttestation(String complianceAttestation) { this.complianceAttestation = complianceAttestation; }
+	public Double getComplianceFraudScore() { return complianceFraudScore; }
+	public void setComplianceFraudScore(Double complianceFraudScore) { this.complianceFraudScore = complianceFraudScore; }
 
 	public Instant getIssuedAt() {
 		return issuedAt;

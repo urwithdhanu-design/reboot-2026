@@ -160,6 +160,11 @@ export type TokenRegistryRow = {
   coverage_summary?: string;
   cover_expires_at?: string;
   coverage_limit_gbp?: number;
+  pre_mint_checks?: Array<{
+    name: string;
+    status: 'passed' | 'failed' | 'review';
+    detail: string;
+  }>;
 };
 
 export type TokenMintQueueRow = {
@@ -175,6 +180,9 @@ export type TokenMintQueueRow = {
   coverage_summary?: string;
   cover_expires_at?: string;
   coverage_limit_gbp?: number;
+  failure_reason?: string | null;
+  failed_at?: string | null;
+  next_action?: string;
 };
 
 export type TokenStandardRow = {
@@ -191,6 +199,7 @@ export type TokenStandardRow = {
 export type TokenizationView = {
   registry: TokenRegistryRow[];
   mint_queue: TokenMintQueueRow[];
+  failed_mints: TokenMintQueueRow[];
   stats: {
     policy_nfts: number;
     pending_mints: number;

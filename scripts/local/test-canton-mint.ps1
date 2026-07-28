@@ -13,7 +13,8 @@ $RepoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..\..")).Path
 function Test-CantonUp {
   try {
     $health = Invoke-RestMethod -Uri "$OrchestratorUrl/health" -TimeoutSec 5
-    return $health.canton.live -eq $true
+    # The orchestrator reports the active Canton adapter in the ledger block.
+    return $health.ledger.live -eq $true -and $health.ledger.mode -eq "canton"
   }
   catch { return $false }
 }

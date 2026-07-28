@@ -15,8 +15,6 @@ import com.gcul.policy.policy.PolicyRecordService;
 @Service
 public class AdminTokenizationService {
 
-	private static final List<String> MINT_QUEUE_STATUSES = List.of("PENDING", "PENDING_WALLET", "FAILED");
-
 	private final PolicyRecordService policyRecords;
 	private final BlockchainMintClient blockchainClient;
 	private final PolicyIssuanceService policyIssuance;
@@ -33,12 +31,16 @@ public class AdminTokenizationService {
 	public Map<String, Object> view() {
 		List<PolicyRecord> minted = policyRecords.listMinted();
 		List<PolicyRecord> queue = policyRecords.listMintQueue();
+		List<PolicyRecord> failed = policyRecords.listFailedMints();
 		Map<String, Object> blockchain = blockchainClient.fetchNftStatus();
 
 		List<Map<String, Object>> registry = minted.stream()
 				.map(this::toRegistryRow)
 				.toList();
 		List<Map<String, Object>> mintQueue = queue.stream()
+				.map(this::toMintQueueRow)
+				.toList();
+		List<Map<String, Object>> failedMints = failed.stream()
 				.map(this::toMintQueueRow)
 				.toList();
 
@@ -52,13 +54,14 @@ public class AdminTokenizationService {
 		stats.put("pending_mints", pendingCount + pendingWalletCount);
 		stats.put("pending_wallet", pendingWalletCount);
 		stats.put("failed_mints", failedCount);
-		stats.put("total_issued", mintedCount + queue.size());
+		stats.put("total_issued", mintedCount + queue.size() + failed.size());
 
 		String contractAddress = str(blockchain.get("contractAddress"));
 
 		Map<String, Object> response = new LinkedHashMap<>();
 		response.put("registry", registry);
 		response.put("mint_queue", mintQueue);
+		response.put("failed_mints", failedMints);
 		response.put("stats", stats);
 		response.put("blockchain", toBlockchainSummary(blockchain));
 		response.put("standards", List.of(buildPolicyNftStandard(mintedCount, contractAddress, str(blockchain.get("mode")))));
@@ -95,6 +98,7 @@ public class AdminTokenizationService {
 		row.put("coverage_summary", record.getCoverageSummary());
 		row.put("cover_expires_at", record.getCoverExpiresAt() == null ? null : record.getCoverExpiresAt().toString());
 		row.put("coverage_limit_gbp", record.getCoverageLimitGbp());
+		row.put("pre_mint_checks", preMintChecks(record));
 		return row;
 	}
 
@@ -112,7 +116,38 @@ public class AdminTokenizationService {
 		row.put("coverage_summary", record.getCoverageSummary());
 		row.put("cover_expires_at", record.getCoverExpiresAt() == null ? null : record.getCoverExpiresAt().toString());
 		row.put("coverage_limit_gbp", record.getCoverageLimitGbp());
+		row.put("failure_reason", record.getMintFailureReason());
+		row.put("failed_at", record.getMintFailedAt() == null ? null : record.getMintFailedAt().toString());
+		row.put("next_action", nextAction(record));
 		return row;
+	}
+
+	private static List<Map<String, Object>> preMintChecks(PolicyRecord record) {
+		return List.of(
+				check("Policy issued", "passed", "Policy issuance record is active."),
+				check("Wallet linked", StringUtils.hasText(record.getWalletAddress()) ? "passed" : "failed",
+						StringUtils.hasText(record.getWalletAddress()) ? "Customer wallet was present for the mint." : "No customer wallet was recorded."),
+				check("Policy reference hash", StringUtils.hasText(record.getPolicyReferenceHash()) ? "passed" : "failed",
+						StringUtils.hasText(record.getPolicyReferenceHash()) ? "Immutable policy reference hash was supplied." : "Policy reference hash is missing."),
+				check("Compliance decision", "APPROVED".equalsIgnoreCase(record.getComplianceDecision()) ? "passed" : "review",
+						StringUtils.hasText(record.getComplianceDecision()) ? record.getComplianceDecision() : "No compliance decision was recorded."),
+				check("Fraud screening", record.getComplianceFraudScore() == null || record.getComplianceFraudScore() < 0.80 ? "passed" : "failed",
+						record.getComplianceFraudScore() == null ? "No score recorded." : "Risk score " + String.format(java.util.Locale.ROOT, "%.2f", record.getComplianceFraudScore())));
+	}
+
+	private static Map<String, Object> check(String name, String status, String detail) {
+		Map<String, Object> check = new LinkedHashMap<>();
+		check.put("name", name);
+		check.put("status", status);
+		check.put("detail", detail);
+		return check;
+	}
+
+	private static String nextAction(PolicyRecord record) {
+		String reason = str(record.getMintFailureReason()).toLowerCase();
+		if (reason.contains("wallet")) return "Ask the customer to link a valid wallet, then retry the mint.";
+		if (reason.contains("compliance") || reason.contains("rejected")) return "Review the compliance decision and resolve the rejection before retrying.";
+		return "Check Canton and the blockchain orchestrator, then retry the mint.";
 	}
 
 	private static String registryStatus(PolicyRecord record) {

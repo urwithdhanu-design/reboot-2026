@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Coins, Plus, Flame, Snowflake, Check, X, ExternalLink, RefreshCw } from 'lucide-react';
+import { Coins, Plus, Flame, Snowflake, Check, X, ExternalLink, RefreshCw, Eye, AlertTriangle } from 'lucide-react';
 import { AdminLayout } from '../components/layout/AdminLayout';
 import { Card, PageHeader, Badge, Button, PaginatedTable, StatCard, TablePagination, usePaginatedList, AlertBanner } from '../components/ui';
-import { adminApi, type TokenizationView } from '../api';
+import { adminApi, type TokenizationView, type TokenRegistryRow } from '../api';
 import { formatNumber } from '../data/adminMockData';
 
 const REFRESH_MS = 15_000;
@@ -32,12 +32,13 @@ function queueLabel(status: string) {
 }
 
 export function TokenizationPage() {
-  const [tab, setTab] = useState<'registry' | 'mint-queue' | 'standards'>('registry');
+  const [tab, setTab] = useState<'registry' | 'mint-queue' | 'failed-mints' | 'standards'>('registry');
   const [data, setData] = useState<TokenizationView | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [actionPolicyId, setActionPolicyId] = useState<string | null>(null);
+  const [selectedToken, setSelectedToken] = useState<TokenRegistryRow | null>(null);
 
   const load = useCallback((silent = false) => {
     if (!silent) setLoading(true);
@@ -63,12 +64,18 @@ export function TokenizationPage() {
 
   const registry = data?.registry ?? [];
   const mintQueueItems = data?.mint_queue ?? [];
+  const failedMints = data?.failed_mints ?? [];
   const stats = data?.stats;
   const blockchain = data?.blockchain;
   const standards = data?.standards ?? [];
 
   const mintQueue = usePaginatedList(mintQueueItems, {
     defaultSortKey: 'requested_at',
+    defaultSortDir: 'desc',
+    pageSize: 5,
+  });
+  const failedMintList = usePaginatedList(failedMints, {
+    defaultSortKey: 'failed_at',
     defaultSortDir: 'desc',
     pageSize: 5,
   });
@@ -171,9 +178,15 @@ export function TokenizationPage() {
       </div>
 
       <div className="flex gap-2 mb-6 flex-wrap">
-        {(['registry', 'mint-queue', 'standards'] as const).map((t) => (
+        {(['registry', 'mint-queue', 'failed-mints', 'standards'] as const).map((t) => (
           <Button key={t} variant={tab === t ? 'primary' : 'outline'} size="sm" onClick={() => setTab(t)}>
-            {t === 'registry' ? `Token Registry (${registry.length})` : t === 'mint-queue' ? `Mint Queue (${mintQueueItems.length})` : 'Token Standards'}
+            {t === 'registry'
+              ? `Token Registry (${registry.length})`
+              : t === 'mint-queue'
+                ? `Mint Queue (${mintQueueItems.length})`
+                : t === 'failed-mints'
+                  ? `Failed Mints (${failedMints.length})`
+                  : 'Token Standards'}
           </Button>
         ))}
       </div>
@@ -231,6 +244,15 @@ export function TokenizationPage() {
                 <td className="py-3 px-4 font-mono text-xs text-lbg-gray-400">{t.contract_address || '—'}</td>
                 <td className="py-3 px-4">
                   <div className="flex gap-1">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setSelectedToken(t)}
+                      aria-label={`View pre-mint checks for ${t.name}`}
+                      title="View pre-mint checks"
+                    >
+                      <Eye className="w-3 h-3" aria-hidden="true" />
+                    </Button>
                     {t.explorer_url ? (
                       <a
                         href={t.explorer_url}
@@ -288,7 +310,7 @@ export function TokenizationPage() {
                   {m.cover_expires_at ? ` · Cover expires ${formatWhen(m.cover_expires_at)}` : ''}
                 </p>
               </div>
-              {(m.status === 'pending' || m.status === 'failed') && (
+              {m.status === 'pending' && (
                 <div className="flex gap-2 shrink-0">
                   <Button
                     size="sm"
@@ -335,6 +357,50 @@ export function TokenizationPage() {
         </div>
       )}
 
+      {tab === 'failed-mints' && (
+        <div className="space-y-3">
+          {failedMintList.pageItems.length === 0 ? (
+            <Card><p className="p-6 text-sm text-lbg-gray-500">No failed or rejected mints. Failed mints are kept here for investigation and follow-up.</p></Card>
+          ) : null}
+          {failedMintList.pageItems.map((m) => (
+            <Card key={m.id} className="flex flex-col sm:flex-row sm:items-center gap-4 border-red-100">
+              <div className="flex-1">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <p className="font-bold">{m.policy_number}</p>
+                  <Badge variant="info">{m.standard}</Badge>
+                  <Badge variant="error">{m.failure_reason?.toLowerCase().includes('rejected') ? 'Rejected' : 'Failed'}</Badge>
+                </div>
+                <p className="text-sm text-lbg-gray-600 mt-1">{m.customer_name} · {m.product_title}</p>
+                <div className="mt-3 rounded-lg bg-red-50 p-3 text-sm text-red-700">
+                  <p className="font-semibold">Failure reason</p>
+                  <p>{m.failure_reason || 'The mint did not return a reason. Check the blockchain orchestrator logs.'}</p>
+                </div>
+                <div className="mt-2 flex gap-2 text-xs text-lbg-gray-600">
+                  <AlertTriangle className="mt-0.5 w-4 h-4 shrink-0 text-amber-600" aria-hidden="true" />
+                  <p><span className="font-semibold">Next action:</span> {m.next_action || 'Review the policy and retry when the issue is resolved.'}</p>
+                </div>
+                <p className="text-xs text-lbg-gray-400 mt-2">Failed {formatWhen(m.failed_at ?? m.requested_at)}</p>
+              </div>
+              <div className="flex gap-2 shrink-0">
+                <Button size="sm" disabled={actionPolicyId !== null} onClick={() => handleApproveMint(m.id)}>
+                  <RefreshCw className={`w-4 h-4 ${actionPolicyId === m.id ? 'animate-spin' : ''}`} />
+                  {actionPolicyId === m.id ? 'Retrying…' : 'Retry mint'}
+                </Button>
+              </div>
+            </Card>
+          ))}
+          <TablePagination
+            page={failedMintList.page}
+            pageSize={failedMintList.pageSize}
+            totalItems={failedMintList.totalItems}
+            totalPages={failedMintList.totalPages}
+            onPageChange={failedMintList.setPage}
+            onPageSizeChange={failedMintList.setPageSize}
+            pageSizeOptions={[5, 10, 20]}
+          />
+        </div>
+      )}
+
       {tab === 'standards' && (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
           {standards.map((tc) => (
@@ -364,6 +430,33 @@ export function TokenizationPage() {
               <Button variant="outline" size="sm" className="mt-3 w-full" disabled>Configure</Button>
             </Card>
           ))}
+        </div>
+      )}
+
+      {selectedToken && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" role="dialog" aria-modal="true" aria-labelledby="pre-mint-checks-title">
+          <Card className="w-full max-w-xl shadow-xl">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wide text-lbg-green">Token registry</p>
+                <h2 id="pre-mint-checks-title" className="mt-1 text-lg font-bold">Pre-mint checks</h2>
+                <p className="mt-1 text-sm text-lbg-gray-500">{selectedToken.name} · {selectedToken.policy_number}</p>
+              </div>
+              <Button variant="ghost" size="sm" onClick={() => setSelectedToken(null)} aria-label="Close pre-mint checks"><X className="w-4 h-4" /></Button>
+            </div>
+            <div className="mt-5 space-y-3">
+              {(selectedToken.pre_mint_checks ?? []).map((check) => (
+                <div key={check.name} className="flex gap-3 rounded-lg border border-lbg-gray-100 p-3">
+                  <Badge variant={check.status === 'passed' ? 'success' : check.status === 'failed' ? 'error' : 'warning'}>{check.status}</Badge>
+                  <div>
+                    <p className="text-sm font-semibold text-lbg-black">{check.name}</p>
+                    <p className="mt-0.5 text-xs text-lbg-gray-500">{check.detail}</p>
+                  </div>
+                </div>
+              ))}
+              {selectedToken.pre_mint_checks?.length === 0 ? <p className="text-sm text-lbg-gray-500">No check details were recorded for this legacy mint.</p> : null}
+            </div>
+          </Card>
         </div>
       )}
     </AdminLayout>
