@@ -12,8 +12,9 @@ final class EmailTemplates {
 	static String walletConsent(String recipientName, String platform, String approveUrl, long expiryHours) {
 		String name = escape(recipientName == null || recipientName.isBlank() ? "there" : recipientName);
 		String brand = escape(platform);
-		String href = escapeAttribute(approveUrl);
-		String urlPlain = escape(approveUrl == null ? "" : approveUrl);
+		String safeUrl = (approveUrl == null ? "" : approveUrl).trim();
+		String href = escapeAttribute(safeUrl);
+		String urlPlain = escape(safeUrl);
 		return layout(
 				brand,
 				"Approve your wallet",

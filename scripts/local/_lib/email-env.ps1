@@ -100,7 +100,8 @@ function Get-EmailEnvCmdPrefix([hashtable] $EmailMap) {
   $parts = @()
   foreach ($key in @("EMAIL_USER", "EMAIL_PASS", "EMAIL_FROM_NAME", "EMAIL_ENABLED", "WEB_BASE_URL")) {
     if ($EmailMap[$key]) {
-      $parts += "set $key=$($EmailMap[$key])"
+      $value = "$($EmailMap[$key])".Trim()
+      $parts += "set $key=$value"
     }
   }
   if (-not $EmailMap["WEB_BASE_URL"]) {

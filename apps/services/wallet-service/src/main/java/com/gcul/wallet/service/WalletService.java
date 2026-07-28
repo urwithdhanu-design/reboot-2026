@@ -502,6 +502,10 @@ public class WalletService {
 		if (wallet.getUserEmail() != null && !wallet.getUserEmail().isBlank()) {
 			result.put("consent_email_to", wallet.getUserEmail().trim().toLowerCase(Locale.ROOT));
 		}
+		if (wallet.getConsentApprovedAt() != null) {
+			result.put("consent_approved_at", wallet.getConsentApprovedAt().toString());
+			result.put("consent_approved", true);
+		}
 		return result;
 	}
 

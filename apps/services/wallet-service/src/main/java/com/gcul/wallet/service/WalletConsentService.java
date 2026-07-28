@@ -48,9 +48,10 @@ public class WalletConsentService {
 		this.mail = mail;
 		this.walletEvents = walletEvents;
 		this.expiryHours = expiryHours;
-		this.webBaseUrl = webBaseUrl.endsWith("/")
-				? webBaseUrl.substring(0, webBaseUrl.length() - 1)
-				: webBaseUrl;
+		String normalized = webBaseUrl == null ? "" : webBaseUrl.trim();
+		this.webBaseUrl = normalized.endsWith("/")
+				? normalized.substring(0, normalized.length() - 1)
+				: normalized;
 	}
 
 	public Map<String, Object> issueConsentEmail(
@@ -76,7 +77,7 @@ public class WalletConsentService {
 		tokens.save(row);
 
 		String approveUrl = webBaseUrl + "/wallet/approve?token=" + rawToken;
-		boolean emailed = mail.sendWalletConsent(to, name, approveUrl, expiryHours);
+		boolean emailed = mail.sendWalletConsent(to, name, approveUrl.trim(), expiryHours);
 
 		Map<String, Object> result = new LinkedHashMap<>();
 		result.put("consent_email_sent", emailed);
@@ -122,11 +123,7 @@ public class WalletConsentService {
 		if ("connected".equals(wallet.getStatus()) && wallet.getAddress() != null) {
 			consent.setUsedAt(Instant.now());
 			tokens.save(consent);
-			return Map.of(
-					"message", "Your wallet is already approved and active.",
-					"status", wallet.getStatus(),
-					"address", wallet.getAddress(),
-					"already_active", true);
+			return approvalResponse(wallet, true, "Your wallet is already approved and active.");
 		}
 
 		if (!STATUS_PENDING.equals(wallet.getStatus())) {
@@ -134,21 +131,33 @@ public class WalletConsentService {
 					"Wallet is not awaiting email approval");
 		}
 
+		Instant approvedAt = Instant.now();
 		wallet.setStatus("connected");
-		wallet.setUpdatedAt(Instant.now());
+		wallet.setConsentApprovedAt(approvedAt);
+		wallet.setUpdatedAt(approvedAt);
 		wallets.saveAndFlush(wallet);
 
-		consent.setUsedAt(Instant.now());
+		consent.setUsedAt(approvedAt);
 		tokens.save(consent);
 		invalidatePendingTokens(wallet.getUserId(), consent.getTokenHash());
 
 		walletEvents.walletLinked(wallet.getUserId(), wallet);
 
-		return Map.of(
-				"message", "Your wallet has been approved and is now active.",
-				"status", wallet.getStatus(),
-				"address", wallet.getAddress() == null ? "" : wallet.getAddress(),
-				"already_active", false);
+		return approvalResponse(wallet, false, "Your wallet has been approved and is now active.");
+	}
+
+	private Map<String, Object> approvalResponse(CustomerWallet wallet, boolean alreadyActive, String message) {
+		Map<String, Object> result = new LinkedHashMap<>();
+		result.put("message", message);
+		result.put("status", wallet.getStatus());
+		result.put("address", wallet.getAddress() == null ? "" : wallet.getAddress());
+		result.put("user_id", wallet.getUserId());
+		result.put("already_active", alreadyActive);
+		result.put("consent_approved", true);
+		if (wallet.getConsentApprovedAt() != null) {
+			result.put("consent_approved_at", wallet.getConsentApprovedAt().toString());
+		}
+		return result;
 	}
 
 	private void invalidatePendingTokens(String userId) {

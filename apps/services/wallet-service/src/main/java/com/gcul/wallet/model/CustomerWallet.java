@@ -41,6 +41,8 @@ public class CustomerWallet {
 
 	private Instant updatedAt;
 
+	private Instant consentApprovedAt;
+
 	public String getUserId() {
 		return userId;
 	}
@@ -119,6 +121,14 @@ public class CustomerWallet {
 
 	public void setUpdatedAt(Instant updatedAt) {
 		this.updatedAt = updatedAt;
+	}
+
+	public Instant getConsentApprovedAt() {
+		return consentApprovedAt;
+	}
+
+	public void setConsentApprovedAt(Instant consentApprovedAt) {
+		this.consentApprovedAt = consentApprovedAt;
 	}
 
 	public boolean isConnected() {

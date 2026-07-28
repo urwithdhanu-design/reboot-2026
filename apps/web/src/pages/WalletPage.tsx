@@ -126,6 +126,7 @@ export function WalletPage() {
   const [devApproveUrl, setDevApproveUrl] = useState<string | null>(null);
   const [consentEmailSent, setConsentEmailSent] = useState<boolean | null>(null);
   const [consentEmailTo, setConsentEmailTo] = useState<string | null>(null);
+  const [consentApprovedAt, setConsentApprovedAt] = useState<string | null>(null);
   const [consentNotice, setConsentNotice] = useState<string | null>(null);
 
   const kycStatus = user?.kyc_status;
@@ -157,12 +158,19 @@ export function WalletPage() {
     dev_approve_url?: string;
     consent_email_sent?: boolean;
     consent_email_to?: string;
+    consent_approved?: boolean;
+    consent_approved_at?: string;
   }) {
     if (res.consent_email_sent != null) {
       setConsentEmailSent(res.consent_email_sent);
     }
     if (res.consent_email_to) {
       setConsentEmailTo(res.consent_email_to);
+    }
+    if (res.consent_approved_at) {
+      setConsentApprovedAt(res.consent_approved_at);
+    } else if (res.consent_approved === false) {
+      setConsentApprovedAt(null);
     }
     if (res.dev_approve_url) {
       setDevApproveUrl(res.dev_approve_url);
@@ -330,6 +338,9 @@ export function WalletPage() {
         const res = await api.approveWalletConsent(approvalToken);
         setStatus(res.status);
         setNote(res.message);
+        if (res.consent_approved_at) {
+          setConsentApprovedAt(res.consent_approved_at);
+        }
         setDevApproveUrl(null);
         syncSessionWallet({
           address: res.address,
@@ -644,6 +655,13 @@ export function WalletPage() {
                   </div>
                   <span className="customer-status-pill connected">Connected</span>
                 </div>
+
+                {consentApprovedAt ? (
+                  <p className="manage-notice" role="status" style={{ marginTop: 12 }}>
+                    Wallet consent approved on{" "}
+                    <strong>{new Date(consentApprovedAt).toLocaleString()}</strong>
+                  </p>
+                ) : null}
 
                 {note ? (
                   <p className="muted wallet-note">{note}</p>

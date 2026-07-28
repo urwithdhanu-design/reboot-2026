@@ -1,64 +1,93 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { api } from "../api";
 import { AssistantBar, StepHeader } from "../components";
+import { useSession } from "../session";
 
 export function WalletApprovePage() {
   const navigate = useNavigate();
   const [params] = useSearchParams();
-  const token = params.get("token") ?? "";
-  const [loading, setLoading] = useState(true);
+  const approvalToken = (params.get("token") ?? "").trim();
+  const { token, user, updateUser } = useSession();
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [address, setAddress] = useState<string | null>(null);
+  const [approvedAt, setApprovedAt] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (!token) {
-      setLoading(false);
+  async function approveWallet() {
+    if (!approvalToken) {
       setError("This approval link is missing a token. Create your wallet again to receive a new email.");
       return;
     }
 
-    let cancelled = false;
-    void api
-      .approveWalletConsent(token)
-      .then((res) => {
-        if (cancelled) return;
-        setMessage(res.message);
-        setAddress(res.address ?? null);
-      })
-      .catch((err) => {
-        if (cancelled) return;
-        setError(err instanceof Error ? err.message : "Could not approve wallet");
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await api.approveWalletConsent(approvalToken);
+      setMessage(res.message);
+      setAddress(res.address ?? null);
+      setApprovedAt(res.consent_approved_at ?? new Date().toISOString());
 
-    return () => {
-      cancelled = true;
-    };
-  }, [token]);
+      if (token && user) {
+        const wallet = await api.getWallet(token);
+        updateUser({
+          ...user,
+          wallet: {
+            address: wallet.address ?? res.address ?? "",
+            status: wallet.status,
+            balance_gbp: wallet.balance_gbp ?? 0,
+            currency: wallet.currency ?? "GBP",
+          },
+        });
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not approve wallet");
+    } finally {
+      setLoading(false);
+    }
+  }
 
   return (
     <div className="screen">
       <StepHeader title="Wallet approval" />
       <div className="hero-copy">
         <h1>Approve your wallet</h1>
-        <p>Confirming your consent to link this wallet for policies and payouts.</p>
+        <p>Confirm consent to link this wallet for policies and payouts.</p>
       </div>
 
-      {loading ? (
-        <p className="muted" role="status">
-          Verifying your approval link…
-        </p>
+      {!message && !error ? (
+        <div className="stack">
+          <p className="manage-notice" role="status">
+            Click the button below to approve your wallet. This calls the wallet consent API and
+            records your approval in the database.
+          </p>
+          <button
+            className="btn-primary"
+            type="button"
+            disabled={loading || !approvalToken}
+            onClick={() => void approveWallet()}
+          >
+            {loading ? "Approving…" : "Approve wallet"}
+          </button>
+          {!approvalToken ? (
+            <p className="error" role="alert">
+              This approval link is missing a token. Create your wallet again to receive a new email.
+            </p>
+          ) : null}
+        </div>
       ) : null}
 
-      {!loading && message ? (
+      {message ? (
         <div className="stack">
           <p className="manage-notice" role="status">
             {message}
           </p>
+          {approvedAt ? (
+            <p className="muted" style={{ fontSize: "0.85rem" }}>
+              Consent recorded at {new Date(approvedAt).toLocaleString()}
+            </p>
+          ) : null}
           {address ? (
             <p className="muted" style={{ fontSize: "0.85rem", wordBreak: "break-all" }}>
               Wallet address: {address}
@@ -73,7 +102,7 @@ export function WalletApprovePage() {
         </div>
       ) : null}
 
-      {!loading && error ? (
+      {error ? (
         <div className="stack">
           <p className="error" role="alert">
             {error}

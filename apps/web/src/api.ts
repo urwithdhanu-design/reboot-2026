@@ -132,6 +132,8 @@ export type WalletInfo = {
   consent_email_sent?: boolean;
   consent_email_to?: string;
   pending_approval?: boolean;
+  consent_approved?: boolean;
+  consent_approved_at?: string;
   dev_approve_url?: string;
 };
 
@@ -436,8 +438,16 @@ export const api = {
     ),
 
   approveWalletConsent: (approvalToken: string) =>
-    request<{ message: string; status: string; address: string; already_active?: boolean }>(
-      `/api/wallet/consent/approve?token=${encodeURIComponent(approvalToken)}`,
+    request<{
+      message: string;
+      status: string;
+      address: string;
+      user_id?: string;
+      already_active?: boolean;
+      consent_approved?: boolean;
+      consent_approved_at?: string;
+    }>(
+      `/api/wallet/consent/approve?token=${encodeURIComponent(approvalToken.trim())}`,
       { method: "POST" },
     ),
 

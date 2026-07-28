@@ -33,6 +33,7 @@ public class WalletSchemaPatch implements ApplicationRunner {
 		addColumn("customer_wallets", "provider", "VARCHAR(64)");
 		addColumn("customer_wallets", "mode", "VARCHAR(32)");
 		addColumn("customer_wallets", "note", "VARCHAR(255)");
+		addColumn("customer_wallets", "consent_approved_at", "TIMESTAMP");
 	}
 
 	private void ensureWalletConsentTokensTable() {

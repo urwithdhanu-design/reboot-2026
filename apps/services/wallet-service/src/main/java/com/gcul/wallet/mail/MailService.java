@@ -38,13 +38,14 @@ public class MailService {
 		}
 		String platform = properties.getFromName();
 		String subject = "Approve your wallet · " + platform;
+		String safeUrl = approveUrl == null ? "" : approveUrl.trim();
 		try {
 			MimeMessage message = mailSender.createMimeMessage();
 			MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
 			helper.setFrom(new InternetAddress(properties.getFromAddress().trim(), platform, "UTF-8"));
 			helper.setTo(to.trim());
 			helper.setSubject(subject);
-			String html = EmailTemplates.walletConsent(recipientName, platform, approveUrl, expiryHours);
+			String html = EmailTemplates.walletConsent(recipientName, platform, safeUrl, expiryHours);
 			helper.setText(html, true);
 			mailSender.send(message);
 			log.info("Wallet consent email sent to {}", to);
