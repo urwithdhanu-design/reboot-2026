@@ -123,11 +123,13 @@ export function WalletPage() {
   const [rechargeAmount, setRechargeAmount] = useState("50");
   const [transactions, setTransactions] = useState<WalletTransaction[]>([]);
   const [linkAddress, setLinkAddress] = useState("");
+  const [devApproveUrl, setDevApproveUrl] = useState<string | null>(null);
 
   const kycStatus = user?.kyc_status;
   const kycVerified = isKycVerified(kycStatus);
   const kycBlocksWallet = needsKycAttention(kycStatus);
   const walletConnected = status === "connected";
+  const walletPendingConsent = status === "pending_consent";
   const stepStates = useWalletStepStates(kycVerified, walletConnected);
 
   function syncSessionWallet(next: {
@@ -204,6 +206,8 @@ export function WalletPage() {
       setStatus(res.status);
       setBalance(res.balance_gbp ?? 0);
       setCurrency(res.currency ?? "GBP");
+      setNote(res.note ?? null);
+      setDevApproveUrl(res.dev_approve_url ?? null);
       setView("overview");
       syncSessionWallet({
         address: res.address,
@@ -232,6 +236,7 @@ export function WalletPage() {
       setBalance(res.balance_gbp ?? 0);
       setCurrency(res.currency ?? "GBP");
       setNote(res.note ?? null);
+      setDevApproveUrl(res.dev_approve_url ?? null);
       setView("overview");
       syncSessionWallet({
         address: res.address,
@@ -320,8 +325,8 @@ export function WalletPage() {
         },
         {
           label: "Wallet",
-          value: walletConnected ? "Connected" : "Not set up",
-          tone: walletConnected ? ("success" as const) : undefined,
+          value: walletConnected ? "Connected" : walletPendingConsent ? "Pending approval" : "Not set up",
+          tone: walletConnected ? ("success" as const) : walletPendingConsent ? ("warning" as const) : undefined,
         },
       ];
 
@@ -332,7 +337,9 @@ export function WalletPage() {
         subtitle={
           walletConnected
             ? "Your balance, payments, and policy payouts"
-            : "Verify identity, connect your wallet, then add funds"
+            : walletPendingConsent
+              ? "Check your email to approve your wallet"
+              : "Verify identity, connect your wallet, then add funds"
         }
         icon={<HeaderIconWallet />}
         accent="teal"
@@ -353,7 +360,7 @@ export function WalletPage() {
         </CustomerPanel>
       ) : null}
 
-      {!kycBlocksWallet && !walletConnected ? (
+      {!kycBlocksWallet && !walletConnected && !walletPendingConsent ? (
         <CustomerPanel
           title="Step 2 · Connect your wallet"
           description="Create a secure wallet or link an existing Ethereum address"
@@ -401,6 +408,49 @@ export function WalletPage() {
             </div>
           </div>
 
+          <WalletError error={error} />
+        </CustomerPanel>
+      ) : null}
+
+      {walletPendingConsent ? (
+        <CustomerPanel
+          title="Check your email"
+          description="We sent you a consent link — your wallet activates after you approve"
+        >
+          <p className="manage-notice" role="status">
+            Open the email we sent to <strong>{user?.email ?? "your inbox"}</strong> and click
+            <strong> Approve wallet</strong> to enable payouts and premium payments.
+          </p>
+          {address ? (
+            <div className="wallet-status">
+              <div className="meta">
+                <span className="muted" style={{ fontSize: "0.8rem" }}>
+                  Pending wallet address
+                </span>
+                <span className="addr">{address}</span>
+              </div>
+              <span className="customer-status-pill">Pending email approval</span>
+            </div>
+          ) : null}
+          {note ? <p className="muted wallet-note">{note}</p> : null}
+          <div className="wallet-actions">
+            <button
+              className="btn-secondary"
+              type="button"
+              disabled={loading}
+              onClick={() => void createWallet()}
+            >
+              Resend approval email
+            </button>
+          </div>
+          {devApproveUrl ? (
+            <p className="muted" style={{ fontSize: "0.85rem", marginTop: 12 }}>
+              Dev:{" "}
+              <a href={devApproveUrl.startsWith("/") ? devApproveUrl : devApproveUrl}>
+                Open approval link
+              </a>
+            </p>
+          ) : null}
           <WalletError error={error} />
         </CustomerPanel>
       ) : null}

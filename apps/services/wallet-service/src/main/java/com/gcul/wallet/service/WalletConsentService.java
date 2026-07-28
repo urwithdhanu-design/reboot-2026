@@ -1,0 +1,172 @@
+package com.gcul.wallet.service;
+
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.SecureRandom;
+import java.time.Instant;
+import java.util.HexFormat;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpStatus;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
+
+import com.gcul.wallet.mail.MailService;
+import com.gcul.wallet.messaging.WalletEventPublisher;
+import com.gcul.wallet.model.CustomerWallet;
+import com.gcul.wallet.model.WalletConsentToken;
+import com.gcul.wallet.repository.CustomerWalletRepository;
+import com.gcul.wallet.repository.WalletConsentTokenRepository;
+
+@Service
+public class WalletConsentService {
+
+	public static final String STATUS_PENDING = "pending_consent";
+
+	private final WalletConsentTokenRepository tokens;
+	private final CustomerWalletRepository wallets;
+	private final MailService mail;
+	private final WalletEventPublisher walletEvents;
+	private final SecureRandom random = new SecureRandom();
+	private final long expiryHours;
+	private final String webBaseUrl;
+
+	public WalletConsentService(
+			WalletConsentTokenRepository tokens,
+			CustomerWalletRepository wallets,
+			MailService mail,
+			WalletEventPublisher walletEvents,
+			@Value("${gcul.wallet-consent.expiry-hours:48}") long expiryHours,
+			@Value("${gcul.app.web-base-url:http://localhost:5173}") String webBaseUrl) {
+		this.tokens = tokens;
+		this.wallets = wallets;
+		this.mail = mail;
+		this.walletEvents = walletEvents;
+		this.expiryHours = expiryHours;
+		this.webBaseUrl = webBaseUrl.endsWith("/")
+				? webBaseUrl.substring(0, webBaseUrl.length() - 1)
+				: webBaseUrl;
+	}
+
+	public Map<String, Object> issueConsentEmail(CustomerWallet wallet, String recipientEmail) {
+		invalidatePendingTokens(wallet.getUserId());
+
+		String rawToken = generateToken();
+		WalletConsentToken row = new WalletConsentToken();
+		row.setTokenHash(hashToken(rawToken));
+		row.setUserId(wallet.getUserId());
+		row.setExpiresAt(Instant.now().plusSeconds(expiryHours * 3600));
+		row.setCreatedAt(Instant.now());
+		tokens.save(row);
+
+		String approveUrl = webBaseUrl + "/wallet/approve?token=" + rawToken;
+		boolean emailed = mail.sendWalletConsent(recipientEmail, recipientEmail, approveUrl, expiryHours);
+
+		Map<String, Object> result = new LinkedHashMap<>();
+		result.put("consent_email_sent", emailed);
+		result.put("pending_approval", true);
+		if (!emailed) {
+			result.put("dev_approve_url", approveUrl);
+			result.put("dev_approve_token", rawToken);
+		}
+		return result;
+	}
+
+	@Transactional
+	public Map<String, Object> approveByToken(String rawToken) {
+		if (rawToken == null || rawToken.isBlank()) {
+			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Approval token is required");
+		}
+
+		String tokenHash = hashToken(rawToken.trim());
+		WalletConsentToken consent = tokens.findByTokenHashAndUsedAtIsNull(tokenHash)
+				.orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST,
+						"Invalid or expired approval link"));
+
+		if (Instant.now().isAfter(consent.getExpiresAt())) {
+			consent.setUsedAt(Instant.now());
+			tokens.save(consent);
+			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid or expired approval link");
+		}
+
+		CustomerWallet wallet = wallets.findByUserId(consent.getUserId())
+				.orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST,
+						"Invalid or expired approval link"));
+
+		return activateWallet(wallet, consent);
+	}
+
+	@Transactional
+	public Map<String, Object> activateWallet(CustomerWallet wallet, WalletConsentToken consent) {
+		if (!consent.getUserId().equals(wallet.getUserId())) {
+			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid or expired approval link");
+		}
+
+		if ("connected".equals(wallet.getStatus()) && wallet.getAddress() != null) {
+			consent.setUsedAt(Instant.now());
+			tokens.save(consent);
+			return Map.of(
+					"message", "Your wallet is already approved and active.",
+					"status", wallet.getStatus(),
+					"address", wallet.getAddress(),
+					"already_active", true);
+		}
+
+		if (!STATUS_PENDING.equals(wallet.getStatus())) {
+			throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+					"Wallet is not awaiting email approval");
+		}
+
+		wallet.setStatus("connected");
+		wallet.setUpdatedAt(Instant.now());
+		wallets.saveAndFlush(wallet);
+
+		consent.setUsedAt(Instant.now());
+		tokens.save(consent);
+		invalidatePendingTokens(wallet.getUserId(), consent.getTokenHash());
+
+		walletEvents.walletLinked(wallet.getUserId(), wallet);
+
+		return Map.of(
+				"message", "Your wallet has been approved and is now active.",
+				"status", wallet.getStatus(),
+				"address", wallet.getAddress() == null ? "" : wallet.getAddress(),
+				"already_active", false);
+	}
+
+	private void invalidatePendingTokens(String userId) {
+		invalidatePendingTokens(userId, null);
+	}
+
+	private void invalidatePendingTokens(String userId, String exceptHash) {
+		List<WalletConsentToken> pending = tokens.findByUserIdAndUsedAtIsNull(userId);
+		Instant now = Instant.now();
+		for (WalletConsentToken row : pending) {
+			if (exceptHash != null && exceptHash.equals(row.getTokenHash())) {
+				continue;
+			}
+			row.setUsedAt(now);
+			tokens.save(row);
+		}
+	}
+
+	private String generateToken() {
+		byte[] bytes = new byte[32];
+		random.nextBytes(bytes);
+		return HexFormat.of().formatHex(bytes);
+	}
+
+	static String hashToken(String rawToken) {
+		try {
+			MessageDigest md = MessageDigest.getInstance("SHA-256");
+			return HexFormat.of().formatHex(md.digest(rawToken.getBytes(StandardCharsets.UTF_8)));
+		}
+		catch (Exception ex) {
+			throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Token processing failed");
+		}
+	}
+}

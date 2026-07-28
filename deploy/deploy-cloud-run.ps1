@@ -266,6 +266,7 @@ if ($deployedUrls.ContainsKey("gcul-policy") -and $claimsUrl) {
   gcloud run services update gcul-policy `
     --region $Region `
     --project $ProjectId `
+    --cpu-boost `
     --update-env-vars "GCUL_CLAIMS_SERVICE_URL=$claimsUrl" `
     --quiet
 }

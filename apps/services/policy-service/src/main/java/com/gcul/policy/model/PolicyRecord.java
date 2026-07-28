@@ -48,6 +48,9 @@ public class PolicyRecord {
 
 	private String blockchainNetwork;
 
+	@Column(length = 32)
+	private String primaryLedgerId;
+
 	private String mintStatus = "PENDING";
 
 	private Instant issuedAt = Instant.now();
@@ -205,6 +208,14 @@ public class PolicyRecord {
 
 	public void setBlockchainNetwork(String blockchainNetwork) {
 		this.blockchainNetwork = blockchainNetwork;
+	}
+
+	public String getPrimaryLedgerId() {
+		return primaryLedgerId;
+	}
+
+	public void setPrimaryLedgerId(String primaryLedgerId) {
+		this.primaryLedgerId = primaryLedgerId;
 	}
 
 	public String getMintStatus() {

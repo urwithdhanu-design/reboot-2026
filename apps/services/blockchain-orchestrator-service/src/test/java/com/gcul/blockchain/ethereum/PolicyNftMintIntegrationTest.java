@@ -29,7 +29,11 @@ class PolicyNftMintIntegrationTest {
 
 	@Test
 	void mintsSimulatedPolicyNftEndToEnd() {
-		assertThat(mintService.status().get("mode")).isEqualTo("simulated");
+		@SuppressWarnings("unchecked")
+		Map<String, Object> adapters = (Map<String, Object>) mintService.status().get("adapters");
+		@SuppressWarnings("unchecked")
+		Map<String, Object> simulated = (Map<String, Object>) adapters.get("simulated");
+		assertThat(simulated.get("mode")).isEqualTo("simulated");
 
 		String policyId = "POL-TEST-001";
 		String policyReferenceHash = PolicyReferenceHasher.hash(
@@ -57,6 +61,7 @@ class PolicyNftMintIntegrationTest {
 		assertThat(result.get("transactionHash")).asString().startsWith("0x");
 		assertThat(result.get("policyReferenceHash")).isEqualTo(policyReferenceHash);
 		assertThat(result.get("mintStatus")).isEqualTo("MINTED");
+		assertThat(result.get("ledgerId")).isEqualTo("simulated");
 
 		@SuppressWarnings("unchecked")
 		Map<String, Object> record = client.get()

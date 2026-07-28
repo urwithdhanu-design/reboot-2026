@@ -1,7 +1,7 @@
 import { Link, useSearchParams } from 'react-router-dom';
 import {
   Users, FileText, ShieldCheck, ClipboardList, PoundSterling, TrendingUp, Coins, Link2,
-  Zap, Activity, Layers, LayoutDashboard, BarChart3, GitBranch, RefreshCw, AlertCircle,
+  Zap, Activity, Layers, LayoutDashboard, BarChart3, GitBranch, AlertCircle,
 } from 'lucide-react';
 import {
   AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend,
@@ -42,7 +42,7 @@ export function DashboardPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const tabParam = searchParams.get('tab') as TabId | null;
   const tab: TabId = tabParam && TABS.some((t) => t.id === tabParam) ? tabParam : 'overview';
-  const { loading, error, refreshedAt, metrics, refresh } = useDashboardData();
+  const { loading, error, refreshedAt, metrics } = useDashboardData();
 
   const selectTab = (id: TabId) => setSearchParams({ tab: id });
 
@@ -63,15 +63,9 @@ export function DashboardPage() {
           { label: 'Premium (MTD)', value: metrics ? formatGBP(metrics.payments.mtdPremium) : '—' },
         ]}
         actions={
-          <div className="flex items-center gap-2">
-            <Badge variant={metrics?.blockchain?.live ? 'success' : 'neutral'}>
-              {refreshedAt ? `Updated ${formatWhen(refreshedAt.toISOString())}` : 'Loading…'}
-            </Badge>
-            <Button size="sm" variant="outline" onClick={() => void refresh()} disabled={loading}>
-              <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-              Refresh
-            </Button>
-          </div>
+          <Badge variant={metrics?.blockchain?.live ? 'success' : 'neutral'}>
+            {refreshedAt ? `Updated ${formatWhen(refreshedAt.toISOString())}` : 'Loading…'}
+          </Badge>
         }
       />
 

@@ -5,18 +5,20 @@ import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 import org.springframework.web.server.ResponseStatusException;
 
-import com.gcul.blockchain.client.KycInternalClient;
+import com.gcul.blockchain.repository.PolicyLedgerAttestationRepository;
 import com.gcul.blockchain.repository.PolicyNftRecordRepository;
 
 @Component
 public class PolicyMintValidator {
 
 	private final PolicyNftRecordRepository repository;
-	private final KycInternalClient kycInternalClient;
+	private final PolicyLedgerAttestationRepository attestationRepository;
 
-	public PolicyMintValidator(PolicyNftRecordRepository repository, KycInternalClient kycInternalClient) {
+	public PolicyMintValidator(
+			PolicyNftRecordRepository repository,
+			PolicyLedgerAttestationRepository attestationRepository) {
 		this.repository = repository;
-		this.kycInternalClient = kycInternalClient;
+		this.attestationRepository = attestationRepository;
 	}
 
 	public void validate(MintContext context) {
@@ -34,6 +36,10 @@ public class PolicyMintValidator {
 		}
 		if (repository.findByPolicyId(context.policyId()).isPresent()) {
 			throw new ResponseStatusException(HttpStatus.CONFLICT, "Duplicate policy mint request: " + context.policyId());
+		}
+		if (attestationRepository.findByPolicyIdAndLedgerId(context.policyId(), context.ledgerId()).isPresent()) {
+			throw new ResponseStatusException(HttpStatus.CONFLICT,
+					"Policy already attested on ledger " + context.ledgerId() + ": " + context.policyId());
 		}
 		if (repository.findByPolicyReferenceHash(context.policyReferenceHash()).isPresent()) {
 			throw new ResponseStatusException(HttpStatus.CONFLICT, "Policy reference already minted");
@@ -54,6 +60,7 @@ public class PolicyMintValidator {
 			String metadataUri,
 			String customerId,
 			boolean kycVerified,
-			boolean policyEligible) {
+			boolean policyEligible,
+			String ledgerId) {
 	}
 }

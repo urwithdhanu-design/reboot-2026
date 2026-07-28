@@ -18,6 +18,7 @@ import { QuoteBuilderPage } from "./pages/QuoteBuilderPage";
 import { RegisterPage } from "./pages/RegisterPage";
 import { ResetPasswordPage } from "./pages/ResetPasswordPage";
 import { WalletPage } from "./pages/WalletPage";
+import { WalletApprovePage } from "./pages/WalletApprovePage";
 import type { ReactNode } from "react";
 
 function RequireAuth({ children }: { children: ReactNode }) {
@@ -51,6 +52,7 @@ function AppShell() {
           <Route path="/login" element={<LoginPage />} />
           <Route path="/forgot-password" element={<ForgotPasswordPage />} />
           <Route path="/reset-password" element={<ResetPasswordPage />} />
+          <Route path="/wallet/approve" element={<WalletApprovePage />} />
           <Route
             path="/kyc"
             element={

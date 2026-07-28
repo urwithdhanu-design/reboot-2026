@@ -129,6 +129,9 @@ export type WalletInfo = {
   mode?: string;
   note?: string;
   provider?: string;
+  consent_email_sent?: boolean;
+  pending_approval?: boolean;
+  dev_approve_url?: string;
 };
 
 export type CustomerPolicyRecord = {
@@ -422,6 +425,12 @@ export const api = {
       "/api/wallet/link",
       { method: "POST", body: JSON.stringify({ address }) },
       token,
+    ),
+
+  approveWalletConsent: (approvalToken: string) =>
+    request<{ message: string; status: string; address: string; already_active?: boolean }>(
+      `/api/wallet/consent/approve?token=${encodeURIComponent(approvalToken)}`,
+      { method: "POST" },
     ),
 
   getMyPolicies: (token: string) =>
