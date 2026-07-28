@@ -17,6 +17,7 @@ import {
 import { AssistantBar, CustomerAppShell, CustomerPageHeader, CustomerPanel, CustomerTabs, HeaderIconClaims, HeaderIconPolicies, HeaderIconProfile } from "../components";
 import { CancelPolicyWizard } from "../components/CancelPolicyWizard";
 import { KycOnboardingPrompt } from "../components/KycOnboardingPrompt";
+import { PayQuoteButton } from "../components/PayQuoteButton";
 import { isCancelledPolicy } from "../customerPolicies";
 import { needsKycAttention } from "../kycStatus";
 import { useSession } from "../session";
@@ -531,9 +532,14 @@ export function PoliciesPage() {
                   </p>
                 </div>
                 <div className="policy-quote-actions">
+                  <PayQuoteButton
+                    quote={selectedQuote}
+                    label="Pay premium"
+                    className="btn-primary policy-quote-review-btn"
+                  />
                   <button
                     type="button"
-                    className="btn-primary policy-quote-review-btn"
+                    className="btn-secondary policy-quote-review-btn"
                     onClick={() => navigate(`/quote/${selectedQuote.product_id}`)}
                   >
                     Review quote

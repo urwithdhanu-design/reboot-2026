@@ -49,15 +49,17 @@ public class WalletService {
 		this.consentService = consentService;
 	}
 
+	@Transactional
 	public Map<String, Object> getWallet(String userId) {
 		return repository.findByUserId(userId)
-				.map(this::toResponse)
+				.map(wallet -> toResponse(activatePendingWallet(wallet)))
 				.orElseGet(this::disconnectedWallet);
 	}
 
 	public Map<String, Object> getWalletWithUser(String userId) {
 		return repository.findByUserId(userId)
 				.map(wallet -> {
+					wallet = activatePendingWallet(wallet);
 					Map<String, Object> response = toResponse(wallet);
 					response.put("userId", wallet.getUserId());
 					response.put("email", wallet.getUserEmail());
@@ -69,6 +71,7 @@ public class WalletService {
 	public Map<String, Object> getWalletByEmail(String email) {
 		return repository.findByUserEmailIgnoreCase(email)
 				.map(wallet -> {
+					wallet = activatePendingWallet(wallet);
 					Map<String, Object> response = toResponse(wallet);
 					response.put("userId", wallet.getUserId());
 					response.put("email", wallet.getUserEmail());
@@ -91,10 +94,10 @@ public class WalletService {
 		wallet.setUserId(userId);
 		wallet.setUserEmail(email);
 		wallet.setAddress(address.trim().toLowerCase());
-		wallet.setStatus(WalletConsentService.STATUS_PENDING);
+		wallet.setStatus("connected");
 		wallet.setProvider("ethereum");
 		wallet.setMode("linked");
-		wallet.setNote("Pending email approval — verify to enable policy NFT delivery and payouts.");
+		wallet.setNote("Linked wallet is active and ready for payouts and payments.");
 		wallet.setCurrency("GBP");
 		if (wallet.getBalanceGbp() < 0) {
 			wallet.setBalanceGbp(0.0);
@@ -102,9 +105,9 @@ public class WalletService {
 		wallet.setUpdatedAt(Instant.now());
 		wallet = repository.saveAndFlush(wallet);
 
+		walletEvents.walletLinked(userId, wallet);
 		Map<String, Object> response = toResponse(wallet);
-		response.putAll(consentService.issueConsentEmail(wallet, email));
-		response.put("linked", false);
+		response.put("linked", true);
 		return response;
 	}
 
@@ -125,10 +128,11 @@ public class WalletService {
 		if (existing.isPresent() && existing.get().isPendingConsent()) {
 			CustomerWallet pending = existing.get();
 			pending.setUserEmail(email);
+			pending.setStatus("connected");
 			pending.setUpdatedAt(Instant.now());
 			pending = repository.saveAndFlush(pending);
 			Map<String, Object> map = toResponse(pending);
-			map.putAll(consentService.issueConsentEmail(pending, email));
+			walletEvents.walletLinked(userId, pending);
 			map.put("reused", true);
 			return map;
 		}
@@ -142,10 +146,10 @@ public class WalletService {
 		wallet.setUserId(userId);
 		wallet.setUserEmail(email);
 		wallet.setAddress(generateAddress(userId, email));
-		wallet.setStatus(WalletConsentService.STATUS_PENDING);
+		wallet.setStatus("connected");
 		wallet.setProvider("secure_wallet");
 		wallet.setMode("demo");
-		wallet.setNote("Pending email approval — check your inbox to activate your demo wallet.");
+		wallet.setNote("Demo wallet is active and ready to use.");
 		wallet.setCurrency("GBP");
 		if (wallet.getBalanceGbp() < 0) {
 			wallet.setBalanceGbp(0.0);
@@ -162,18 +166,18 @@ public class WalletService {
 			if (!wallet.isConnected()) {
 				wallet.setUserEmail(email);
 				wallet.setAddress(generateAddress(userId, email));
-				wallet.setStatus(WalletConsentService.STATUS_PENDING);
+				wallet.setStatus("connected");
 				wallet.setProvider("secure_wallet");
 				wallet.setMode("demo");
-				wallet.setNote("Pending email approval — check your inbox to activate your demo wallet.");
+				wallet.setNote("Demo wallet is active and ready to use.");
 				wallet.setCurrency("GBP");
 				wallet.setUpdatedAt(Instant.now());
 				wallet = repository.saveAndFlush(wallet);
 			}
 		}
 
+		walletEvents.walletLinked(userId, wallet);
 		Map<String, Object> response = toResponse(wallet);
-		response.putAll(consentService.issueConsentEmail(wallet, email));
 		response.put("ledger", "gcul");
 		response.put("reused", existing.isPresent());
 		return response;
@@ -196,7 +200,7 @@ public class WalletService {
 						"Create a wallet before recharging"));
 		if (!wallet.isConnected()) {
 			throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-					"Wallet not active — approve the email link or create a wallet before recharging");
+					"Wallet not active. Create or link a wallet before recharging");
 		}
 
 		wallet.setBalanceGbp(roundMoney(wallet.getBalanceGbp() + amount));
@@ -456,6 +460,18 @@ public class WalletService {
 		result.put("funding_source", tx.getFundingSource());
 		result.put("created_at", tx.getCreatedAt().toString());
 		return result;
+	}
+
+	private CustomerWallet activatePendingWallet(CustomerWallet wallet) {
+		if (!wallet.isPendingConsent()) {
+			return wallet;
+		}
+		wallet.setStatus("connected");
+		wallet.setNote("Wallet activated automatically and ready to use.");
+		wallet.setUpdatedAt(Instant.now());
+		wallet = repository.saveAndFlush(wallet);
+		walletEvents.walletLinked(wallet.getUserId(), wallet);
+		return wallet;
 	}
 
 	private String normalizeBankAccount(String bankAccount) {
