@@ -1,4 +1,7 @@
 ﻿{
+    "firestore":  {
+                      "rules":  "deploy/firestore.rules"
+                  },
     "hosting":  [
                     {
                         "ignore":  [
@@ -57,6 +60,20 @@
                                                          "serviceId":  "gcul-wallet"
                                                      },
                                              "source":  "/api/wallet/**"
+                                         },
+                                         {
+                                             "run":  {
+                                                         "region":  "us-central1",
+                                                         "serviceId":  "gcul-wallet"
+                                                     },
+                                             "source":  "/api/admin/wallet-ops"
+                                         },
+                                         {
+                                             "run":  {
+                                                         "region":  "us-central1",
+                                                         "serviceId":  "gcul-wallet"
+                                                     },
+                                             "source":  "/api/admin/wallet-ops/**"
                                          },
                                          {
                                              "run":  {
@@ -401,6 +418,20 @@
                                                          "serviceId":  "gcul-wallet"
                                                      },
                                              "source":  "/api/wallet/**"
+                                         },
+                                         {
+                                             "run":  {
+                                                         "region":  "us-central1",
+                                                         "serviceId":  "gcul-wallet"
+                                                     },
+                                             "source":  "/api/admin/wallet-ops"
+                                         },
+                                         {
+                                             "run":  {
+                                                         "region":  "us-central1",
+                                                         "serviceId":  "gcul-wallet"
+                                                     },
+                                             "source":  "/api/admin/wallet-ops/**"
                                          },
                                          {
                                              "run":  {

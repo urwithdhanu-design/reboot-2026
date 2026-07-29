@@ -28,6 +28,28 @@ export function LoginPage() {
     }
   };
 
+  const demoEmail = 'admin@reboot2026.local';
+  const demoPassword = 'Reboot2026!Admin';
+
+  const handleDemoSignIn = async () => {
+    setEmail(demoEmail);
+    setPassword(demoPassword);
+    setError(null);
+    setLoading(true);
+    try {
+      await login(demoEmail, demoPassword);
+      navigate('/', { replace: true });
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? `${err.message} — start local APIs: scripts\\start-local-apis.cmd`
+          : 'Demo sign-in failed. Is kyc-service running on port 8081?',
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="min-h-screen flex bg-lbg-gray-50">
       <div className="hidden lg:flex lg:w-[52%] relative overflow-hidden bg-gradient-to-br from-lbg-sidebar via-lbg-green to-lbg-green-dark p-12 flex-col justify-between text-white">
@@ -157,6 +179,19 @@ export function LoginPage() {
               <Button type="submit" size="lg" className="w-full shadow-sm" disabled={loading}>
                 {loading ? 'Signing in…' : 'Sign in to admin'}
               </Button>
+
+              {import.meta.env.DEV ? (
+                <Button
+                  type="button"
+                  size="lg"
+                  variant="outline"
+                  className="w-full"
+                  disabled={loading}
+                  onClick={handleDemoSignIn}
+                >
+                  {loading ? 'Signing in…' : 'Demo sign in (local)'}
+                </Button>
+              ) : null}
             </form>
           </div>
 

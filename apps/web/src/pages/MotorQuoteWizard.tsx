@@ -139,7 +139,7 @@ export function MotorQuoteWizard({
             </p>
           </div>
 
-          <PayQuoteButton quote={quote} label="Pay premium" />
+          <PayQuoteButton quote={quote} />
         </div>
       ) : (
         <form className="travel-quote-body stack" onSubmit={onNext}>

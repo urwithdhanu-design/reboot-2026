@@ -538,11 +538,7 @@ export function PoliciesPage() {
                   </p>
                 </div>
                 <div className="policy-quote-actions">
-                  <PayQuoteButton
-                    quote={selectedQuote}
-                    label="Pay premium"
-                    className="btn-primary policy-quote-review-btn"
-                  />
+                  <PayQuoteButton quote={selectedQuote} />
                   <button
                     type="button"
                     className="btn-secondary policy-quote-review-btn"

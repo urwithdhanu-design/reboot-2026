@@ -7,6 +7,7 @@ import {
   AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend,
 } from 'recharts';
 import { AdminLayout } from '../components/layout/AdminLayout';
+import { PlatformFlowHero } from '../components/PlatformFlowHero';
 import { Card, StatCard, Badge, PageHeader, Button, AlertBanner } from '../components/ui';
 import { useDashboardData, type DashboardActivity } from '../hooks/useDashboardData';
 import { formatGBP, formatNumber, formatWhen } from '../utils/format';
@@ -70,6 +71,8 @@ export function DashboardPage() {
       />
 
       {error ? <AlertBanner>{error}</AlertBanner> : null}
+
+      <PlatformFlowHero />
 
       <div className="flex gap-1 mb-6 p-1 bg-white rounded-xl border border-lbg-gray-100 shadow-sm overflow-x-auto">
         {TABS.map(({ id, label, icon: Icon }) => (

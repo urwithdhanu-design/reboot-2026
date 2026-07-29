@@ -24,18 +24,10 @@ export function clearStashedQuote() {
   sessionStorage.removeItem(QUOTE_STORAGE_KEY);
 }
 
-export function PayQuoteButton({
-  quote,
-  label = "Pay with Stripe",
-  className = "btn-primary btn-dark",
-}: {
-  quote: QuoteEstimate;
-  label?: string;
-  className?: string;
-}) {
+export function PayQuoteButton({ quote }: { quote: QuoteEstimate }) {
   const navigate = useNavigate();
   const { token } = useSession();
-  const [loading, setLoading] = useState<"stripe" | "wallet" | null>(null);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [walletBalance, setWalletBalance] = useState<number | null>(null);
   const [walletConnected, setWalletConnected] = useState(false);
@@ -58,29 +50,17 @@ export function PayQuoteButton({
       });
   }, [token]);
 
-  async function startCheckout() {
-    setError(null);
-    setLoading("stripe");
-    try {
-      stashQuote(quote);
-      const session = await api.createCheckout(quote.quote_id);
-      if (!session.url) {
-        throw new Error("Stripe did not return a checkout URL");
-      }
-      window.location.href = session.url;
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not start payment");
-      setLoading(null);
-    }
-  }
-
   async function payWithWallet() {
     if (!token) {
       navigate("/login");
       return;
     }
+    if (!canPayWithWallet) {
+      navigate("/wallet");
+      return;
+    }
     setError(null);
-    setLoading("wallet");
+    setLoading(true);
     try {
       stashQuote(quote);
       const res = await api.payWithWallet(token, quote.quote_id);
@@ -102,49 +82,39 @@ export function PayQuoteButton({
       });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Wallet payment failed");
-      setLoading(null);
+      setLoading(false);
     }
   }
 
   return (
     <div className="pay-block">
-      {canPayWithWallet ? (
-        <button
-          type="button"
-          className="btn-primary"
-          disabled={loading !== null}
-          onClick={() => void payWithWallet()}
-        >
-          {loading === "wallet"
-            ? "Processing wallet payment…"
-            : `Pay £${premium.toFixed(2)} from wallet`}
-        </button>
-      ) : null}
-
-      {walletConnected && walletBalance != null && walletBalance < premium ? (
-        <p className="pay-hint muted">
-          Wallet balance £{walletBalance.toFixed(2)} — recharge at{" "}
-          <Link to="/wallet">Wallet</Link> or pay with Stripe below.
-        </p>
-      ) : null}
-
       <button
         type="button"
-        className={canPayWithWallet ? "btn-secondary" : className}
-        disabled={loading !== null}
-        onClick={() => void startCheckout()}
-        style={canPayWithWallet ? { marginTop: 10 } : undefined}
+        className="btn-primary"
+        disabled={loading}
+        onClick={() => void payWithWallet()}
       >
-        {loading === "stripe" ? "Redirecting to Stripe…" : label}
+        {loading
+          ? "Processing wallet payment…"
+          : canPayWithWallet
+            ? `Pay £${premium.toFixed(2)} from wallet`
+            : "Pay from wallet"}
       </button>
 
-      {!canPayWithWallet ? (
+      {!token ? (
+        <p className="pay-hint muted">Sign in and connect a wallet to pay your premium.</p>
+      ) : !walletConnected ? (
         <p className="pay-hint muted">
-          Secure checkout for your first £{premium.toFixed(2)} / {quote.price_unit} premium
+          Connect your wallet at <Link to="/wallet">Wallet</Link> before paying.
+        </p>
+      ) : walletBalance != null && walletBalance < premium ? (
+        <p className="pay-hint muted">
+          Wallet balance £{walletBalance.toFixed(2)} — recharge at{" "}
+          <Link to="/wallet">Wallet</Link> to pay £{premium.toFixed(2)}.
         </p>
       ) : (
-        <p className="pay-hint muted" style={{ marginTop: 8 }}>
-          Or pay with Stripe instead
+        <p className="pay-hint muted">
+          Premium £{premium.toFixed(2)} / {quote.price_unit} will be debited from your wallet.
         </p>
       )}
 
