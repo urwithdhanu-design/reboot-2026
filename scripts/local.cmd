@@ -33,6 +33,7 @@ if /i "%CMD%"=="ui" goto ui
 if /i "%CMD%"=="status" goto status
 if /i "%CMD%"=="stop" goto stop
 if /i "%CMD%"=="clean" goto clean
+if /i "%CMD%"=="refresh-messaging" goto refresh_messaging
 if /i "%CMD%"=="target" goto target
 if /i "%CMD%"=="canton" goto canton
 echo Unknown command: %CMD%
@@ -76,6 +77,10 @@ exit /b %ERRORLEVEL%
 
 :clean
 powershell -NoProfile -ExecutionPolicy Bypass -File "%LIB%\clean-test-data.ps1" %*
+exit /b %ERRORLEVEL%
+
+:refresh_messaging
+powershell -NoProfile -ExecutionPolicy Bypass -File "%LIB%\rebuild-messaging.ps1" %PY%
 exit /b %ERRORLEVEL%
 
 :target

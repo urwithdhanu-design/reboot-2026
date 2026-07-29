@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { PlatformFlowHero } from '../components/PlatformFlowHero';
+import { LoginShowcasePanel } from '../components/LoginShowcasePanel';
 import { Button } from '../components/ui';
 import { Lock, Mail, ShieldCheck } from 'lucide-react';
 
@@ -76,8 +76,8 @@ export function LoginPage() {
             </div>
           </div>
 
-          <div className="flex-1 min-h-0 flex flex-col">
-            <PlatformFlowHero />
+          <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
+            <LoginShowcasePanel />
           </div>
 
           <p className="relative z-10 text-xs text-white/50 mt-6 shrink-0">
@@ -100,7 +100,7 @@ export function LoginPage() {
 
           <div className="lg:hidden mb-6 rounded-2xl overflow-hidden bg-gradient-to-br from-lbg-sidebar via-lbg-green to-lbg-green-dark">
             <div className="p-5 sm:p-6">
-              <PlatformFlowHero compact />
+              <LoginShowcasePanel compact />
             </div>
           </div>
 

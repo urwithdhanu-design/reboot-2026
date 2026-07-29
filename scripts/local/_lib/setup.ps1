@@ -14,7 +14,7 @@ Write-Host ""
 $mvnw = Join-Path $RepoRoot "apps\services\kyc-service\mvnw.cmd"
 $messagingPom = Join-Path $RepoRoot "apps\libs\gcul-messaging\pom.xml"
 if (-not (Test-Path $mvnw)) {
-  throw "Missing $mvnw — clone the full repo first."
+  throw "Missing $mvnw - clone the full repo first."
 }
 Write-Host "[1/3] Installing gcul-messaging into local Maven ..."
 & $mvnw -q -f $messagingPom install -DskipTests

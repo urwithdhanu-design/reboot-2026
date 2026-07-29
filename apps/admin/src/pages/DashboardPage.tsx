@@ -1,13 +1,14 @@
 import { Link, useSearchParams } from 'react-router-dom';
 import {
   Users, FileText, ShieldCheck, ClipboardList, PoundSterling, TrendingUp, Coins, Link2,
-  Zap, Activity, Layers, LayoutDashboard, BarChart3, GitBranch, AlertCircle,
+  Zap, Activity, Layers, LayoutDashboard, BarChart3, GitBranch, AlertCircle, Sparkles,
 } from 'lucide-react';
 import {
   AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend,
 } from 'recharts';
 import { AdminLayout } from '../components/layout/AdminLayout';
 import { Card, StatCard, Badge, PageHeader, Button, AlertBanner } from '../components/ui';
+import { FutureImplementationPanel } from '../components/FutureImplementationPanel';
 import { useDashboardData, type DashboardActivity } from '../hooks/useDashboardData';
 import { formatGBP, formatNumber, formatWhen } from '../utils/format';
 
@@ -19,6 +20,7 @@ const TABS = [
   { id: 'financial', label: 'Financial', icon: BarChart3 },
   { id: 'tokenization', label: 'Tokenization', icon: Coins },
   { id: 'operations', label: 'Operations', icon: GitBranch },
+  { id: 'future', label: 'Future implementation', icon: Sparkles },
 ] as const;
 
 type TabId = (typeof TABS)[number]['id'];
@@ -87,7 +89,9 @@ export function DashboardPage() {
         ))}
       </div>
 
-      {loading && !metrics ? (
+      {tab === 'future' ? (
+        <FutureImplementationPanel />
+      ) : loading && !metrics ? (
         <Card className="p-12 text-center text-sm text-lbg-gray-500">Loading dashboard data…</Card>
       ) : metrics ? (
         <>

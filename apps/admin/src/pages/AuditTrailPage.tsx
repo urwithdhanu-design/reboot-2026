@@ -109,7 +109,8 @@ export function AuditTrailPage() {
           </table>
           {!loading && events.length === 0 ? (
             <p className="px-4 py-8 text-center text-sm text-lbg-muted">
-              No audit events yet. Events appear when customers and admins use the platform (local dev requires audit-service on :8092).
+              No audit events yet. Ensure audit-service is running on :8092, then restart Java APIs after
+            rebuilding gcul-messaging. Generate activity (login, KYC, quote, claim) and refresh.
             </p>
           ) : null}
         </div>

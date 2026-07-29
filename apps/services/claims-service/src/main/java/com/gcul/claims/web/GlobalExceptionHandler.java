@@ -1,5 +1,6 @@
 package com.gcul.claims.web;
 
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 import org.springframework.http.HttpStatus;
@@ -11,6 +12,18 @@ import org.springframework.web.server.ResponseStatusException;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
+
+	@ExceptionHandler(ClaimEvaluationException.class)
+	public ResponseEntity<Map<String, Object>> handleClaimEvaluation(ClaimEvaluationException ex) {
+		Map<String, Object> body = new LinkedHashMap<>();
+		body.put("detail", ex.getReason() == null ? "Claim validation failed" : ex.getReason());
+		body.put("evaluation_step", ex.getEvaluationStep());
+		body.put("evaluation_label", ex.getEvaluationLabel());
+		if (ex.getEvaluationSteps() != null && !ex.getEvaluationSteps().isEmpty()) {
+			body.put("evaluation_steps", ex.getEvaluationSteps());
+		}
+		return ResponseEntity.status(ex.getStatusCode()).body(body);
+	}
 
 	@ExceptionHandler(ResponseStatusException.class)
 	public ResponseEntity<Map<String, String>> handleStatus(ResponseStatusException ex) {

@@ -2230,6 +2230,375 @@ a.link-quiet:hover {
   gap: 8px;
 }
 
+.claim-eval {
+  margin-top: 12px;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: #f8faf9;
+}
+
+.claim-eval--compact {
+  margin-top: 10px;
+  padding: 10px 12px;
+}
+
+.claim-eval-title {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+  margin: 0 0 10px;
+}
+
+.claim-eval-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.claim-eval-step {
+  display: grid;
+  grid-template-columns: 16px 1fr;
+  gap: 10px;
+  padding-bottom: 12px;
+  position: relative;
+}
+
+.claim-eval-step:last-child {
+  padding-bottom: 0;
+}
+
+.claim-eval-step:not(:last-child)::before {
+  content: "";
+  position: absolute;
+  left: 7px;
+  top: 14px;
+  bottom: 0;
+  width: 2px;
+  background: var(--line);
+}
+
+.claim-eval-marker {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  margin-top: 2px;
+  border: 2px solid var(--line);
+  background: #fff;
+  z-index: 1;
+}
+
+.claim-eval-step--passed .claim-eval-marker {
+  border-color: var(--brand);
+  background: #e8f5ee;
+}
+
+.claim-eval-step--failed .claim-eval-marker {
+  border-color: #dc2626;
+  background: #fef2f2;
+}
+
+.claim-eval-step--pending .claim-eval-marker,
+.claim-eval-step--action_required .claim-eval-marker {
+  border-color: #d97706;
+  background: #fffbeb;
+}
+
+.claim-eval-step--skipped .claim-eval-marker {
+  border-color: #d1d5db;
+  background: #f3f4f6;
+}
+
+.claim-eval-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.claim-eval-label {
+  font-size: 0.84rem;
+  font-weight: 700;
+  color: var(--ink);
+  margin: 0;
+}
+
+.claim-eval-detail {
+  font-size: 0.78rem;
+  color: var(--muted);
+  margin: 4px 0 0;
+  line-height: 1.4;
+}
+
+.claim-eval-badge {
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 2px 8px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+.claim-eval-badge--passed {
+  background: #e8f5ee;
+  color: #016846;
+}
+
+.claim-eval-badge--failed {
+  background: #fef2f2;
+  color: #b91c1c;
+}
+
+.claim-eval-badge--pending,
+.claim-eval-badge--action_required {
+  background: #fffbeb;
+  color: #b45309;
+}
+
+.claim-eval-badge--skipped {
+  background: #f3f4f6;
+  color: #6b7280;
+}
+
+.claim-eval-rejection,
+.claim-rejection-reason {
+  margin: 10px 0 0;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #991b1b;
+  font-size: 0.82rem;
+}
+
+.claims-notice--error {
+  border-color: #fecaca;
+  background: #fef2f2;
+  color: #991b1b;
+}
+
+.settlement-readiness {
+  margin-top: 16px;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface);
+}
+
+.settlement-readiness-header {
+  margin-bottom: 12px;
+}
+
+.settlement-readiness-title {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
+.settlement-readiness-desc {
+  margin: 4px 0 0;
+  font-size: 0.82rem;
+  color: var(--muted);
+}
+
+.settlement-readiness-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.settlement-readiness-item {
+  display: flex;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  background: #fff;
+}
+
+.settlement-readiness-item--passed {
+  border-color: #bbf7d0;
+  background: #f0fdf4;
+}
+
+.settlement-readiness-item--failed {
+  border-color: #fecaca;
+  background: #fef2f2;
+}
+
+.settlement-readiness-item--review {
+  border-color: #fde68a;
+  background: #fffbeb;
+}
+
+.settlement-readiness-marker {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  margin-top: 5px;
+  flex-shrink: 0;
+}
+
+.settlement-readiness-item--passed .settlement-readiness-marker {
+  background: #16a34a;
+}
+
+.settlement-readiness-item--failed .settlement-readiness-marker {
+  background: #dc2626;
+}
+
+.settlement-readiness-item--review .settlement-readiness-marker {
+  background: #d97706;
+}
+
+.settlement-readiness-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.settlement-readiness-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.settlement-readiness-name {
+  margin: 0;
+  font-size: 0.88rem;
+  font-weight: 600;
+}
+
+.settlement-readiness-detail {
+  margin: 4px 0 0;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+.settlement-readiness-badge {
+  font-size: 0.7rem;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+.settlement-readiness-badge--passed {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.settlement-readiness-badge--failed {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.settlement-readiness-badge--review {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.settlement-readiness-foot {
+  margin: 12px 0 0;
+  padding: 8px 10px;
+  border-radius: 8px;
+  font-size: 0.82rem;
+}
+
+.settlement-readiness-foot--ok {
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  color: #166534;
+}
+
+.settlement-readiness-foot--warn {
+  background: #fffbeb;
+  border: 1px solid #fde68a;
+  color: #92400e;
+}
+
+.claim-settlement-trail {
+  margin-top: 12px;
+}
+
+.claim-settlement-trail-header {
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  background: linear-gradient(135deg, #f8fafc 0%, #f0fdf4 100%);
+  margin-bottom: 4px;
+}
+
+.claim-settlement-trail-id {
+  margin: 0;
+  font-weight: 700;
+  font-size: 0.95rem;
+}
+
+.claim-settlement-trail-meta {
+  margin: 4px 0 0;
+  font-size: 0.82rem;
+  color: var(--muted);
+}
+
+.claim-settlement-trail-summary {
+  margin: 10px 0 0;
+  font-size: 0.88rem;
+  font-weight: 500;
+}
+
+.claim-settlement-eval {
+  margin-top: 16px;
+}
+
+.claim-settlement-eval-title {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
+.claim-settlement-eval-desc {
+  margin: 4px 0 10px;
+  font-size: 0.82rem;
+  color: var(--muted);
+}
+
+.claim-settlement-eval-empty {
+  margin-top: 16px;
+}
+
+.claim-settlement-payout {
+  margin: 10px 0 0;
+  font-size: 0.82rem;
+  color: var(--muted);
+}
+
+.claim-settlement-picker {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 12px;
+  font-size: 0.82rem;
+  font-weight: 500;
+}
+
+.claim-settlement-picker select {
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  background: #fff;
+  font-size: 0.88rem;
+}
+
 .claim-step {
   border: 1px solid var(--line);
   border-radius: 12px;

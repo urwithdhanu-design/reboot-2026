@@ -12,3 +12,4 @@ C:\projects\gcul\apps\services\audit-service\src\main\java\com\gcul\audit\servic
 C:\projects\gcul\apps\services\audit-service\src\main\java\com\gcul\audit\service\AuditRecordService.java
 C:\projects\gcul\apps\services\audit-service\src\main\java\com\gcul\audit\web\AdminAuditController.java
 C:\projects\gcul\apps\services\audit-service\src\main\java\com\gcul\audit\web\HealthController.java
+C:\projects\gcul\apps\services\audit-service\src\main\java\com\gcul\audit\web\InternalAuditController.java

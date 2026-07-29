@@ -2,11 +2,15 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { api, type AuthUser, type ClaimDocumentRow, type ClaimQueryRow, type CustomerPolicyRecord, type InsuranceClaim, type QuoteEstimate } from "../api";
 import { buildClaimDemoForPolicy, sleep } from "../claimsDemoFill";
+import { failedEvaluationStep } from "../claimEvaluation";
+import { ClaimEvaluationTimeline } from "../components/ClaimEvaluationTimeline";
+import { ClaimSettlementTrail } from "../components/ClaimSettlementTrail";
 import { saveQuoteToCompare } from "../compareBasket";
 import {
   buildIssuedQuoteIdSet,
   getUnpaidSavedQuotes,
   mergeDisplayQuotes,
+  fetchIssuedPolicies,
   isClaimablePolicy,
   loadIssuedCustomerPolicies,
   markQuotePaid,
@@ -860,11 +864,13 @@ function ClaimQueryReplyPanel({
 
 export function ClaimsPage() {
   const { user, token } = useSession();
-  const [tab, setTab] = useState<"new" | "track">("new");
+  const [tab, setTab] = useState<"new" | "track" | "settlement">("new");
   const [claims, setClaims] = useState<
     Awaited<ReturnType<typeof api.listClaims>>["claims"]
   >([]);
   const [policies, setPolicies] = useState<CustomerPolicy[]>([]);
+  const [issuedPolicyRecords, setIssuedPolicyRecords] = useState<CustomerPolicyRecord[]>([]);
+  const [settlementClaimId, setSettlementClaimId] = useState("");
   const [selectedQuoteId, setSelectedQuoteId] = useState("");
   const [policyRef, setPolicyRef] = useState("");
   const [category, setCategory] = useState("Property");
@@ -875,6 +881,9 @@ export function ClaimsPage() {
   const [demoFilling, setDemoFilling] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [submitEvaluationSteps, setSubmitEvaluationSteps] = useState<
+    InsuranceClaim["evaluation_steps"]
+  >(undefined);
   const [notice, setNotice] = useState<string | null>(null);
   const [attachments, setAttachments] = useState<File[]>([]);
 
@@ -893,6 +902,36 @@ export function ClaimsPage() {
     return claims.filter((c) => myPolicyRefs.has(c.policy_ref));
   }, [claims, policies, myPolicyRefs]);
 
+  const settlementClaims = useMemo(
+    () =>
+      [...visibleClaims].sort((a, b) => {
+        const ta = Date.parse(a.updated_at ?? a.created_at ?? "") || 0;
+        const tb = Date.parse(b.updated_at ?? b.created_at ?? "") || 0;
+        return tb - ta;
+      }),
+    [visibleClaims],
+  );
+
+  const selectedSettlementClaim = useMemo(
+    () => settlementClaims.find((c) => c.id === settlementClaimId) ?? settlementClaims[0],
+    [settlementClaims, settlementClaimId],
+  );
+
+  const policyForClaim = useMemo(() => {
+    if (!selectedSettlementClaim) return undefined;
+    const ref = selectedSettlementClaim.policy_ref;
+    return issuedPolicyRecords.find(
+      (p) => p.policy_id === ref || p.policy_number === ref,
+    );
+  }, [issuedPolicyRecords, selectedSettlementClaim]);
+
+  useEffect(() => {
+    if (settlementClaims.length === 0) return;
+    if (!settlementClaimId || !settlementClaims.some((c) => c.id === settlementClaimId)) {
+      setSettlementClaimId(settlementClaims[0].id);
+    }
+  }, [settlementClaims, settlementClaimId]);
+
   useEffect(() => {
     let alive = true;
 
@@ -901,6 +940,14 @@ export function ClaimsPage() {
       const claimable = mine.filter(isClaimablePolicy);
       if (!alive) return;
       setPolicies(claimable);
+      if (token) {
+        try {
+          const issued = await fetchIssuedPolicies(token);
+          if (alive) setIssuedPolicyRecords(issued);
+        } catch {
+          if (alive) setIssuedPolicyRecords([]);
+        }
+      }
       if (claimable.length > 0) {
         const first = claimable[0];
         setSelectedQuoteId(first.quote_id);
@@ -996,6 +1043,7 @@ export function ClaimsPage() {
   async function startClaim() {
     setSubmitting(true);
     setSubmitError(null);
+    setSubmitEvaluationSteps(undefined);
     setNotice(null);
     try {
       const claim = await api.createClaim({
@@ -1036,7 +1084,11 @@ export function ClaimsPage() {
       await loadClaims();
       setTab("track");
     } catch (err) {
-      setSubmitError(err instanceof Error ? err.message : "Could not submit claim");
+      const e = err as Error & {
+        evaluationSteps?: InsuranceClaim["evaluation_steps"];
+      };
+      setSubmitError(e.message ?? "Could not submit claim");
+      setSubmitEvaluationSteps(e.evaluationSteps);
     } finally {
       setSubmitting(false);
     }
@@ -1071,6 +1123,7 @@ export function ClaimsPage() {
         options={[
           { value: "new", label: "Start claim" },
           { value: "track", label: "Track claims" },
+          { value: "settlement", label: "Settlement trail" },
         ]}
       />
 
@@ -1230,9 +1283,12 @@ export function ClaimsPage() {
           </div>
 
           {submitError ? (
-            <p className="error" role="alert">
+            <p className="error claims-notice--error" role="alert">
               {submitError}
             </p>
+          ) : null}
+          {submitEvaluationSteps?.length ? (
+            <ClaimEvaluationTimeline steps={submitEvaluationSteps} />
           ) : null}
 
           <button
@@ -1265,8 +1321,10 @@ export function ClaimsPage() {
                 ? formatParametricEventLabel(claim.parametric_event_type, claim.description)
                 : null;
               const needsAction = (claim.open_query_count ?? 0) > 0;
+              const failedStep = failedEvaluationStep(claim);
+              const isRejected = claim.status === "rejected";
               return (
-              <article className={`quote-card${needsAction ? " quote-card--action" : ""}`} key={claim.id}>
+              <article className={`quote-card${needsAction ? " quote-card--action" : ""}${isRejected ? " quote-card--rejected" : ""}`} key={claim.id}>
                 <strong>{claim.id}</strong>
                 {needsAction ? (
                   <span className="claim-action-pill">Action required</span>
@@ -1294,9 +1352,65 @@ export function ClaimsPage() {
                 {!isParametric ? (
                   <ClaimQueryReplyPanel claim={claim} onReplied={() => void loadClaims()} />
                 ) : null}
+                {isRejected && claim.rejection_reason ? (
+                  <p className="claim-rejection-reason" role="status">
+                    Rejected: {claim.rejection_reason}
+                  </p>
+                ) : null}
+                {failedStep ? (
+                  <p className="claim-rejection-reason" role="status">
+                    Failed at: {failedStep.label} — {failedStep.detail || "See settlement trail for details"}
+                  </p>
+                ) : null}
+                <p className="muted" style={{ margin: "8px 0 0", fontSize: "0.82rem" }}>
+                  Open <strong>Settlement trail</strong> for the full policy and payout checklist.
+                </p>
               </article>
             );})}
           </div>
+        </CustomerPanel>
+      )}
+
+      {tab === "settlement" && (
+        <CustomerPanel
+          title="Settlement trail"
+          description="Step-by-step view of policy readiness and how your claim was processed to payout"
+        >
+          {loadError ? (
+            <p className="error" role="alert">
+              {loadError}
+            </p>
+          ) : null}
+          {loading ? <p className="muted">Loading…</p> : null}
+          {!loading && settlementClaims.length === 0 ? (
+            <p className="muted">
+              No claims yet. Start a claim first, then return here to see how settlement checks apply.
+            </p>
+          ) : null}
+          {settlementClaims.length > 0 ? (
+            <>
+              <label className="claim-settlement-picker">
+                Claim
+                <select
+                  value={selectedSettlementClaim?.id ?? ""}
+                  onChange={(e) => setSettlementClaimId(e.target.value)}
+                >
+                  {settlementClaims.map((claim) => (
+                    <option key={claim.id} value={claim.id}>
+                      {claim.id} · {formatClaimStatus(claim.status)} · £
+                      {Number(claim.amount_claimed).toFixed(2)}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              {selectedSettlementClaim ? (
+                <ClaimSettlementTrail
+                  claim={selectedSettlementClaim}
+                  policy={policyForClaim}
+                />
+              ) : null}
+            </>
+          ) : null}
         </CustomerPanel>
       )}
 

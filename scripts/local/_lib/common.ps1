@@ -62,6 +62,7 @@ function Show-Help {
   Write-Host "  local-dev.cmd ui                 Start customer + admin Vite dev servers"
   Write-Host "  local-dev.cmd status             Ports, DB mode, API target"
   Write-Host "  local-dev.cmd stop               Stop APIs and UIs"
+  Write-Host "  local-dev.cmd refresh-messaging  Rebuild gcul-messaging, stop, and restart full stack"
   Write-Host "  local-dev.cmd clean              Wipe customer, policy, payment, wallet, and claim test data (local H2)"
   Write-Host "  local-dev.cmd canton             Start Canton local sandbox (Docker)"
   Write-Host "  local-dev.cmd canton status      Canton sandbox health"

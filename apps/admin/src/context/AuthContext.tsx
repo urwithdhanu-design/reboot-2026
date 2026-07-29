@@ -19,11 +19,14 @@ const AuthContext = createContext<AuthContextType | null>(null);
 const USER_KEY = 'gcul-admin-user';
 
 function toAdminUser(u: AdminAuthUser): AdminUser {
+  if (!u?.id) {
+    throw new Error('Invalid account profile from server — sign in again or contact support.');
+  }
   return {
     id: u.id,
-    name: u.full_name,
-    email: u.email,
-    role: u.role,
+    name: u.full_name ?? u.email ?? 'Admin',
+    email: u.email ?? '',
+    role: u.role ?? 'platform_admin',
   };
 }
 
@@ -65,6 +68,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     adminApi
       .getMe()
       .then((profile) => {
+        if (!profile?.id) {
+          logout();
+          return;
+        }
         if (profile.role !== 'platform_admin') {
           logout();
           return;

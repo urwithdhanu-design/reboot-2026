@@ -1,11 +1,12 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import {
   ShieldCheck, Wallet, FileText, ClipboardList, Coins, Zap, Brain, Link2,
-  ArrowRight, BookOpen,
+  ArrowRight, BookOpen, Sparkles,
 } from 'lucide-react';
 import { AdminLayout } from '../components/layout/AdminLayout';
 import { Card, PageHeader, Button } from '../components/ui';
+import { FutureImplementationPanel } from '../components/FutureImplementationPanel';
 
 const SECTIONS = [
   {
@@ -77,8 +78,20 @@ const AI_ITEMS = [
   { name: 'Fraud scorer', desc: 'Heuristic scoring on mint and settlement chain txs', icon: Link2 },
 ];
 
+const PAGE_TABS = [
+  { id: 'flows', label: 'Platform flows', icon: BookOpen },
+  { id: 'future', label: 'Future implementation', icon: Sparkles },
+] as const;
+
+type PageTabId = (typeof PAGE_TABS)[number]['id'];
+
 export function PlatformFlowsPage() {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const tabParam = searchParams.get('tab') as PageTabId | null;
+  const pageTab: PageTabId = tabParam && PAGE_TABS.some((t) => t.id === tabParam) ? tabParam : 'flows';
   const [expanded, setExpanded] = useState<string>('kyc');
+
+  const selectTab = (id: PageTabId) => setSearchParams({ tab: id });
 
   return (
     <AdminLayout>
@@ -88,109 +101,131 @@ export function PlatformFlowsPage() {
         subtitle="Visual reference for KYC, wallet, policy minting, claims, parametric automation, and fund movement"
       />
 
-      <Card className="mb-6 p-4 border-lbg-green/20 bg-lbg-green-light/30">
-        <p className="text-sm text-lbg-gray-600">
-          Full documentation with Mermaid diagrams lives in{' '}
-          <code className="text-xs bg-white px-1.5 py-0.5 rounded">docs/PLATFORM-FLOWS.md</code>
-          {' '}in the repository. This page is the interactive admin companion.
-        </p>
-      </Card>
-
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
-        {AI_ITEMS.map(({ name, desc, icon: Icon }) => (
-          <Card key={name} className="p-4">
-            <div className="platform-ai-orb w-9 h-9 mb-2" style={{ width: '2.25rem', height: '2.25rem' }}>
-              <Icon className="w-4 h-4 text-white" />
-            </div>
-            <p className="font-bold text-sm">{name}</p>
-            <p className="text-xs text-lbg-gray-400 mt-1">{desc}</p>
-          </Card>
+      <div className="flex gap-1 mb-6 p-1 bg-white rounded-xl border border-lbg-gray-100 shadow-sm overflow-x-auto">
+        {PAGE_TABS.map(({ id, label, icon: Icon }) => (
+          <button
+            key={id}
+            type="button"
+            onClick={() => selectTab(id)}
+            className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold whitespace-nowrap transition-colors flex-1 sm:flex-none justify-center ${
+              pageTab === id ? 'bg-lbg-green text-white shadow-sm' : 'text-lbg-gray-600 hover:bg-lbg-gray-50'
+            }`}
+          >
+            <Icon className="w-4 h-4" />
+            {label}
+          </button>
         ))}
       </div>
 
-      <div className="space-y-4">
-        {SECTIONS.map((section) => {
-          const Icon = section.icon;
-          const isOpen = expanded === section.id;
-          return (
-            <Card key={section.id} className="flow-doc-section overflow-hidden">
-              <button
-                type="button"
-                className="w-full flex items-center gap-3 p-4 text-left hover:bg-lbg-gray-50 transition-colors"
-                onClick={() => setExpanded(isOpen ? '' : section.id)}
-                aria-expanded={isOpen}
-              >
-                <div
-                  className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
-                  style={{ background: `${section.color}18` }}
-                >
-                  <Icon className="w-5 h-5" style={{ color: section.color }} />
+      {pageTab === 'future' ? (
+        <FutureImplementationPanel />
+      ) : (
+        <>
+          <Card className="mb-6 p-4 border-lbg-green/20 bg-lbg-green-light/30">
+            <p className="text-sm text-lbg-gray-600">
+              Full documentation with Mermaid diagrams lives in{' '}
+              <code className="text-xs bg-white px-1.5 py-0.5 rounded">docs/PLATFORM-FLOWS.md</code>
+              {' '}in the repository. This page is the interactive admin companion.
+            </p>
+          </Card>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
+            {AI_ITEMS.map(({ name, desc, icon: Icon }) => (
+              <Card key={name} className="p-4">
+                <div className="platform-ai-orb w-9 h-9 mb-2" style={{ width: '2.25rem', height: '2.25rem' }}>
+                  <Icon className="w-4 h-4 text-white" />
                 </div>
-                <div className="flex-1 min-w-0">
-                  <p className="font-bold">{section.title}</p>
-                  <p className="text-xs text-lbg-gray-400 truncate">{section.pipeline.join(' → ')}</p>
-                </div>
-                <ArrowRight className={`w-4 h-4 text-lbg-gray-400 transition-transform ${isOpen ? 'rotate-90' : ''}`} />
-              </button>
+                <p className="font-bold text-sm">{name}</p>
+                <p className="text-xs text-lbg-gray-400 mt-1">{desc}</p>
+              </Card>
+            ))}
+          </div>
 
-              {isOpen ? (
-                <div className="px-4 pb-4 border-t border-lbg-gray-100 pt-4">
-                  <div className="flow-pipeline mb-4">
-                    {section.pipeline.map((step, i) => (
-                      <span key={step} className="contents">
-                        <span className="flow-box flow-box--active" style={{ borderColor: section.color }}>
-                          {step}
-                        </span>
-                        {i < section.pipeline.length - 1 ? (
-                          <span className="flow-arrow" aria-hidden>→</span>
-                        ) : null}
-                      </span>
-                    ))}
-                  </div>
-
-                  <div className="flow-insight mb-4">{section.insight}</div>
-
-                  <div className="mb-4">
-                    <p className="text-xs font-bold text-lbg-gray-400 uppercase tracking-wide mb-2">Key APIs</p>
-                    <div className="flex flex-wrap gap-1.5">
-                      {section.apis.map((api) => (
-                        <code key={api} className="text-[10px] bg-lbg-gray-50 border border-lbg-gray-100 px-2 py-1 rounded font-mono">
-                          {api}
-                        </code>
-                      ))}
+          <div className="space-y-4">
+            {SECTIONS.map((section) => {
+              const Icon = section.icon;
+              const isOpen = expanded === section.id;
+              return (
+                <Card key={section.id} className="flow-doc-section overflow-hidden">
+                  <button
+                    type="button"
+                    className="w-full flex items-center gap-3 p-4 text-left hover:bg-lbg-gray-50 transition-colors"
+                    onClick={() => setExpanded(isOpen ? '' : section.id)}
+                    aria-expanded={isOpen}
+                  >
+                    <div
+                      className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
+                      style={{ background: `${section.color}18` }}
+                    >
+                      <Icon className="w-5 h-5" style={{ color: section.color }} />
                     </div>
-                  </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-bold">{section.title}</p>
+                      <p className="text-xs text-lbg-gray-400 truncate">{section.pipeline.join(' → ')}</p>
+                    </div>
+                    <ArrowRight className={`w-4 h-4 text-lbg-gray-400 transition-transform ${isOpen ? 'rotate-90' : ''}`} />
+                  </button>
 
-                  <Link to={section.adminLink}>
-                    <Button size="sm" variant="outline">
-                      Open in admin
-                      <ArrowRight className="w-3.5 h-3.5" />
-                    </Button>
-                  </Link>
-                </div>
-              ) : null}
-            </Card>
-          );
-        })}
-      </div>
+                  {isOpen ? (
+                    <div className="px-4 pb-4 border-t border-lbg-gray-100 pt-4">
+                      <div className="flow-pipeline mb-4">
+                        {section.pipeline.map((step, i) => (
+                          <span key={step} className="contents">
+                            <span className="flow-box flow-box--active" style={{ borderColor: section.color }}>
+                              {step}
+                            </span>
+                            {i < section.pipeline.length - 1 ? (
+                              <span className="flow-arrow" aria-hidden>→</span>
+                            ) : null}
+                          </span>
+                        ))}
+                      </div>
 
-      <Card className="mt-6 p-5">
-        <h3 className="font-bold mb-3">GBP money map</h3>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-          <div className="p-3 rounded-lg bg-lbg-gray-50 border border-lbg-gray-100">
-            <p className="font-semibold text-lbg-green">Premium inflow</p>
-            <p className="text-xs text-lbg-gray-400 mt-1">Customer wallet −£ → Vendor reserve +£</p>
+                      <div className="flow-insight mb-4">{section.insight}</div>
+
+                      <div className="mb-4">
+                        <p className="text-xs font-bold text-lbg-gray-400 uppercase tracking-wide mb-2">Key APIs</p>
+                        <div className="flex flex-wrap gap-1.5">
+                          {section.apis.map((api) => (
+                            <code key={api} className="text-[10px] bg-lbg-gray-50 border border-lbg-gray-100 px-2 py-1 rounded font-mono">
+                              {api}
+                            </code>
+                          ))}
+                        </div>
+                      </div>
+
+                      <Link to={section.adminLink}>
+                        <Button size="sm" variant="outline">
+                          Open in admin
+                          <ArrowRight className="w-3.5 h-3.5" />
+                        </Button>
+                      </Link>
+                    </div>
+                  ) : null}
+                </Card>
+              );
+            })}
           </div>
-          <div className="p-3 rounded-lg bg-lbg-gray-50 border border-lbg-gray-100">
-            <p className="font-semibold text-lbg-green">Pool funding</p>
-            <p className="text-xs text-lbg-gray-400 mt-1">Vendor reserve −£ → Claims pool +£</p>
-          </div>
-          <div className="p-3 rounded-lg bg-lbg-gray-50 border border-lbg-gray-100">
-            <p className="font-semibold text-amber-600">Claim payout</p>
-            <p className="text-xs text-lbg-gray-400 mt-1">Claims pool −£ → Customer wallet +£</p>
-          </div>
-        </div>
-      </Card>
+
+          <Card className="mt-6 p-5">
+            <h3 className="font-bold mb-3">GBP money map</h3>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+              <div className="p-3 rounded-lg bg-lbg-gray-50 border border-lbg-gray-100">
+                <p className="font-semibold text-lbg-green">Premium inflow</p>
+                <p className="text-xs text-lbg-gray-400 mt-1">Customer wallet −£ → Vendor reserve +£</p>
+              </div>
+              <div className="p-3 rounded-lg bg-lbg-gray-50 border border-lbg-gray-100">
+                <p className="font-semibold text-lbg-green">Pool funding</p>
+                <p className="text-xs text-lbg-gray-400 mt-1">Vendor reserve −£ → Claims pool +£</p>
+              </div>
+              <div className="p-3 rounded-lg bg-lbg-gray-50 border border-lbg-gray-100">
+                <p className="font-semibold text-amber-600">Claim payout</p>
+                <p className="text-xs text-lbg-gray-400 mt-1">Claims pool −£ → Customer wallet +£</p>
+              </div>
+            </div>
+          </Card>
+        </>
+      )}
     </AdminLayout>
   );
 }

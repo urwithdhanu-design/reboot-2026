@@ -10,6 +10,7 @@ import org.springframework.util.StringUtils;
 import com.gcul.policy.client.BlockchainMintClient;
 import com.gcul.policy.messaging.PolicyIssuanceService;
 import com.gcul.policy.model.PolicyRecord;
+import com.gcul.policy.policy.PolicyReadinessChecks;
 import com.gcul.policy.policy.PolicyRecordService;
 
 @Service
@@ -98,7 +99,7 @@ public class AdminTokenizationService {
 		row.put("coverage_summary", record.getCoverageSummary());
 		row.put("cover_expires_at", record.getCoverExpiresAt() == null ? null : record.getCoverExpiresAt().toString());
 		row.put("coverage_limit_gbp", record.getCoverageLimitGbp());
-		row.put("pre_mint_checks", preMintChecks(record));
+		row.put("pre_mint_checks", PolicyReadinessChecks.settlementReadiness(record));
 		return row;
 	}
 
@@ -119,37 +120,8 @@ public class AdminTokenizationService {
 		row.put("failure_reason", record.getMintFailureReason());
 		row.put("failed_at", record.getMintFailedAt() == null ? null : record.getMintFailedAt().toString());
 		row.put("next_action", nextAction(record));
-		row.put("pre_mint_checks", preMintChecks(record));
+		row.put("pre_mint_checks", PolicyReadinessChecks.settlementReadiness(record));
 		return row;
-	}
-
-	private static List<Map<String, Object>> preMintChecks(PolicyRecord record) {
-		boolean walletLinked = StringUtils.hasText(record.getWalletAddress());
-		return List.of(
-				check("Customer consent", walletLinked ? "passed" : "failed",
-						walletLinked
-								? "Customer approved wallet consent for policy storage and claim payouts."
-								: "Wallet consent not recorded — customer must approve via email link."),
-				check("Policy issued", "passed", "Policy issuance record is active."),
-				check("Wallet linked", StringUtils.hasText(record.getWalletAddress()) ? "passed" : "failed",
-						StringUtils.hasText(record.getWalletAddress()) ? "Customer wallet was present for the mint." : "No customer wallet was recorded."),
-				check("Policy reference hash", StringUtils.hasText(record.getPolicyReferenceHash()) ? "passed" : "failed",
-						StringUtils.hasText(record.getPolicyReferenceHash()) ? "Immutable policy reference hash was supplied." : "Policy reference hash is missing."),
-				check("Compliance decision",
-						"REJECTED".equalsIgnoreCase(record.getComplianceDecision()) ? "failed" : "passed",
-						StringUtils.hasText(record.getComplianceDecision())
-								? record.getComplianceDecision()
-								: "Compliance review completed."),
-				check("Fraud screening", record.getComplianceFraudScore() == null || record.getComplianceFraudScore() < 0.80 ? "passed" : "failed",
-						record.getComplianceFraudScore() == null ? "No score recorded." : "Risk score " + String.format(java.util.Locale.ROOT, "%.2f", record.getComplianceFraudScore())));
-	}
-
-	private static Map<String, Object> check(String name, String status, String detail) {
-		Map<String, Object> check = new LinkedHashMap<>();
-		check.put("name", name);
-		check.put("status", status);
-		check.put("detail", detail);
-		return check;
 	}
 
 	private static String nextAction(PolicyRecord record) {

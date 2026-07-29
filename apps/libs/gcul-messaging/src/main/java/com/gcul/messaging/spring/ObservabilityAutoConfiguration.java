@@ -6,14 +6,24 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
 
+import com.gcul.messaging.audit.AuditForwarder;
+import com.gcul.messaging.audit.AuditHttpClient;
 import com.gcul.messaging.observability.ObservabilityForwarder;
 import com.gcul.messaging.observability.ObservabilityHttpClient;
 import com.gcul.messaging.observability.ObservabilityRequestFilter;
 
 @AutoConfiguration
 @ConditionalOnWebApplication
-@EnableConfigurationProperties({ GculPubSubProperties.class, ObservabilityProperties.class })
+@EnableConfigurationProperties({ GculPubSubProperties.class, ObservabilityProperties.class, AuditProperties.class })
 public class ObservabilityAutoConfiguration {
+
+	@Bean
+	AuditHttpClient auditHttpClient(AuditProperties audit) {
+		boolean on = audit.isEnabled() && audit.getUrl() != null && !audit.getUrl().isBlank();
+		AuditHttpClient client = new AuditHttpClient(on, audit.getUrl());
+		AuditForwarder.bind(client);
+		return client;
+	}
 
 	@Bean
 	ObservabilityHttpClient observabilityHttpClient(

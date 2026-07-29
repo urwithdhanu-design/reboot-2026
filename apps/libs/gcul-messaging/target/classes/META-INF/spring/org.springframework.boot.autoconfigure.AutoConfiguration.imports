@@ -1,1 +1,2 @@
 com.gcul.messaging.spring.GculMessagingAutoConfiguration
+com.gcul.messaging.spring.ObservabilityAutoConfiguration

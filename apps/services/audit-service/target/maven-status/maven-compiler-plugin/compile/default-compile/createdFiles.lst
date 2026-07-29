@@ -6,6 +6,7 @@ com\gcul\audit\messaging\AuditEventHandler.class
 com\gcul\audit\service\AuditFlowCatalog.class
 com\gcul\audit\AuditServiceApplication.class
 com\gcul\audit\service\AuditRecordService.class
+com\gcul\audit\web\InternalAuditController.class
 com\gcul\audit\security\PlatformRoles.class
 com\gcul\audit\web\AdminAuditController.class
 com\gcul\audit\config\WebConfig.class

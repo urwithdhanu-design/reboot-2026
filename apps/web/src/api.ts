@@ -66,6 +66,14 @@ export type QuoteEstimate = {
   answers: Record<string, unknown>;
 };
 
+export type ClaimEvaluationStep = {
+  id: string;
+  label: string;
+  status: string;
+  detail?: string;
+  at?: string | null;
+};
+
 export type InsuranceClaim = {
   id: string;
   policy_ref: string;
@@ -81,6 +89,8 @@ export type InsuranceClaim = {
   settlement_transaction_id?: string | null;
   canton_contract_id?: string | null;
   validation_notes?: string | null;
+  rejection_reason?: string | null;
+  evaluation_steps?: ClaimEvaluationStep[];
   created_at?: string;
   updated_at?: string;
   documents?: ClaimDocumentRow[];
@@ -136,6 +146,12 @@ export type WalletInfo = {
   dev_approve_url?: string;
 };
 
+export type SettlementReadinessCheck = {
+  name: string;
+  status: "passed" | "failed" | "review" | string;
+  detail: string;
+};
+
 export type CustomerPolicyRecord = {
   policy_id: string;
   policy_number: string;
@@ -176,7 +192,10 @@ export type CustomerPolicyRecord = {
   product_id?: string | null;
   predecessor_policy_id?: string | null;
   renewed_by_policy_id?: string | null;
+  compliance_decision?: string | null;
+  compliance_fraud_score?: number | null;
   renewal_eligible?: boolean;
+  settlement_readiness_checks?: SettlementReadinessCheck[];
 };
 
 export type PolicyRenewalPreview = {
@@ -608,7 +627,7 @@ export const api = {
     return request<{ claims: InsuranceClaim[]; count: number }>(`/api/claims${qs}`);
   },
 
-  createClaim: (body: {
+  createClaim: async (body: {
     policy_ref: string;
     customer_name?: string;
     customer_id?: string;
@@ -616,11 +635,41 @@ export const api = {
     category?: string;
     amount_claimed?: number;
     description?: string;
-  }) =>
-    request<InsuranceClaim>("/api/claims", {
+  }) => {
+    const headers = new Headers({ "Content-Type": "application/json" });
+    const res = await fetch(`${API_BASE}/api/claims`, {
       method: "POST",
+      headers,
       body: JSON.stringify(body),
-    }),
+    });
+    const text = await res.text();
+    let data: unknown = null;
+    if (text.trim()) {
+      try {
+        data = JSON.parse(text) as unknown;
+      } catch {
+        data = null;
+      }
+    }
+    if (!res.ok) {
+      const payload = (data ?? {}) as {
+        detail?: string;
+        evaluation_step?: string;
+        evaluation_label?: string;
+        evaluation_steps?: ClaimEvaluationStep[];
+      };
+      const err = new Error(payload.detail ?? "Could not submit claim") as Error & {
+        evaluationStep?: string;
+        evaluationLabel?: string;
+        evaluationSteps?: ClaimEvaluationStep[];
+      };
+      err.evaluationStep = payload.evaluation_step;
+      err.evaluationLabel = payload.evaluation_label;
+      err.evaluationSteps = payload.evaluation_steps;
+      throw err;
+    }
+    return data as InsuranceClaim;
+  },
 
   uploadClaimDocument: async (claimId: string, file: File, label?: string, queryId?: string) => {
     const form = new FormData();

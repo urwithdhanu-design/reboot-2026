@@ -469,6 +469,7 @@ public class PolicyRecordService {
 		map.put("predecessor_policy_id", record.getPredecessorPolicyId());
 		map.put("renewed_by_policy_id", record.getRenewedByPolicyId());
 		map.put("renewal_eligible", isRenewalEligible(record));
+		map.put("settlement_readiness_checks", PolicyReadinessChecks.settlementReadiness(record));
 		return map;
 	}
 

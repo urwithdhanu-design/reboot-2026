@@ -57,6 +57,9 @@ public class InsuranceClaim {
 	@Column(columnDefinition = "TEXT")
 	private String validationNotes;
 
+	@Column(columnDefinition = "TEXT")
+	private String evaluationTraceJson;
+
 	@Column(nullable = false)
 	private Instant createdAt = Instant.now();
 
@@ -98,6 +101,8 @@ public class InsuranceClaim {
 	public void setRejectionReason(String rejectionReason) { this.rejectionReason = rejectionReason; }
 	public String getValidationNotes() { return validationNotes; }
 	public void setValidationNotes(String validationNotes) { this.validationNotes = validationNotes; }
+	public String getEvaluationTraceJson() { return evaluationTraceJson; }
+	public void setEvaluationTraceJson(String evaluationTraceJson) { this.evaluationTraceJson = evaluationTraceJson; }
 	public Instant getCreatedAt() { return createdAt; }
 	public void setCreatedAt(Instant createdAt) { this.createdAt = createdAt; }
 	public Instant getUpdatedAt() { return updatedAt; }

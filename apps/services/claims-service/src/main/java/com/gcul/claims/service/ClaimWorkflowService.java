@@ -24,6 +24,7 @@ import com.gcul.claims.model.InsuranceClaim;
 import com.gcul.claims.repository.ClaimRepository;
 import com.gcul.claims.service.ClaimDocumentService;
 import com.gcul.claims.service.ClaimQueryService;
+import com.gcul.claims.web.ClaimEvaluationException;
 
 @Service
 public class ClaimWorkflowService {
@@ -45,6 +46,7 @@ public class ClaimWorkflowService {
 	private final ClaimDocumentService claimDocuments;
 	private final ClaimQueryService claimQueries;
 	private final ClaimCoverageValidator coverageValidator;
+	private final ClaimEvaluationService evaluation;
 
 	public ClaimWorkflowService(
 			ClaimRepository repo,
@@ -54,7 +56,8 @@ public class ClaimWorkflowService {
 			WalletPayoutClient walletClient,
 			ClaimDocumentService claimDocuments,
 			ClaimQueryService claimQueries,
-			ClaimCoverageValidator coverageValidator) {
+			ClaimCoverageValidator coverageValidator,
+			ClaimEvaluationService evaluation) {
 		this.repo = repo;
 		this.claimEvents = claimEvents;
 		this.policyClient = policyClient;
@@ -63,10 +66,20 @@ public class ClaimWorkflowService {
 		this.claimDocuments = claimDocuments;
 		this.claimQueries = claimQueries;
 		this.coverageValidator = coverageValidator;
+		this.evaluation = evaluation;
 	}
 
 	@Transactional
 	public Map<String, Object> create(Map<String, Object> body) {
+		try {
+			return createInternal(body, false);
+		}
+		catch (ResponseStatusException ex) {
+			throw evaluationFailure(ex);
+		}
+	}
+
+	private Map<String, Object> createInternal(Map<String, Object> body, boolean parametric) {
 		String policyRef = str(body.get("policy_ref"));
 		if (policyRef.isBlank()) {
 			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "policy_ref is required");
@@ -76,9 +89,22 @@ public class ClaimWorkflowService {
 			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "amount_claimed must be greater than zero");
 		}
 		Map<String, Object> policy = policyClient.fetchPolicy(policyRef);
+		evaluation.passDraft(ClaimEvaluationService.POLICY_FOUND, "Policy located", policyRef);
 		policyClient.assertEligibleForClaim(policy);
+		evaluation.passDraft(ClaimEvaluationService.POLICY_ELIGIBLE, "Policy eligible for claims",
+				"Status " + str(policy.get("status")) + " · mint " + str(policy.get("mint_status")));
 		String claimCategory = firstNonBlank(str(body.get("category")), str(policy.get("product_category")), "General");
-		coverageValidator.assertClaimAllowed(policy, claimCategory, amount);
+		coverageValidator.assertClaimAllowed(policy, claimCategory, amount, parametric);
+		evaluation.passDraft(ClaimEvaluationService.COVER_ACTIVE, "Cover period active", "Cover dates valid");
+		if (!parametric) {
+			evaluation.passDraft(ClaimEvaluationService.CATEGORY_MATCH, "Claim category matches cover", claimCategory);
+		}
+		else {
+			evaluation.passDraft(ClaimEvaluationService.CATEGORY_MATCH, "Claim category matches cover",
+					"Parametric — " + claimCategory);
+		}
+		evaluation.passDraft(ClaimEvaluationService.COVERAGE_LIMIT, "Amount within coverage limit",
+				String.format(Locale.ROOT, "Claimed £%,.2f", amount));
 
 		String policyReferenceHash = str(policy.get("policy_reference_hash"));
 		Map<String, Object> canton = blockchainClient.verifyCantonPolicy(policyRef, policyReferenceHash);
@@ -86,11 +112,13 @@ public class ClaimWorkflowService {
 		if (!Boolean.TRUE.equals(canton.get("verified"))) {
 			Map<String, Object> mintRecord = blockchainClient.fetchMintRecord(policyRef);
 			if (mintRecord.get("tokenId") != null) {
-				canton = new java.util.LinkedHashMap<>(canton);
+				canton = new LinkedHashMap<>(canton);
 				canton.put("verified", true);
 				canton.put("contractId", mintRecord.get("tokenId"));
 			}
 		}
+		evaluation.passDraft(ClaimEvaluationService.CANTON_VERIFY, "Canton policy verification",
+				str(canton.get("contractId")).isBlank() ? "Verified on ledger" : str(canton.get("contractId")));
 
 		InsuranceClaim claim = new InsuranceClaim();
 		claim.setId("CLM-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase(Locale.ROOT));
@@ -103,23 +131,40 @@ public class ClaimWorkflowService {
 		claim.setCategory(claimCategory);
 		claim.setAmountClaimed(amount);
 		claim.setDescription(str(body.get("description")));
-		claim.setSource(firstNonBlank(str(body.get("source")), "manual"));
+		claim.setSource(firstNonBlank(str(body.get("source")), parametric ? "parametric" : "manual"));
+		if (parametric) {
+			claim.setParametricEventType(firstNonBlank(str(body.get("parametric_event_type")), ""));
+		}
 		claim.setStatus(ClaimStatus.SUBMITTED);
-		claim.setValidationNotes("Policy verified on Canton ledger · within coverage limits");
+		claim.setValidationNotes(parametric
+				? "Parametric trigger — Canton policy verified"
+				: "Policy verified on Canton ledger · within coverage limits");
 		claim.setCreatedAt(Instant.now());
 		claim.setUpdatedAt(Instant.now());
+		evaluation.applyDraftToClaim(claim);
+		evaluation.pass(claim, ClaimEvaluationService.SUBMITTED, "Claim submitted", claim.getId());
 
 		InsuranceClaim saved = repo.save(claim);
 		claimEvents.claimSubmitted(saved);
 
 		saved.setStatus(ClaimStatus.PENDING_APPROVAL);
 		saved.setUpdatedAt(Instant.now());
+		evaluation.pass(saved, ClaimEvaluationService.PENDING_ADMIN, "Queued for admin review",
+				"Waiting for platform admin");
 		saved = repo.save(saved);
 		claimEvents.claimValidated(saved);
 		claimEvents.claimPendingApproval(saved);
 
 		log.info("Claim {} submitted for policy {} — pending admin approval", saved.getId(), policyRef);
 		return toMap(saved);
+	}
+
+	private ResponseStatusException evaluationFailure(ResponseStatusException ex) {
+		String reason = ex.getReason() == null ? "Claim validation failed" : ex.getReason();
+		String stepId = evaluation.inferFailedStepId(reason);
+		String label = evaluation.labelForStep(stepId);
+		evaluation.failDraft(stepId, label, reason);
+		return new ClaimEvaluationException(ex.getStatusCode(), reason, stepId, label, evaluation.snapshotDraft());
 	}
 
 	@Transactional
@@ -211,6 +256,7 @@ public class ClaimWorkflowService {
 		assertTransition(claim, Set.of(ClaimStatus.SUBMITTED, ClaimStatus.PENDING_APPROVAL, ClaimStatus.AWAITING_CUSTOMER));
 		claim.setStatus(ClaimStatus.IN_REVIEW);
 		claim.setUpdatedAt(Instant.now());
+		evaluation.pass(claim, ClaimEvaluationService.ADMIN_REVIEW, "Admin review", "Claim under review");
 		InsuranceClaim saved = repo.save(claim);
 		claimEvents.claimInReview(saved);
 		claimEvents.claimPendingApproval(saved);
@@ -226,6 +272,8 @@ public class ClaimWorkflowService {
 				ClaimStatus.IN_REVIEW));
 
 		claimQueries.assertNoOpenQueries(id);
+		evaluation.pass(claim, ClaimEvaluationService.CUSTOMER_QUERIES, "Customer information requests",
+				"No open queries");
 
 		Map<String, Object> policy = policyClient.fetchPolicy(claim.getPolicyRef());
 		boolean parametric = "parametric".equalsIgnoreCase(claim.getSource());
@@ -242,6 +290,7 @@ public class ClaimWorkflowService {
 
 		validatePolicyLink(claim);
 
+		evaluation.pass(claim, ClaimEvaluationService.ADMIN_DECISION, "Admin approval decision", "Approved");
 		claim.setStatus(ClaimStatus.APPROVED);
 		claim.setUpdatedAt(Instant.now());
 		claim = repo.save(claim);
@@ -265,6 +314,8 @@ public class ClaimWorkflowService {
 		claim.setPayoutTransactionId(payoutTxId);
 		claim.setStatus(ClaimStatus.PAID_OUT);
 		claim.setUpdatedAt(Instant.now());
+		evaluation.pass(claim, ClaimEvaluationService.WALLET_PAYOUT, "Wallet payout",
+				String.format(Locale.ROOT, "£%,.2f credited", payout));
 		claim = repo.save(claim);
 		claimEvents.claimPaidOut(claim);
 
@@ -297,6 +348,9 @@ public class ClaimWorkflowService {
 
 		claim.setStatus(ClaimStatus.SETTLED);
 		claim.setUpdatedAt(Instant.now());
+		evaluation.pass(claim, ClaimEvaluationService.LEDGER_SETTLEMENT, "Ledger settlement record",
+				claim.getSettlementTransactionId() != null ? claim.getSettlementTransactionId() : "Recorded");
+		evaluation.pass(claim, ClaimEvaluationService.COMPLETE, "Claim complete", "All steps finished");
 		claim = repo.save(claim);
 		claimEvents.claimSettled(claim);
 
@@ -315,6 +369,8 @@ public class ClaimWorkflowService {
 				body == null ? "" : str(body.get("reason")),
 				"Rejected by admin"));
 		claim.setUpdatedAt(Instant.now());
+		evaluation.fail(claim, ClaimEvaluationService.ADMIN_DECISION, "Admin approval decision",
+				claim.getRejectionReason());
 		InsuranceClaim saved = repo.save(claim);
 		claimEvents.claimRejected(saved);
 		return toMap(saved);
@@ -405,7 +461,9 @@ public class ClaimWorkflowService {
 		map.put("document_count", docs.size());
 		List<Map<String, Object>> queryList = claimQueries.listForClaim(c.getId());
 		map.put("queries", queryList);
-		map.put("open_query_count", claimQueries.countOpenForClaim(c.getId()));
+		long openQueries = claimQueries.countOpenForClaim(c.getId());
+		map.put("open_query_count", openQueries);
+		map.put("evaluation_steps", evaluation.resolveTrace(c, openQueries));
 		return map;
 	}
 

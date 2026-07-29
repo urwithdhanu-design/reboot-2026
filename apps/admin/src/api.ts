@@ -19,12 +19,19 @@ async function request<T>(path: string, options: RequestInit = {}, token?: strin
   if (token) headers.set('Authorization', `Bearer ${token}`);
   const res = await fetch(`${API_BASE}${path}`, { ...options, headers });
   const text = await res.text();
+  const contentType = res.headers.get('content-type') ?? '';
   let data: unknown = {};
   if (text.trim()) {
-    try {
-      data = JSON.parse(text) as unknown;
-    } catch {
-      data = {};
+    if (contentType.includes('application/json') || text.trim().startsWith('{') || text.trim().startsWith('[')) {
+      try {
+        data = JSON.parse(text) as unknown;
+      } catch {
+        data = {};
+      }
+    } else if (text.trim().startsWith('<!') || text.trim().startsWith('<html')) {
+      throw new Error(
+        'API returned the web app instead of JSON. Redeploy with deploy\\deploy-firebase.cmd (includes Cloud Run API rewrites), not hosting-only.',
+      );
     }
   }
   if (!res.ok) {
@@ -36,6 +43,30 @@ async function request<T>(path: string, options: RequestInit = {}, token?: strin
     throw new Error(body.detail ?? body.message ?? body.error ?? res.statusText);
   }
   return data as T;
+}
+
+function parseAdminAuthResponse(data: unknown): AdminAuthResponse {
+  const body = data as Partial<AdminAuthResponse> & { user?: Partial<AdminAuthUser> };
+  if (!body.access_token?.trim()) {
+    throw new Error(
+      'Sign-in response missing access token. If this is production, redeploy Firebase with API rewrites (deploy\\deploy-firebase.cmd).',
+    );
+  }
+  if (!body.user?.id) {
+    throw new Error(
+      'Sign-in response missing user profile. Check kyc-service admin login and Firebase API rewrites.',
+    );
+  }
+  return {
+    access_token: body.access_token,
+    token_type: body.token_type ?? 'bearer',
+    user: {
+      id: body.user.id,
+      full_name: body.user.full_name ?? body.user.email ?? 'Admin',
+      email: body.user.email ?? '',
+      role: body.user.role ?? 'platform_admin',
+    },
+  };
 }
 
 function adminRequest<T>(path: string, options: RequestInit = {}): Promise<T> {
@@ -667,11 +698,13 @@ export type WalletOpsView = {
 };
 
 export const adminApi = {
-  adminLogin: (identifier: string, password: string) =>
-    request<AdminAuthResponse>('/api/auth/admin/login', {
-      method: 'POST',
-      body: JSON.stringify({ identifier, password }),
-    }),
+  adminLogin: async (identifier: string, password: string) =>
+    parseAdminAuthResponse(
+      await request<unknown>('/api/auth/admin/login', {
+        method: 'POST',
+        body: JSON.stringify({ identifier, password }),
+      }),
+    ),
 
   getMe: () => adminRequest<AdminAuthUser>('/api/auth/me'),
 

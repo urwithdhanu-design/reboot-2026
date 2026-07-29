@@ -8,6 +8,7 @@ import java.util.UUID;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ConcurrentHashMap;
 
+import com.gcul.messaging.audit.AuditForwarder;
 import com.gcul.messaging.observability.ObservabilityForwarder;
 
 import org.slf4j.Logger;
@@ -66,6 +67,7 @@ public final class LocalEventBus {
 		audit.put("sourceEventType", body.get("eventType"));
 		audit.put("sourcePublisher", publisherServiceId);
 		audit.put("sourceTopic", topicSuffix);
+		AuditForwarder.forwardDomainEvent(audit);
 		ObservabilityForwarder.forwardDomainEvent(audit);
 		dispatch(EventTopics.AUDIT, audit, publisherServiceId);
 	}

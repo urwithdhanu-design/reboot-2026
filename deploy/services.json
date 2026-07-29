@@ -118,6 +118,14 @@
       "port": 8080,
       "memory": "512Mi",
       "env": { "GCUL_FIRESTORE_ENABLED": "true" }
+    },
+    {
+      "id": "gcul-audit",
+      "dir": "apps/services/audit-service",
+      "dockerfile": "deploy/docker/Dockerfile.java",
+      "port": 8080,
+      "memory": "512Mi",
+      "env": {}
     }
   ]
 }

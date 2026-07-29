@@ -20,6 +20,7 @@ import {
   BookOpen,
   ScrollText,
   Radar,
+  Landmark,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -44,6 +45,8 @@ export const navItems: NavItem[] = [
   { to: '/audit', label: 'Audit trail', icon: ScrollText, section: 'Operations' },
   { to: '/services', label: 'Platform Services', icon: Server, section: 'Operations' },
   { to: '/tokenization', label: 'Tokenization', icon: Coins, section: 'Blockchain' },
+  { to: '/capital-market', label: 'Insurance capital market', icon: Landmark, section: 'Blockchain' },
+  { to: '/capital-market/blueprint', label: 'Canton blueprint', icon: BookOpen, section: 'Blockchain' },
   { to: '/compliance', label: 'Compliance Controls', icon: ClipboardCheck, section: 'Blockchain' },
   { to: '/observability', label: 'Chain Monitor', icon: Radio, section: 'Blockchain' },
   { to: '/blockchain', label: 'Blockchain Ledger', icon: Link2, section: 'Blockchain' },

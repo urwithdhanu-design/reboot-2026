@@ -2,7 +2,7 @@
     "project":  "insure360-83a36",
     "region":  "us-central1",
     "firebaseHosting":  "https://insure360-83a36.web.app",
-    "firebaseAdminHosting":  "https://insure360-83a36-admin.firebaseapp.com",
+    "firebaseAdminHosting":  "https://insure360-83a36-admin.web.app",
     "services":  {
                      "premiumDeposit":  "https://gcul-premium-deposit-rncyb4dteq-uc.a.run.app",
                      "chatbot":  "https://gcul-chatbot-rncyb4dteq-uc.a.run.app",

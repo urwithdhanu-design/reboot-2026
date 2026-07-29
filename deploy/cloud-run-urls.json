@@ -1,14 +1,16 @@
 ﻿{
-    "gcul-notification":  "https://gcul-notification-rncyb4dteq-uc.a.run.app",
-    "gcul-kyc":  "https://gcul-kyc-rncyb4dteq-uc.a.run.app",
     "gcul-wallet":  "https://gcul-wallet-rncyb4dteq-uc.a.run.app",
-    "gcul-claims":  "https://gcul-claims-rncyb4dteq-uc.a.run.app",
-    "gcul-sidecar":  "https://gcul-sidecar-rncyb4dteq-uc.a.run.app",
-    "gcul-canton":  "https://gcul-canton-rncyb4dteq-uc.a.run.app",
-    "gcul-parametric":  "https://gcul-parametric-rncyb4dteq-uc.a.run.app",
-    "gcul-blockchain-orchestrator":  "https://gcul-blockchain-orchestrator-rncyb4dteq-uc.a.run.app",
-    "gcul-payment":  "https://gcul-payment-rncyb4dteq-uc.a.run.app",
     "gcul-premium-deposit":  "https://gcul-premium-deposit-rncyb4dteq-uc.a.run.app",
+    "gcul-parametric":  "https://gcul-parametric-rncyb4dteq-uc.a.run.app",
+    "gcul-canton":  "https://gcul-canton-rncyb4dteq-uc.a.run.app",
+    "gcul-kyc":  "https://gcul-kyc-rncyb4dteq-uc.a.run.app",
+    "gcul-policy":  "https://gcul-policy-rncyb4dteq-uc.a.run.app",
     "gcul-chatbot":  "https://gcul-chatbot-rncyb4dteq-uc.a.run.app",
-    "gcul-policy":  "https://gcul-policy-rncyb4dteq-uc.a.run.app"
+    "gcul-blockchain-orchestrator":  "https://gcul-blockchain-orchestrator-rncyb4dteq-uc.a.run.app",
+    "gcul-observability":  "https://gcul-observability-rncyb4dteq-uc.a.run.app",
+    "gcul-audit":  "https://gcul-audit-rncyb4dteq-uc.a.run.app",
+    "gcul-payment":  "https://gcul-payment-rncyb4dteq-uc.a.run.app",
+    "gcul-sidecar":  "https://gcul-sidecar-rncyb4dteq-uc.a.run.app",
+    "gcul-notification":  "https://gcul-notification-rncyb4dteq-uc.a.run.app",
+    "gcul-claims":  "https://gcul-claims-rncyb4dteq-uc.a.run.app"
 }
