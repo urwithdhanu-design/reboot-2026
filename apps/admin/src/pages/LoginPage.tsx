@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { PlatformFlowHero } from '../components/PlatformFlowHero';
 import { Button } from '../components/ui';
 import { Lock, Mail, ShieldCheck } from 'lucide-react';
 
@@ -52,7 +53,7 @@ export function LoginPage() {
 
   return (
     <div className="min-h-screen flex bg-lbg-gray-50">
-      <div className="hidden lg:flex lg:w-[52%] relative overflow-hidden bg-gradient-to-br from-lbg-sidebar via-lbg-green to-lbg-green-dark p-12 flex-col justify-between text-white">
+      <div className="hidden lg:flex lg:w-[58%] relative overflow-hidden bg-gradient-to-br from-lbg-sidebar via-lbg-green to-lbg-green-dark flex-col text-white">
         <div className="absolute inset-0 opacity-[0.07] pointer-events-none" aria-hidden>
           <svg className="w-full h-full" xmlns="http://www.w3.org/2000/svg">
             <defs>
@@ -63,8 +64,9 @@ export function LoginPage() {
             <rect width="100%" height="100%" fill="url(#grid)" />
           </svg>
         </div>
-        <div className="relative z-10">
-          <div className="flex items-center gap-3 mb-14">
+
+        <div className="relative z-10 flex flex-col flex-1 min-h-0 p-8 xl:p-10">
+          <div className="flex items-center gap-3 mb-8 shrink-0">
             <div className="w-12 h-12 bg-white/15 backdrop-blur rounded-xl flex items-center justify-center ring-1 ring-white/20">
               <ShieldCheck className="w-7 h-7" strokeWidth={1.75} />
             </div>
@@ -73,24 +75,15 @@ export function LoginPage() {
               <p className="text-sm text-white/75">Platform operations</p>
             </div>
           </div>
-          <h1 className="text-4xl font-bold leading-[1.15] tracking-tight mb-5 max-w-lg">
-            Run products, vendors, and compliance from one console
-          </h1>
-          <p className="text-white/85 text-lg leading-relaxed max-w-md">
-            Review KYC, manage policies and claims, monitor ledger activity, and coordinate microservices across the Insurance platform.
+
+          <div className="flex-1 min-h-0 flex flex-col">
+            <PlatformFlowHero />
+          </div>
+
+          <p className="relative z-10 text-xs text-white/50 mt-6 shrink-0">
+            Authorised personnel only · Activity is audited
           </p>
-          <ul className="mt-10 space-y-3 text-sm text-white/90">
-            {['Customer & KYC review', 'Policy and claims oversight', 'Blockchain & wallet operations'].map((item) => (
-              <li key={item} className="flex items-center gap-2.5">
-                <span className="w-1.5 h-1.5 rounded-full bg-lbg-green-muted" />
-                {item}
-              </li>
-            ))}
-          </ul>
         </div>
-        <p className="relative z-10 text-xs text-white/50">
-          Authorised personnel only · Activity is audited
-        </p>
       </div>
 
       <div className="flex-1 flex items-center justify-center p-6 sm:p-10">
@@ -102,6 +95,12 @@ export function LoginPage() {
             <div>
               <p className="font-bold text-lbg-black">Reboot 2026 Admin</p>
               <p className="text-xs text-lbg-gray-400">Platform console</p>
+            </div>
+          </div>
+
+          <div className="lg:hidden mb-6 rounded-2xl overflow-hidden bg-gradient-to-br from-lbg-sidebar via-lbg-green to-lbg-green-dark">
+            <div className="p-5 sm:p-6">
+              <PlatformFlowHero compact />
             </div>
           </div>
 

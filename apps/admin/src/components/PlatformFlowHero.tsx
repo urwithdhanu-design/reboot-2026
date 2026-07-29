@@ -1,56 +1,49 @@
 import { useEffect, useState, type CSSProperties } from 'react';
-import { Link } from 'react-router-dom';
 import {
   ShieldCheck, Wallet, FileText, Coins, ClipboardList, Zap,
-  Brain, Link2, ArrowRight, Sparkles,
+  Brain, Link2, Sparkles,
 } from 'lucide-react';
-import { Button } from './ui';
 
 const FLOWS = [
   {
     id: 'kyc',
     label: 'KYC',
     icon: ShieldCheck,
-    color: '#2563eb',
+    color: '#60a5fa',
     steps: ['Register', 'Upload ID', 'AI / Admin review', 'Consent', 'Verified'],
     insight: 'AI KYC agent auto-approves by default — customer must still accept digitisation consent.',
-    link: '/kyc',
   },
   {
     id: 'wallet',
     label: 'Wallet',
     icon: Wallet,
-    color: '#00864f',
+    color: '#4ade80',
     steps: ['KYC verified', 'Create / link wallet', 'WalletLinked event', 'Mint retry'],
-    insight: 'Wallet creation is user-initiated — CustomerVerified alone does not create a wallet.',
-    link: '/wallet',
+    insight: 'Wallet creation is user-initiated — verified identity alone does not create a wallet.',
   },
   {
     id: 'policy',
     label: 'Policy & mint',
     icon: FileText,
-    color: '#7c3aed',
+    color: '#a78bfa',
     steps: ['Quote', 'Pay premium', 'ISSUED', 'Canton mint', 'MINTED'],
-    insight: 'Premium credits vendor reserve; policy NFT mints only when wallet + KYC gates pass.',
-    link: '/tokenization',
+    insight: 'Premium credits vendor reserve; policy NFT mints when wallet and KYC gates pass.',
   },
   {
     id: 'claims',
     label: 'Claims',
     icon: ClipboardList,
-    color: '#d97706',
+    color: '#fbbf24',
     steps: ['Submit', 'Review', 'Approve', 'Pool debit', 'Settled'],
-    insight: 'Parametric claims ≤ £500 auto-settle; above that they join the manual approval queue.',
-    link: '/claims',
+    insight: 'Parametric claims ≤ £500 auto-settle; larger amounts join the manual approval queue.',
   },
   {
     id: 'funds',
     label: 'Funds',
     icon: Coins,
-    color: '#016846',
+    color: '#34d399',
     steps: ['Premium → vendor', 'Vendor → pool', 'Pool → customer', 'Chain mirror'],
-    insight: 'Claims pool is the payout source — vendors must contribute reserve before settlements.',
-    link: '/wallet',
+    insight: 'Claims pool is the payout source — vendors contribute reserve before settlements.',
   },
 ] as const;
 
@@ -58,7 +51,7 @@ type FlowId = (typeof FLOWS)[number]['id'];
 
 const CHAIN_NODES = ['KYC', 'Wallet', 'Policy', 'Mint', 'Claim', 'Payout'];
 
-export function PlatformFlowHero() {
+export function PlatformFlowHero({ compact = false }: { compact?: boolean }) {
   const [activeFlow, setActiveFlow] = useState<FlowId>('kyc');
   const [activeStep, setActiveStep] = useState(0);
   const [tick, setTick] = useState(0);
@@ -90,84 +83,78 @@ export function PlatformFlowHero() {
   }, []);
 
   return (
-    <section className="platform-hero mb-6 overflow-hidden rounded-2xl border border-lbg-green/20 bg-white">
-      <div className="platform-hero-grid">
-        <div className="platform-hero-main p-5 sm:p-6 lg:p-7">
-          <div className="flex flex-wrap items-center gap-2 mb-3">
-            <span className="platform-hero-badge">
-              <Sparkles className="w-3.5 h-3.5" />
-              Live platform flows
-            </span>
-            <span className="platform-hero-badge platform-hero-badge--ai">
-              <Brain className="w-3.5 h-3.5" />
-              AI + Blockchain
-            </span>
-          </div>
+    <section
+      className={`platform-hero platform-hero--login ${compact ? 'platform-hero--login-compact' : ''}`}
+      aria-label="Platform flow animation"
+    >
+      <div className="platform-viz-glow platform-viz-glow--login" aria-hidden />
 
-          <h2 className="text-xl sm:text-2xl font-bold text-lbg-black mb-1">
-            From identity to on-chain settlement
-          </h2>
-          <p className="text-sm text-lbg-gray-400 mb-5 max-w-xl">
-            Animated view of KYC, wallet linking, Canton minting, parametric claims, and GBP fund movement across the platform stack.
-          </p>
-
-          <div className="flex flex-wrap gap-1.5 mb-5">
-            {FLOWS.map(({ id, label, icon: Icon }) => (
-              <button
-                key={id}
-                type="button"
-                onClick={() => { setActiveFlow(id); setActiveStep(0); }}
-                className={`platform-flow-tab ${activeFlow === id ? 'platform-flow-tab--active' : ''}`}
-              >
-                <Icon className="w-3.5 h-3.5" />
-                {label}
-              </button>
-            ))}
-          </div>
-
-          <div className="platform-step-track mb-4" aria-label={`${flow.label} flow steps`}>
-            {flow.steps.map((step, i) => (
-              <div key={step} className="platform-step-item">
-                <div
-                  className={`platform-step-node ${i === activeStep ? 'platform-step-node--active' : ''} ${i < activeStep ? 'platform-step-node--done' : ''}`}
-                  style={{ '--step-color': flow.color } as CSSProperties}
-                >
-                  <span>{i + 1}</span>
-                </div>
-                {i < flow.steps.length - 1 ? (
-                  <div className={`platform-step-connector ${i < activeStep ? 'platform-step-connector--done' : ''}`} />
-                ) : null}
-                <p className={`platform-step-label ${i === activeStep ? 'platform-step-label--active' : ''}`}>{step}</p>
-              </div>
-            ))}
-          </div>
-
-          <div className="platform-insight-box mb-4">
-            <Zap className="w-4 h-4 shrink-0 text-amber-500" />
-            <p className="text-sm text-lbg-gray-600">{flow.insight}</p>
-          </div>
-
-          <div className="flex flex-wrap gap-2">
-            <Link to={flow.link}>
-              <Button size="sm">
-                Open {flow.label}
-                <ArrowRight className="w-3.5 h-3.5" />
-              </Button>
-            </Link>
-            <Link
-              to="/flows"
-              className="inline-flex items-center gap-1.5 px-3 py-2 text-sm font-semibold text-lbg-green hover:underline"
-            >
-              Full flow reference
-            </Link>
-          </div>
+      {!compact ? (
+        <div className="platform-hero-badges platform-hero-badges--login">
+          <span className="platform-hero-badge platform-hero-badge--login">
+            <Sparkles className="w-3.5 h-3.5" />
+            Live platform flows
+          </span>
+          <span className="platform-hero-badge platform-hero-badge--login-ai">
+            <Brain className="w-3.5 h-3.5" />
+            AI + Blockchain
+          </span>
         </div>
+      ) : null}
 
-        <div className="platform-hero-viz relative min-h-[280px] sm:min-h-[320px] bg-lbg-sidebar p-5 sm:p-6 flex flex-col justify-between">
-          <div className="platform-viz-glow" aria-hidden />
+      <h2 className="platform-hero-title platform-hero-title--login">
+        {compact ? 'Platform flows' : 'From identity to on-chain settlement'}
+      </h2>
+      {!compact ? (
+        <p className="platform-hero-subtitle platform-hero-subtitle--login">
+          KYC, wallet linking, Canton minting, parametric claims, and GBP fund movement across the platform stack.
+        </p>
+      ) : null}
 
-          <div className="relative z-10">
-            <p className="text-[10px] uppercase tracking-widest text-white/50 font-semibold mb-3">Blockchain mesh</p>
+      <div className="platform-flow-tabs platform-flow-tabs--login">
+        {FLOWS.map(({ id, label, icon: Icon }) => (
+          <button
+            key={id}
+            type="button"
+            onClick={() => { setActiveFlow(id); setActiveStep(0); }}
+            className={`platform-flow-tab platform-flow-tab--login ${activeFlow === id ? 'platform-flow-tab--login-active' : ''}`}
+          >
+            <Icon className="w-3.5 h-3.5" />
+            {label}
+          </button>
+        ))}
+      </div>
+
+      <div className="platform-step-track platform-step-track--login" aria-label={`${flow.label} flow steps`}>
+        {flow.steps.map((step, i) => (
+          <div key={step} className="platform-step-item">
+            <div className="platform-step-node-row">
+              <div
+                className={`platform-step-node platform-step-node--login ${i === activeStep ? 'platform-step-node--login-active' : ''} ${i < activeStep ? 'platform-step-node--login-done' : ''}`}
+                style={{ '--step-color': flow.color } as CSSProperties}
+              >
+                <span>{i + 1}</span>
+              </div>
+              {i < flow.steps.length - 1 ? (
+                <div className={`platform-step-connector platform-step-connector--login ${i < activeStep ? 'platform-step-connector--login-done' : ''}`} />
+              ) : null}
+            </div>
+            <p className={`platform-step-label platform-step-label--login ${i === activeStep ? 'platform-step-label--login-active' : ''}`}>
+              {step}
+            </p>
+          </div>
+        ))}
+      </div>
+
+      <div className="platform-insight-box platform-insight-box--login">
+        <Zap className="w-4 h-4 shrink-0 text-amber-300" />
+        <p className="text-sm leading-relaxed">{flow.insight}</p>
+      </div>
+
+      {!compact ? (
+        <div className="platform-login-viz">
+          <div className="platform-viz-section">
+            <p className="platform-viz-heading">Blockchain mesh</p>
             <div className="platform-chain-row">
               {CHAIN_NODES.map((node, i) => (
                 <div key={node} className="platform-chain-cell">
@@ -187,9 +174,9 @@ export function PlatformFlowHero() {
             </div>
           </div>
 
-          <div className="relative z-10 mt-4">
-            <p className="text-[10px] uppercase tracking-widest text-white/50 font-semibold mb-3">AI integrations</p>
-            <div className="grid grid-cols-3 gap-2">
+          <div className="platform-viz-section platform-viz-section--ai">
+            <p className="platform-viz-heading">AI integrations</p>
+            <div className="platform-ai-grid">
               {[
                 { label: 'KYC agent', sub: 'Auto-approve' },
                 { label: 'Stallion', sub: 'RAG chatbot' },
@@ -199,16 +186,16 @@ export function PlatformFlowHero() {
                   <div className="platform-ai-orb" style={{ animationDelay: `${i * 0.6}s` }}>
                     <Brain className="w-4 h-4 text-white" />
                   </div>
-                  <p className="text-xs font-semibold text-white mt-2">{label}</p>
-                  <p className="text-[10px] text-white/60">{sub}</p>
+                  <p className="text-xs font-semibold text-white mt-2.5">{label}</p>
+                  <p className="text-[10px] text-white/60 mt-0.5">{sub}</p>
                 </div>
               ))}
             </div>
           </div>
-
-          <div className="platform-scan-line" aria-hidden />
         </div>
-      </div>
+      ) : null}
+
+      <div className="platform-scan-line" aria-hidden />
     </section>
   );
 }
