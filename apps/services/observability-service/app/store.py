@@ -136,7 +136,7 @@ class FirestoreObservabilityStore(ObservabilityStore):
         ).limit(min(limit, 500))
         if service_id:
             query = query.where("service_id", "==", service_id)
-        return [dict(doc.id, **doc.to_dict()) for doc in query.stream()]
+        return [{**doc.to_dict(), "id": doc.id} for doc in query.stream()]
 
     def list_events(self, limit: int = 100, flow: str | None = None) -> list[dict[str, Any]]:
         query = self._col("domain_events").order_by(

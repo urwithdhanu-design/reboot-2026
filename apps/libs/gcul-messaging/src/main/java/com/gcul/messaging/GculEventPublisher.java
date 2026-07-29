@@ -86,6 +86,7 @@ public class GculEventPublisher implements AutoCloseable {
 		audit.put("eventType", "AuditRecord");
 		audit.put("sourceEventType", body.get("eventType"));
 		audit.put("sourcePublisher", publisherServiceId);
+		com.gcul.messaging.observability.ObservabilityForwarder.forwardDomainEvent(audit);
 		try {
 			String topicId = PubSubNames.topicId(topicPrefix, EventTopics.AUDIT);
 			TopicName topic = TopicName.of(projectId, topicId);

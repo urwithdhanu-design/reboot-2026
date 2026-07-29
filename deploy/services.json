@@ -110,6 +110,14 @@
       "cpu": "2",
       "timeout": "300",
       "env": { "CHATBOT_AUTO_INGEST": "true" }
+    },
+    {
+      "id": "gcul-observability",
+      "dir": "apps/services/observability-service",
+      "dockerfile": "deploy/docker/Dockerfile.observability",
+      "port": 8080,
+      "memory": "512Mi",
+      "env": { "GCUL_FIRESTORE_ENABLED": "true" }
     }
   ]
 }

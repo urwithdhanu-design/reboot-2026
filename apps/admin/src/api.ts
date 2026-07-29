@@ -595,6 +595,54 @@ export type AuditEventRow = {
   payload?: Record<string, unknown>;
 };
 
+export type ObservabilityServiceHealth = {
+  service_id: string;
+  status: string;
+  http_status?: number;
+  latency_ms?: number;
+  health_url?: string;
+  detail?: string;
+  checked_at?: string;
+};
+
+export type ObservabilityTraceRow = {
+  id?: string;
+  service_id: string;
+  method: string;
+  path: string;
+  status_code: number;
+  duration_ms: number;
+  occurred_at?: string;
+  query_string?: string;
+  error?: string;
+};
+
+export type ObservabilityEventRow = {
+  id?: string;
+  event_type: string;
+  source_event_type?: string;
+  source_publisher?: string;
+  flow_category?: string;
+  customer_id?: string;
+  policy_id?: string;
+  claim_id?: string;
+  quote_id?: string;
+  occurred_at?: string;
+};
+
+export type PlatformObservabilityDashboard = {
+  trace_count: number;
+  event_count: number;
+  error_traces_1h: number;
+  services_total: number;
+  services_degraded: number;
+  storage_backend: string;
+  firestore_enabled?: boolean;
+  firestore_project?: string;
+  services?: ObservabilityServiceHealth[];
+  recent_errors?: ObservabilityTraceRow[];
+};
+
 export type WalletOpsView = {
   stats: {
     connected_wallets: number;
@@ -894,6 +942,29 @@ export const adminApi = {
     const qs = params.toString();
     return adminRequest<{ events: AuditEventRow[]; count: number; flows: string[] }>(
       `/api/admin/audit/events${qs ? `?${qs}` : ''}`,
+    );
+  },
+
+  platformObservabilityDashboard: () =>
+    adminRequest<PlatformObservabilityDashboard>('/api/admin/observability/dashboard'),
+
+  platformObservabilityTraces: (opts?: { limit?: number; service_id?: string }) => {
+    const params = new URLSearchParams();
+    if (opts?.limit) params.set('limit', String(opts.limit));
+    if (opts?.service_id) params.set('service_id', opts.service_id);
+    const qs = params.toString();
+    return adminRequest<{ traces: ObservabilityTraceRow[]; count: number }>(
+      `/api/admin/observability/traces${qs ? `?${qs}` : ''}`,
+    );
+  },
+
+  platformObservabilityEvents: (opts?: { limit?: number; flow?: string }) => {
+    const params = new URLSearchParams();
+    if (opts?.limit) params.set('limit', String(opts.limit));
+    if (opts?.flow) params.set('flow', opts.flow);
+    const qs = params.toString();
+    return adminRequest<{ events: ObservabilityEventRow[]; count: number; flows: string[] }>(
+      `/api/admin/observability/events${qs ? `?${qs}` : ''}`,
     );
   },
 

@@ -21,6 +21,7 @@ $Script:JavaServices = @(
 
 $Script:PythonServices = @(
   @{ id = "chatbot"; dir = "apps\services\chatbot-assistance-service"; port = 8090 },
+  @{ id = "observability"; dir = "apps\services\observability-service"; port = 8093 },
   @{ id = "sidecar"; dir = "apps\services\gcul-sidecar";               port = 8091 }
 )
 

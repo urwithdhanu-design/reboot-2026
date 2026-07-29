@@ -69,6 +69,12 @@ if ($chatbot) {
   Start-PythonService $chatbot
 }
 
+$observability = $PythonServices | Where-Object { $_.id -eq "observability" } | Select-Object -First 1
+if ($observability) {
+  Write-Host "Starting platform observability (:8093) ..."
+  Start-PythonService $observability
+}
+
 if ($IncludePython) {
   $sidecar = $PythonServices | Where-Object { $_.id -eq "sidecar" } | Select-Object -First 1
   if ($sidecar) {
