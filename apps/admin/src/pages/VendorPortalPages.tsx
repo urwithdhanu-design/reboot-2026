@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { adminApi, type VendorReserveView } from '../api';
 import { Button, Card, PageHeader, StatCard } from '../components/ui';
-import { ArrowUpRight, Landmark, Wallet } from 'lucide-react';
+import { ArrowDownLeft, ArrowUpRight, Landmark, Wallet } from 'lucide-react';
 
 const VENDOR_TOKEN_KEY = 'gcul-vendor-token';
 const VENDOR_META_KEY = 'gcul-vendor-meta';
@@ -88,13 +88,20 @@ function VendorReservePanel({
         </p>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         <StatCard
           label="Your reserve balance"
           value={formatGBP(vendorBalance)}
           change={reserve.vendor_reserve.label}
           icon={Wallet}
           trend="neutral"
+        />
+        <StatCard
+          label="Premiums received"
+          value={formatGBP(reserve.premiums_total_gbp ?? 0)}
+          change="From customer purchases"
+          icon={ArrowDownLeft}
+          trend="up"
         />
         <StatCard
           label="Insurer claims pool"
@@ -104,7 +111,7 @@ function VendorReservePanel({
           trend="neutral"
         />
         <StatCard
-          label="Your contributions"
+          label="Pool contributions"
           value={formatGBP(reserve.contributions_total_gbp)}
           change="Transferred to insurer pool"
           icon={ArrowUpRight}
@@ -114,7 +121,7 @@ function VendorReservePanel({
 
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_auto] gap-6 items-start">
         <div>
-          <h3 className="text-sm font-bold text-lbg-gray-700 mb-3">Contribution history</h3>
+          <h3 className="text-sm font-bold text-lbg-gray-700 mb-3">Reserve activity</h3>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>

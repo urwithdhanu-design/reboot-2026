@@ -62,7 +62,12 @@ public class WalletController {
 	public Map<String, Object> payForPremium(
 			HttpServletRequest request,
 			@RequestBody PayRequest body) {
-		return walletService.payForPremium(requireUserId(request), body.quote_id(), body.amount());
+		return walletService.payForPremium(
+				requireUserId(request),
+				body.quote_id(),
+				body.amount(),
+				body.vendor_code(),
+				body.vendor_name());
 	}
 
 	@GetMapping("/transactions")

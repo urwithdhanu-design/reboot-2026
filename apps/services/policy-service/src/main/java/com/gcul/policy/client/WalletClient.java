@@ -18,12 +18,26 @@ public class WalletClient {
 	}
 
 	@SuppressWarnings("unchecked")
-	public Map<String, Object> payPremium(String bearerToken, String quoteId, double amount) {
+	public Map<String, Object> payPremium(
+			String bearerToken,
+			String quoteId,
+			double amount,
+			String vendorCode,
+			String vendorName) {
 		try {
+			Map<String, Object> payload = new java.util.LinkedHashMap<>();
+			payload.put("quote_id", quoteId);
+			payload.put("amount", amount);
+			if (vendorCode != null && !vendorCode.isBlank()) {
+				payload.put("vendor_code", vendorCode);
+			}
+			if (vendorName != null && !vendorName.isBlank()) {
+				payload.put("vendor_name", vendorName);
+			}
 			Map<String, Object> body = restClient.post()
 					.uri("/api/wallet/pay")
 					.header("Authorization", "Bearer " + bearerToken)
-					.body(Map.of("quote_id", quoteId, "amount", amount))
+					.body(payload)
 					.retrieve()
 					.body(Map.class);
 			if (body == null) {

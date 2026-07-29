@@ -77,6 +77,45 @@ public class VendorReserveClient {
 		}
 	}
 
+	@SuppressWarnings("unchecked")
+	public Map<String, Object> creditPremium(
+			String vendorCode,
+			String vendorName,
+			double amount,
+			String quoteId,
+			String customerId) {
+		try {
+			Map<String, Object> payload = new java.util.LinkedHashMap<>();
+			payload.put("amount", amount);
+			payload.put("quote_id", quoteId);
+			if (customerId != null && !customerId.isBlank()) {
+				payload.put("customer_id", customerId);
+			}
+			Map<String, Object> body = restClient.post()
+					.uri(uriBuilder -> uriBuilder
+							.path("/api/internal/vendor-reserve/{code}/credit-premium")
+							.queryParam("vendorName", vendorName == null ? "" : vendorName)
+							.build(vendorCode))
+					.body(payload)
+					.retrieve()
+					.body(Map.class);
+			if (body == null) {
+				throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "Empty vendor premium credit response");
+			}
+			return body;
+		}
+		catch (ResponseStatusException ex) {
+			throw ex;
+		}
+		catch (org.springframework.web.client.HttpStatusCodeException ex) {
+			throw new ResponseStatusException(HttpStatus.valueOf(ex.getStatusCode().value()),
+					extractDetail(ex.getResponseBodyAsString()));
+		}
+		catch (Exception ex) {
+			throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "Could not reach wallet service for vendor premium");
+		}
+	}
+
 	private static String extractDetail(String body) {
 		if (body == null || body.isBlank()) {
 			return "Wallet service request failed";

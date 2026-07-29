@@ -35,6 +35,7 @@ public class WalletService {
 	private final WalletEventPublisher walletEvents;
 	private final WalletConsentService consentService;
 	private final ClaimsPoolService claimsPool;
+	private final VendorReserveService vendorReserve;
 	private final SecureRandom random = new SecureRandom();
 
 	public WalletService(
@@ -43,13 +44,15 @@ public class WalletService {
 			KycStatusClient kycStatusClient,
 			WalletEventPublisher walletEvents,
 			WalletConsentService consentService,
-			ClaimsPoolService claimsPool) {
+			ClaimsPoolService claimsPool,
+			VendorReserveService vendorReserve) {
 		this.repository = repository;
 		this.transactions = transactions;
 		this.kycStatusClient = kycStatusClient;
 		this.walletEvents = walletEvents;
 		this.consentService = consentService;
 		this.claimsPool = claimsPool;
+		this.vendorReserve = vendorReserve;
 	}
 
 	@Transactional
@@ -367,7 +370,12 @@ public class WalletService {
 	}
 
 	@Transactional
-	public Map<String, Object> payForPremium(String userId, String quoteId, double amount) {
+	public Map<String, Object> payForPremium(
+			String userId,
+			String quoteId,
+			double amount,
+			String vendorCode,
+			String vendorName) {
 		if (quoteId == null || quoteId.isBlank()) {
 			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "quote_id is required");
 		}
@@ -382,6 +390,15 @@ public class WalletService {
 			Map<String, Object> response = toResponse(wallet);
 			response.put("transaction", toTransactionResponse(existing.get()));
 			response.put("reused", true);
+			if (vendorCode != null && !vendorCode.isBlank()) {
+				Map<String, Object> vendorCredit = vendorReserve.creditPremium(
+						vendorCode,
+						vendorName,
+						roundMoney(amount),
+						quoteId,
+						userId);
+				response.put("vendor_premium", vendorCredit.get("transaction"));
+			}
 			return response;
 		}
 
@@ -419,6 +436,17 @@ public class WalletService {
 		Map<String, Object> response = toResponse(wallet);
 		response.put("transaction", toTransactionResponse(tx));
 		response.put("reused", false);
+
+		if (vendorCode != null && !vendorCode.isBlank()) {
+			Map<String, Object> vendorCredit = vendorReserve.creditPremium(
+					vendorCode,
+					vendorName,
+					charge,
+					quoteId,
+					userId);
+			response.put("vendor_premium", vendorCredit.get("transaction"));
+		}
+
 		return response;
 	}
 

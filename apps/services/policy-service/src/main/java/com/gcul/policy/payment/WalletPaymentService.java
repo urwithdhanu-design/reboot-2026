@@ -8,9 +8,12 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
 import com.gcul.policy.client.WalletClient;
+import com.gcul.policy.client.VendorReserveClient;
 import com.gcul.policy.mail.MailService;
 import com.gcul.policy.messaging.PolicyIssuanceService;
 import com.gcul.policy.quote.QuoteService;
+import com.gcul.policy.vendor.InsuranceVendor;
+import com.gcul.policy.vendor.VendorQuoteResolver;
 
 @Service
 public class WalletPaymentService {
@@ -20,18 +23,21 @@ public class WalletPaymentService {
 	private final PolicyIssuanceService issuance;
 	private final MailService mail;
 	private final PremiumPaymentCoordinator premiumPayments;
+	private final VendorQuoteResolver vendorQuoteResolver;
 
 	public WalletPaymentService(
 			QuoteService quotes,
 			WalletClient walletClient,
 			PolicyIssuanceService issuance,
 			MailService mail,
-			PremiumPaymentCoordinator premiumPayments) {
+			PremiumPaymentCoordinator premiumPayments,
+			VendorQuoteResolver vendorQuoteResolver) {
 		this.quotes = quotes;
 		this.walletClient = walletClient;
 		this.issuance = issuance;
 		this.mail = mail;
 		this.premiumPayments = premiumPayments;
+		this.vendorQuoteResolver = vendorQuoteResolver;
 	}
 
 	public Map<String, Object> payWithWallet(String userId, String userEmail, String quoteId, String bearerToken) {
@@ -41,7 +47,13 @@ public class WalletPaymentService {
 			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid quote premium");
 		}
 
-		Map<String, Object> walletResult = walletClient.payPremium(bearerToken, quoteId, amount);
+		var vendor = vendorQuoteResolver.resolveForQuote(quote);
+		Map<String, Object> walletResult = walletClient.payPremium(
+				bearerToken,
+				quoteId,
+				amount,
+				vendor.map(InsuranceVendor::getCode).orElse(null),
+				vendor.map(InsuranceVendor::getName).orElse(null));
 		String walletAddress = String.valueOf(walletResult.getOrDefault("address", ""));
 
 		Map<String, Object> payload = new LinkedHashMap<>();

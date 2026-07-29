@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Building2, Mail, Rocket, Send } from 'lucide-react';
 import { adminApi, type Vendor } from '../api';
-import { localVendorUiUrl } from '../vendorUiUrls';
+import { localVendorUiUrl, VENDOR_PORTAL_LOGIN_URL, VENDOR_PORTAL_URL } from '../vendorUiUrls';
 import { AdminLayout } from '../components/layout/AdminLayout';
 import { Badge, Button, Card, ContentPanel, PageHeader, AlertBanner, PaginatedTable } from '../components/ui';
 
@@ -157,7 +157,30 @@ export function VendorsPage() {
         </Card>
       ) : null}
 
-      <ContentPanel title="Vendor directory" description="Partner insurers and their deployment status">
+      <ContentPanel
+        title="Vendor directory"
+        description="Partner insurers, quote UI deploy URLs, and vendor portal access"
+      >
+        <p className="px-5 pt-4 pb-2 text-sm text-lbg-gray-600 border-b border-lbg-gray-100">
+          Vendor portal (claims reserve funding):{' '}
+          <a
+            href={VENDOR_PORTAL_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-lbg-green font-semibold hover:underline font-mono text-xs"
+          >
+            {VENDOR_PORTAL_URL}
+          </a>
+          {' · '}
+          <a
+            href={VENDOR_PORTAL_LOGIN_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-lbg-green font-semibold hover:underline text-xs"
+          >
+            Login
+          </a>
+        </p>
         {loading ? (
           <p className="p-6 text-sm text-lbg-gray-500">Loading vendors…</p>
         ) : (
@@ -166,7 +189,7 @@ export function VendorsPage() {
               { key: 'name', label: 'Vendor', sortable: true },
               { key: 'categories', label: 'Categories', sortable: true },
               { key: 'status', label: 'Status', sortable: true },
-              { key: 'ui_deploy_url', label: 'UI deploy', sortable: true },
+              { key: 'ui_deploy_url', label: 'Portal & quote UI', sortable: true },
               { key: '_actions', label: 'Actions', sortable: false },
             ]}
             rows={vendors}
@@ -201,20 +224,32 @@ export function VendorsPage() {
                     {vendor.status}
                   </Badge>
                 </td>
-                <td className="px-5 py-4 text-xs text-lbg-gray-600 max-w-[260px]">
+                <td className="px-5 py-4">
+                  <p className="text-xs text-lbg-gray-500 mb-1">Portal</p>
+                  <a
+                    href={VENDOR_PORTAL_URL}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-lbg-green font-semibold hover:underline break-all text-xs font-mono"
+                  >
+                    {VENDOR_PORTAL_URL}
+                  </a>
+                  <p className="text-xs text-lbg-gray-400 mt-2 mb-1">Quote UI</p>
                   {vendor.ui_deploy_url ? (
                     <a
                       href={vendor.ui_deploy_url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-lbg-green font-semibold hover:underline break-all"
+                      className="text-lbg-green font-semibold hover:underline break-all text-xs"
                     >
                       {vendor.ui_deploy_url}
                     </a>
                   ) : (
-                    '—'
+                    <span className="text-xs text-lbg-gray-400">—</span>
                   )}
-                  {vendor.ui_version ? ` · v${vendor.ui_version}` : ''}
+                  {vendor.ui_version ? (
+                    <span className="text-xs text-lbg-gray-400"> · v{vendor.ui_version}</span>
+                  ) : null}
                 </td>
                 <td className="px-5 py-4">
                   <div className="flex flex-wrap gap-2">

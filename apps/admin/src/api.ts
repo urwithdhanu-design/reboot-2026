@@ -101,6 +101,7 @@ export type VendorReserveTransactionRow = {
 export type VendorReserveView = {
   vendor_reserve: VendorReserveWalletView;
   claims_pool: ClaimsPoolView;
+  premiums_total_gbp: number;
   contributions_total_gbp: number;
   transactions: VendorReserveTransactionRow[];
 };

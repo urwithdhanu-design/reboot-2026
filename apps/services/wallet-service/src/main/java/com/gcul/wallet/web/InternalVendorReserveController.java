@@ -39,6 +39,17 @@ public class InternalVendorReserveController {
 		return vendorReserve.contribute(vendorCode, vendorName, amount, reference);
 	}
 
+	@PostMapping("/{vendorCode}/credit-premium")
+	public Map<String, Object> creditPremium(
+			@PathVariable String vendorCode,
+			@RequestParam(defaultValue = "") String vendorName,
+			@RequestBody Map<String, Object> body) {
+		double amount = parseAmount(body.get("amount"));
+		String quoteId = body.get("quote_id") == null ? null : String.valueOf(body.get("quote_id"));
+		String customerId = body.get("customer_id") == null ? null : String.valueOf(body.get("customer_id"));
+		return vendorReserve.creditPremium(vendorCode, vendorName, amount, quoteId, customerId);
+	}
+
 	private static double parseAmount(Object raw) {
 		if (raw instanceof Number number) {
 			return number.doubleValue();

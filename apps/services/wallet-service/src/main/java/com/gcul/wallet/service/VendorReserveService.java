@@ -16,7 +16,6 @@ import com.gcul.wallet.model.PlatformWallet;
 import com.gcul.wallet.model.WalletTransaction;
 import com.gcul.wallet.repository.PlatformWalletRepository;
 import com.gcul.wallet.repository.WalletTransactionRepository;
-
 @Service
 public class VendorReserveService {
 
@@ -72,7 +71,8 @@ public class VendorReserveService {
 		vendorView.put("currency", vendor.getCurrency());
 		vendorView.put("updated_at", vendor.getUpdatedAt() == null ? null : vendor.getUpdatedAt().toString());
 
-		List<Map<String, Object>> txRows = transactions.findByUserIdAndType(walletId, "vendor_contribution").stream()
+		List<Map<String, Object>> txRows = transactions.findByUserId(walletId).stream()
+				.filter(tx -> "vendor_contribution".equals(tx.getType()) || "vendor_premium".equals(tx.getType()))
 				.sorted((a, b) -> b.getCreatedAt().compareTo(a.getCreatedAt()))
 				.limit(20)
 				.map(this::toVendorTransactionRow)
@@ -81,12 +81,63 @@ public class VendorReserveService {
 		double contributed = transactions.findByUserIdAndType(walletId, "vendor_contribution").stream()
 				.mapToDouble(tx -> Math.abs(tx.getAmount()))
 				.sum();
+		double premiums = transactions.findByUserIdAndType(walletId, "vendor_premium").stream()
+				.mapToDouble(tx -> Math.abs(tx.getAmount()))
+				.sum();
 
 		Map<String, Object> response = new LinkedHashMap<>();
 		response.put("vendor_reserve", vendorView);
 		response.put("claims_pool", claimsPool.view());
+		response.put("premiums_total_gbp", roundMoney(premiums));
 		response.put("contributions_total_gbp", roundMoney(contributed));
 		response.put("transactions", txRows);
+		return response;
+	}
+
+	@Transactional
+	public Map<String, Object> creditPremium(
+			String vendorCode,
+			String vendorName,
+			double amount,
+			String quoteId,
+			String customerId) {
+		if (quoteId == null || quoteId.isBlank()) {
+			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "quote_id is required");
+		}
+		if (amount <= 0) {
+			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Premium amount must be greater than zero");
+		}
+
+		String walletId = vendorWalletId(vendorCode);
+		var existing = transactions.findByReferenceAndType(quoteId, "vendor_premium");
+		if (existing.isPresent() && walletId.equals(existing.get().getUserId())) {
+			Map<String, Object> response = view(vendorCode, vendorName);
+			response.put("transaction", toVendorTransactionRow(existing.get()));
+			response.put("reused", true);
+			return response;
+		}
+
+		PlatformWallet vendor = ensureVendorReserve(vendorCode, vendorName);
+		double credit = roundMoney(amount);
+		vendor.setBalanceGbp(roundMoney(vendor.getBalanceGbp() + credit));
+		vendor.setUpdatedAt(Instant.now());
+		pools.saveAndFlush(vendor);
+
+		WalletTransaction tx = new WalletTransaction();
+		tx.setId("VPR-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase(Locale.ROOT));
+		tx.setUserId(walletId);
+		tx.setType("vendor_premium");
+		tx.setAmount(credit);
+		tx.setCurrency(vendor.getCurrency());
+		tx.setStatus("completed");
+		tx.setReference(quoteId);
+		tx.setFundingSource(customerId == null || customerId.isBlank() ? "customer_premium" : customerId.trim());
+		tx.setCreatedAt(Instant.now());
+		transactions.saveAndFlush(tx);
+
+		Map<String, Object> response = view(vendorCode, vendorName);
+		response.put("transaction", toVendorTransactionRow(tx));
+		response.put("reused", false);
 		return response;
 	}
 
@@ -152,6 +203,9 @@ public class VendorReserveService {
 	private static String labelForType(String type, double amount) {
 		if ("vendor_contribution".equals(type)) {
 			return "Transfer to insurer claims pool";
+		}
+		if ("vendor_premium".equals(type)) {
+			return "Customer premium received";
 		}
 		if ("vendor_reserve_top_up".equals(type)) {
 			return "Reserve funding";
