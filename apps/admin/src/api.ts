@@ -579,6 +579,22 @@ export type ClaimsPoolView = {
   updated_at?: string | null;
 };
 
+export type AuditEventRow = {
+  id: number;
+  event_id: string;
+  event_type: string;
+  source_event_type?: string;
+  source_publisher?: string;
+  source_topic?: string;
+  flow_category: string;
+  customer_id?: string;
+  policy_id?: string;
+  claim_id?: string;
+  quote_id?: string;
+  occurred_at?: string;
+  payload?: Record<string, unknown>;
+};
+
 export type WalletOpsView = {
   stats: {
     connected_wallets: number;
@@ -869,6 +885,17 @@ export const adminApi = {
     request<{ transactions: BlockchainLedgerTx[]; count: number }>('/api/blockchain/transactions'),
 
   walletOpsView: () => adminRequest<WalletOpsView>('/api/admin/wallet-ops'),
+
+  listAuditEvents: (opts?: { flow?: string; event_type?: string; limit?: number }) => {
+    const params = new URLSearchParams();
+    if (opts?.flow) params.set('flow', opts.flow);
+    if (opts?.event_type) params.set('event_type', opts.event_type);
+    if (opts?.limit) params.set('limit', String(opts.limit));
+    const qs = params.toString();
+    return adminRequest<{ events: AuditEventRow[]; count: number; flows: string[] }>(
+      `/api/admin/audit/events${qs ? `?${qs}` : ''}`,
+    );
+  },
 
   topUpClaimsPool: (amount: number, reference?: string, source?: string) =>
     adminRequest<ClaimsPoolView & { transaction?: WalletOpsTransactionRow }>(

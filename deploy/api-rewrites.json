@@ -20,6 +20,8 @@
   { "source": "/api/admin/products", "serviceId": "gcul-policy" },
   { "source": "/api/admin/products/**", "serviceId": "gcul-policy" },
   { "source": "/api/admin/policy-stats", "serviceId": "gcul-policy" },
+  { "source": "/api/admin/audit", "serviceId": "gcul-audit" },
+  { "source": "/api/admin/audit/**", "serviceId": "gcul-audit" },
   { "source": "/api/admin/tokenization", "serviceId": "gcul-policy" },
   { "source": "/api/admin/tokenization/**", "serviceId": "gcul-policy" },
   { "source": "/api/products", "serviceId": "gcul-policy" },

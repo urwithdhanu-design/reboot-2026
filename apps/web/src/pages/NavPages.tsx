@@ -16,9 +16,10 @@ import {
 } from "../customerPolicies";
 import { AssistantBar, CustomerAppShell, CustomerPageHeader, CustomerPanel, CustomerTabs, HeaderIconClaims, HeaderIconPolicies, HeaderIconProfile } from "../components";
 import { CancelPolicyWizard } from "../components/CancelPolicyWizard";
+import { RenewPolicyWizard } from "../components/RenewPolicyWizard";
 import { KycOnboardingPrompt } from "../components/KycOnboardingPrompt";
 import { PayQuoteButton } from "../components/PayQuoteButton";
-import { isCancelledPolicy } from "../customerPolicies";
+import { isCancelledPolicy, isRenewablePolicy } from "../customerPolicies";
 import { needsKycAttention } from "../kycStatus";
 import { useSession } from "../session";
 
@@ -29,30 +30,13 @@ const PRIMARY_ACTIONS: { id: string; label: string; to?: string }[] = [
   { id: "cancel", label: "Cancel policy" },
 ];
 
-const ACTION_MESSAGES: Record<string, string> = {
-  renewal: "Renewal options will appear here when your policy is due.",
-};
-
-const RENEWAL_WINDOW_MS = 30 * 24 * 60 * 60 * 1000;
-
-function policyExpiresWithinRenewalWindow(policy: CustomerPolicyRecord): boolean {
-  if (!policy.cover_expires_at) return false;
-  try {
-    const expiresAt = new Date(policy.cover_expires_at).getTime();
-    if (Number.isNaN(expiresAt)) return false;
-    const now = Date.now();
-    if (expiresAt < now) return false;
-    return expiresAt - now <= RENEWAL_WINDOW_MS;
-  } catch {
-    return false;
-  }
-}
+const ACTION_MESSAGES: Record<string, string> = {};
 
 function visiblePrimaryActions(
   policies: CustomerPolicyRecord[],
 ): typeof PRIMARY_ACTIONS {
   const hasPolicies = policies.length > 0;
-  const showRenewal = policies.some(policyExpiresWithinRenewalWindow);
+  const showRenewal = policies.some(isRenewablePolicy);
   return PRIMARY_ACTIONS.filter((action) => {
     if (action.id === "compare") return !hasPolicies;
     if (action.id === "renewal") return showRenewal;
@@ -248,6 +232,7 @@ export function PoliciesPage() {
   const [quotesLoading, setQuotesLoading] = useState(true);
   const [selectedQuoteId, setSelectedQuoteId] = useState<string | null>(null);
   const [cancelWizardOpen, setCancelWizardOpen] = useState(false);
+  const [renewWizardOpen, setRenewWizardOpen] = useState(false);
 
   const displayQuotes = useMemo(() => {
     const issued = new Set(issuedQuoteIds);
@@ -366,6 +351,15 @@ export function PoliciesPage() {
         return;
       }
       setCancelWizardOpen(true);
+      setNotice(null);
+      return;
+    }
+    if (id === "renewal") {
+      if (!token) {
+        setNotice("Sign in to renew your policy online.");
+        return;
+      }
+      setRenewWizardOpen(true);
       setNotice(null);
       return;
     }
@@ -568,13 +562,22 @@ export function PoliciesPage() {
       <AssistantBar screen="marketplace" />
 
       {token ? (
-        <CancelPolicyWizard
-          open={cancelWizardOpen}
-          token={token}
-          policies={policies}
-          onClose={() => setCancelWizardOpen(false)}
-          onCancelled={(rows) => setPolicies(rows)}
-        />
+        <>
+          <CancelPolicyWizard
+            open={cancelWizardOpen}
+            token={token}
+            policies={policies}
+            onClose={() => setCancelWizardOpen(false)}
+            onCancelled={(rows) => setPolicies(rows)}
+          />
+          <RenewPolicyWizard
+            open={renewWizardOpen}
+            token={token}
+            policies={policies}
+            onClose={() => setRenewWizardOpen(false)}
+            onRenewed={(rows) => setPolicies(rows)}
+          />
+        </>
       ) : null}
     </CustomerAppShell>
   );

@@ -21,6 +21,7 @@ import com.gcul.policy.policy.PolicyCoverageResolver;
 import com.gcul.policy.policy.PolicyCoverageSnapshot;
 import com.gcul.policy.policy.PolicyRecordService;
 import com.gcul.policy.policy.PolicyReferenceHasher;
+import com.gcul.policy.policy.PolicyRenewalService;
 import com.gcul.policy.quote.QuoteService;
 import com.gcul.policy.travel.TravelParametricProvisioner;
 import com.gcul.policy.motor.MotorParametricProvisioner;
@@ -39,6 +40,7 @@ public class PolicyIssuanceService {
 	private final TravelParametricProvisioner travelParametricProvisioner;
 	private final MotorParametricProvisioner motorParametricProvisioner;
 	private final PolicyCoverageResolver coverageResolver;
+	private final PolicyRenewalService policyRenewal;
 
 	public PolicyIssuanceService(
 			QuoteService quotes,
@@ -49,7 +51,8 @@ public class PolicyIssuanceService {
 			PolicyRecordService policyRecords,
 			TravelParametricProvisioner travelParametricProvisioner,
 			MotorParametricProvisioner motorParametricProvisioner,
-			PolicyCoverageResolver coverageResolver) {
+			PolicyCoverageResolver coverageResolver,
+			PolicyRenewalService policyRenewal) {
 		this.quotes = quotes;
 		this.publisher = publisher;
 		this.blockchainMintClient = blockchainMintClient;
@@ -59,6 +62,7 @@ public class PolicyIssuanceService {
 		this.travelParametricProvisioner = travelParametricProvisioner;
 		this.motorParametricProvisioner = motorParametricProvisioner;
 		this.coverageResolver = coverageResolver;
+		this.policyRenewal = policyRenewal;
 	}
 
 	public void onPremiumPaid(Map<String, Object> payload) {
@@ -116,6 +120,15 @@ public class PolicyIssuanceService {
 				policyReferenceHash,
 				metadataUri,
 				coverage);
+		policyRecords.applyQuoteSnapshot(record, quote);
+
+		String renewalOfPolicyId = str(quote.get("renewal_of_policy_id"));
+		if (!renewalOfPolicyId.isBlank()) {
+			policyRecords.findByPolicyId(renewalOfPolicyId).ifPresent(predecessor -> {
+				PolicyRecord linked = policyRecords.linkRenewal(renewalOfPolicyId, record.getPolicyId());
+				policyRenewal.publishRenewed(predecessor, linked);
+			});
+		}
 
 		Map<String, Object> created = new LinkedHashMap<>();
 		created.put("eventType", "PolicyCreated");

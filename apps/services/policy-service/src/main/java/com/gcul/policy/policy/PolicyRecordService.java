@@ -12,6 +12,8 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 import com.gcul.policy.model.PolicyLedgerAttestation;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.gcul.policy.model.PolicyRecord;
 import com.gcul.policy.motor.MotorCoverageLimits;
 import com.gcul.policy.quote.QuoteService;
@@ -25,16 +27,19 @@ public class PolicyRecordService {
 	private final PolicyLedgerAttestationRepository attestationRepository;
 	private final PolicyCoverageResolver coverageResolver;
 	private final QuoteService quoteService;
+	private final ObjectMapper objectMapper;
 
 	public PolicyRecordService(
 			PolicyRecordRepository repository,
 			PolicyLedgerAttestationRepository attestationRepository,
 			PolicyCoverageResolver coverageResolver,
-			QuoteService quoteService) {
+			QuoteService quoteService,
+			ObjectMapper objectMapper) {
 		this.repository = repository;
 		this.attestationRepository = attestationRepository;
 		this.coverageResolver = coverageResolver;
 		this.quoteService = quoteService;
+		this.objectMapper = objectMapper;
 	}
 
 	@Transactional
@@ -67,6 +72,34 @@ public class PolicyRecordService {
 		record.setIssuedAt(Instant.now());
 		applyCoverage(record, coverage);
 		return repository.save(record);
+	}
+
+	@Transactional
+	public PolicyRecord applyQuoteSnapshot(PolicyRecord record, Map<String, Object> quote) {
+		if (quote == null) {
+			return record;
+		}
+		record.setProductId(firstNonBlank(str(quote.get("product_id")), record.getProductId()));
+		Object answers = quote.get("answers");
+		if (answers instanceof Map<?, ?> map) {
+			try {
+				record.setQuoteAnswersJson(objectMapper.writeValueAsString(map));
+			}
+			catch (JsonProcessingException ignored) {
+				// keep existing snapshot
+			}
+		}
+		return repository.save(record);
+	}
+
+	@Transactional
+	public PolicyRecord linkRenewal(String predecessorPolicyId, String renewalPolicyId) {
+		PolicyRecord predecessor = repository.findById(predecessorPolicyId).orElseThrow();
+		PolicyRecord renewal = repository.findById(renewalPolicyId).orElseThrow();
+		predecessor.setRenewedByPolicyId(renewalPolicyId);
+		renewal.setPredecessorPolicyId(predecessorPolicyId);
+		repository.save(predecessor);
+		return repository.save(renewal);
 	}
 
 	@Transactional
@@ -432,7 +465,31 @@ public class PolicyRecordService {
 		map.put("refund_status", record.getRefundStatus());
 		map.put("refund_amount_gbp", record.getRefundAmountGbp());
 		map.put("refund_payment_id", record.getRefundPaymentId());
+		map.put("product_id", record.getProductId());
+		map.put("predecessor_policy_id", record.getPredecessorPolicyId());
+		map.put("renewed_by_policy_id", record.getRenewedByPolicyId());
+		map.put("renewal_eligible", isRenewalEligible(record));
 		return map;
+	}
+
+	private static boolean isRenewalEligible(PolicyRecord record) {
+		if ("cancelled".equalsIgnoreCase(record.getStatus())) {
+			return false;
+		}
+		if (StringUtils.hasText(record.getRenewedByPolicyId())) {
+			return false;
+		}
+		if (!"MINTED".equalsIgnoreCase(record.getMintStatus())) {
+			return false;
+		}
+		if (record.getCoverExpiresAt() == null) {
+			return false;
+		}
+		long now = Instant.now().toEpochMilli();
+		long end = record.getCoverExpiresAt().toEpochMilli();
+		long window = 30L * 24 * 60 * 60 * 1000;
+		long grace = 7L * 24 * 60 * 60 * 1000;
+		return now >= end - window && now <= end + grace;
 	}
 
 	private static boolean isCoverageActive(PolicyRecord record) {

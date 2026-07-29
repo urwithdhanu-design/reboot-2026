@@ -173,6 +173,31 @@ export type CustomerPolicyRecord = {
   refund_status?: string | null;
   refund_amount_gbp?: number | null;
   refund_payment_id?: string | null;
+  product_id?: string | null;
+  predecessor_policy_id?: string | null;
+  renewed_by_policy_id?: string | null;
+  renewal_eligible?: boolean;
+};
+
+export type PolicyRenewalPreview = {
+  eligible: boolean;
+  policy_id: string;
+  policy_number: string;
+  product_id?: string;
+  product_title?: string;
+  current_cover_expires_at?: string | null;
+  proposed_cover_start_at?: string;
+  estimated_premium?: number | null;
+  currency?: string;
+  price_unit?: string;
+  message?: string;
+  premium_note?: string;
+};
+
+export type PolicyRenewalQuoteResponse = {
+  quote: QuoteEstimate & { renewal_of_policy_id?: string };
+  predecessor_policy_id: string;
+  proposed_cover_start_at?: string;
 };
 
 export type PolicyCancelPreview = {
@@ -475,6 +500,20 @@ export const api = {
     request<PolicyCancelResponse>(
       `/api/policies/${encodeURIComponent(policyId)}/cancel`,
       { method: "POST", body: JSON.stringify(body) },
+      token,
+    ),
+
+  previewPolicyRenewal: (token: string, policyId: string) =>
+    request<PolicyRenewalPreview>(
+      `/api/policies/${encodeURIComponent(policyId)}/renewal/preview`,
+      { method: "POST" },
+      token,
+    ),
+
+  createPolicyRenewalQuote: (token: string, policyId: string) =>
+    request<PolicyRenewalQuoteResponse>(
+      `/api/policies/${encodeURIComponent(policyId)}/renewal/quote`,
+      { method: "POST" },
       token,
     ),
 

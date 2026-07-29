@@ -55,6 +55,8 @@ public class KycSubmissionService {
 		user.setKycConsentAt(null);
 		store.save(user);
 
+		customerEvents.kycSubmitted(user, status, autoApprove);
+
 		adminCustomers.refreshAdminViewCaches();
 
 		Map<String, Object> response = new LinkedHashMap<>();
@@ -79,6 +81,7 @@ public class KycSubmissionService {
 		user.setKycStatus("verified");
 		user.setKycConsentAt(Instant.now().toString());
 		store.save(user);
+		customerEvents.kycConsentAccepted(user);
 		customerEvents.customerVerified(user);
 		adminCustomers.refreshAdminViewCaches();
 

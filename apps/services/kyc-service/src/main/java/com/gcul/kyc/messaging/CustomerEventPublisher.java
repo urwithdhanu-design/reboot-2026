@@ -39,8 +39,43 @@ public class CustomerEventPublisher {
 		Map<String, Object> payload = new LinkedHashMap<>();
 		payload.put("eventType", "CustomerVerified");
 		payload.put("customerId", user.getId());
+		payload.put("email", user.getEmail());
 		payload.put("kycStatus", "VERIFIED");
 		publisher.publish(EventTopics.CUSTOMER, payload);
+	}
+
+	public void kycSubmitted(UserAccount user, String status, boolean autoApproved) {
+		Map<String, Object> payload = new LinkedHashMap<>();
+		payload.put("eventType", "KycSubmitted");
+		payload.put("customerId", user.getId());
+		payload.put("email", user.getEmail());
+		payload.put("kycStatus", status);
+		payload.put("autoApproved", autoApproved);
+		payload.put("documentType", user.getKycDocumentType());
+		publisher.publish(EventTopics.CUSTOMER, payload);
+	}
+
+	public void kycConsentAccepted(UserAccount user) {
+		Map<String, Object> payload = new LinkedHashMap<>();
+		payload.put("eventType", "KycConsentAccepted");
+		payload.put("customerId", user.getId());
+		payload.put("email", user.getEmail());
+		payload.put("consentAcceptedAt", user.getKycConsentAt());
+		publisher.publish(EventTopics.CUSTOMER, payload);
+	}
+
+	public void kycStatusUpdated(UserAccount user, String previousStatus, String newStatus, String actor) {
+		Map<String, Object> payload = new LinkedHashMap<>();
+		payload.put("eventType", "KycStatusUpdated");
+		payload.put("customerId", user.getId());
+		payload.put("email", user.getEmail());
+		payload.put("previousStatus", previousStatus);
+		payload.put("newStatus", newStatus);
+		payload.put("actor", actor);
+		publisher.publish(EventTopics.CUSTOMER, payload);
+		if ("verified".equalsIgnoreCase(newStatus)) {
+			customerVerified(user);
+		}
 	}
 
 	private static String[] splitName(String fullName) {

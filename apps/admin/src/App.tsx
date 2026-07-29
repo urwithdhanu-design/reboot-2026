@@ -9,6 +9,7 @@ import { ClaimsPage } from './pages/ClaimsPage';
 import { ParametricPage } from './pages/ParametricPage';
 import { WorkflowsPage } from './pages/WorkflowsPage';
 import { PlatformFlowsPage } from './pages/PlatformFlowsPage';
+import { AuditTrailPage } from './pages/AuditTrailPage';
 import { PlatformServicesPage } from './pages/PlatformServicesPage';
 import { WalletOpsPage } from './pages/WalletOpsPage';
 import { ProductsPage } from './pages/ProductsPage';
@@ -51,6 +52,7 @@ export default function App() {
           <Route path="/parametric" element={<ProtectedRoute><ParametricPage /></ProtectedRoute>} />
           <Route path="/workflows" element={<ProtectedRoute><WorkflowsPage /></ProtectedRoute>} />
           <Route path="/flows" element={<ProtectedRoute><PlatformFlowsPage /></ProtectedRoute>} />
+          <Route path="/audit" element={<ProtectedRoute><AuditTrailPage /></ProtectedRoute>} />
           <Route path="/services" element={<ProtectedRoute><PlatformServicesPage /></ProtectedRoute>} />
           <Route path="/tokenization" element={<ProtectedRoute><TokenizationPage /></ProtectedRoute>} />
           <Route path="/observability" element={<ProtectedRoute><ChainObservabilityPage /></ProtectedRoute>} />

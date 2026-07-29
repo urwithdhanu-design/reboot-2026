@@ -101,6 +101,18 @@ public class PolicyRecord {
 	@Column(length = 64)
 	private String refundPaymentId;
 
+	@Column(length = 64)
+	private String productId;
+
+	@Column(length = 8000)
+	private String quoteAnswersJson;
+
+	@Column(length = 64)
+	private String predecessorPolicyId;
+
+	@Column(length = 64)
+	private String renewedByPolicyId;
+
 	public String getPolicyId() {
 		return policyId;
 	}
@@ -386,5 +398,37 @@ public class PolicyRecord {
 
 	public void setRefundPaymentId(String refundPaymentId) {
 		this.refundPaymentId = refundPaymentId;
+	}
+
+	public String getProductId() {
+		return productId;
+	}
+
+	public void setProductId(String productId) {
+		this.productId = productId;
+	}
+
+	public String getQuoteAnswersJson() {
+		return quoteAnswersJson;
+	}
+
+	public void setQuoteAnswersJson(String quoteAnswersJson) {
+		this.quoteAnswersJson = quoteAnswersJson;
+	}
+
+	public String getPredecessorPolicyId() {
+		return predecessorPolicyId;
+	}
+
+	public void setPredecessorPolicyId(String predecessorPolicyId) {
+		this.predecessorPolicyId = predecessorPolicyId;
+	}
+
+	public String getRenewedByPolicyId() {
+		return renewedByPolicyId;
+	}
+
+	public void setRenewedByPolicyId(String renewedByPolicyId) {
+		this.renewedByPolicyId = renewedByPolicyId;
 	}
 }

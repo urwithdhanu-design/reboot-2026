@@ -52,6 +52,19 @@ public final class LocalEventBus {
 				log.error("Local handler failed for {} on {}: {}", eventType, topicSuffix, ex.getMessage(), ex);
 			}
 		}
+		fanOutAuditCopy(body, publisherServiceId, topicSuffix);
+	}
+
+	private static void fanOutAuditCopy(Map<String, Object> body, String publisherServiceId, String topicSuffix) {
+		if ("AuditRecord".equals(body.get("eventType"))) {
+			return;
+		}
+		Map<String, Object> audit = new LinkedHashMap<>(body);
+		audit.put("eventType", "AuditRecord");
+		audit.put("sourceEventType", body.get("eventType"));
+		audit.put("sourcePublisher", publisherServiceId);
+		audit.put("sourceTopic", topicSuffix);
+		dispatch(EventTopics.AUDIT, audit, publisherServiceId);
 	}
 
 	public static void clear() {

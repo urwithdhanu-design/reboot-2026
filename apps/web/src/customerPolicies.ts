@@ -111,6 +111,19 @@ export function isCancellablePolicy(policy: CustomerPolicyRecord): boolean {
   return !isCancelledPolicy(policy);
 }
 
+export function isRenewablePolicy(policy: CustomerPolicyRecord): boolean {
+  if (policy.renewal_eligible) return true;
+  if (isCancelledPolicy(policy) || policy.renewed_by_policy_id) return false;
+  if ((policy.mint_status ?? "").toUpperCase() !== "MINTED") return false;
+  if (!policy.cover_expires_at) return false;
+  const expiresAt = new Date(policy.cover_expires_at).getTime();
+  if (Number.isNaN(expiresAt)) return false;
+  const now = Date.now();
+  const windowMs = 30 * 24 * 60 * 60 * 1000;
+  const graceMs = 7 * 24 * 60 * 60 * 1000;
+  return now >= expiresAt - windowMs && now <= expiresAt + graceMs;
+}
+
 export async function fetchIssuedPolicies(token: string): Promise<CustomerPolicyRecord[]> {
   const res = await api.getMyPolicies(token);
   return res.policies;

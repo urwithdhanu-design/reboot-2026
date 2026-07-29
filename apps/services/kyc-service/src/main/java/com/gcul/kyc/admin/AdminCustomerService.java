@@ -79,6 +79,7 @@ public class AdminCustomerService {
 		}
 		UserAccount user = repository.findById(userId)
 				.orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Customer not found"));
+		String previousStatus = user.getKycStatus();
 		if ("verified".equals(normalized)) {
 			user.setKycStatus("pending_consent");
 			user.setKycApprovalMode(KycApprovalModes.MANUAL_ADMIN);
@@ -92,6 +93,7 @@ public class AdminCustomerService {
 			}
 		}
 		repository.save(user);
+		customerEvents.kycStatusUpdated(user, previousStatus, user.getKycStatus(), "admin");
 		refreshAdminCaches();
 		return toAdminRow(user);
 	}

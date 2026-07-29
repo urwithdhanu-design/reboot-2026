@@ -1,4 +1,14 @@
-com\gcul\audit\AuditServiceApplication.class
+com\gcul\audit\model\AuditEventRecord.class
 com\gcul\audit\web\HealthController.class
-com\gcul\audit\messaging\AuditPubSubBootstrap.class
+com\gcul\audit\security\PlatformAdminAuthFilter.class
+com\gcul\audit\repository\AuditEventRepository.class
 com\gcul\audit\messaging\AuditEventHandler.class
+com\gcul\audit\service\AuditFlowCatalog.class
+com\gcul\audit\AuditServiceApplication.class
+com\gcul\audit\service\AuditRecordService.class
+com\gcul\audit\security\PlatformRoles.class
+com\gcul\audit\web\AdminAuditController.class
+com\gcul\audit\config\WebConfig.class
+com\gcul\audit\messaging\AuditPubSubBootstrap.class
+com\gcul\audit\messaging\AuditLocalBootstrap.class
+com\gcul\audit\security\JwtService.class

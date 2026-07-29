@@ -391,6 +391,16 @@ public class QuoteService {
 		return quote;
 	}
 
+	public Map<String, Object> createRenewalQuote(
+			String productId,
+			Map<String, Object> answers,
+			String renewalOfPolicyId) {
+		Map<String, Object> quote = estimate(productId, answers);
+		quote.put("renewal_of_policy_id", renewalOfPolicyId);
+		savedQuotes.put(String.valueOf(quote.get("quote_id")), quote);
+		return quote;
+	}
+
 	public Map<String, Object> getQuote(String quoteId) {
 		Map<String, Object> quote = savedQuotes.get(quoteId);
 		if (quote == null) {

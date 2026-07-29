@@ -1,4 +1,14 @@
 C:\projects\gcul\apps\services\audit-service\src\main\java\com\gcul\audit\AuditServiceApplication.java
+C:\projects\gcul\apps\services\audit-service\src\main\java\com\gcul\audit\config\WebConfig.java
 C:\projects\gcul\apps\services\audit-service\src\main\java\com\gcul\audit\messaging\AuditEventHandler.java
+C:\projects\gcul\apps\services\audit-service\src\main\java\com\gcul\audit\messaging\AuditLocalBootstrap.java
 C:\projects\gcul\apps\services\audit-service\src\main\java\com\gcul\audit\messaging\AuditPubSubBootstrap.java
+C:\projects\gcul\apps\services\audit-service\src\main\java\com\gcul\audit\model\AuditEventRecord.java
+C:\projects\gcul\apps\services\audit-service\src\main\java\com\gcul\audit\repository\AuditEventRepository.java
+C:\projects\gcul\apps\services\audit-service\src\main\java\com\gcul\audit\security\JwtService.java
+C:\projects\gcul\apps\services\audit-service\src\main\java\com\gcul\audit\security\PlatformAdminAuthFilter.java
+C:\projects\gcul\apps\services\audit-service\src\main\java\com\gcul\audit\security\PlatformRoles.java
+C:\projects\gcul\apps\services\audit-service\src\main\java\com\gcul\audit\service\AuditFlowCatalog.java
+C:\projects\gcul\apps\services\audit-service\src\main\java\com\gcul\audit\service\AuditRecordService.java
+C:\projects\gcul\apps\services\audit-service\src\main\java\com\gcul\audit\web\AdminAuditController.java
 C:\projects\gcul\apps\services\audit-service\src\main\java\com\gcul\audit\web\HealthController.java

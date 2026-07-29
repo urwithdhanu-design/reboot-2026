@@ -18,6 +18,7 @@ import {
   Zap,
   ClipboardCheck,
   BookOpen,
+  ScrollText,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -38,6 +39,7 @@ export const navItems: NavItem[] = [
   { to: '/parametric', label: 'Parametric', icon: Zap, section: 'Operations' },
   { to: '/workflows', label: 'Workflows', icon: GitBranch, section: 'Operations' },
   { to: '/flows', label: 'Platform Flows', icon: BookOpen, section: 'Operations' },
+  { to: '/audit', label: 'Audit trail', icon: ScrollText, section: 'Operations' },
   { to: '/services', label: 'Platform Services', icon: Server, section: 'Operations' },
   { to: '/tokenization', label: 'Tokenization', icon: Coins, section: 'Blockchain' },
   { to: '/compliance', label: 'Compliance Controls', icon: ClipboardCheck, section: 'Blockchain' },

@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.RestController;
 import com.gcul.policy.dto.PolicyCancelRequest;
 import com.gcul.policy.messaging.PolicyIssuanceService;
 import com.gcul.policy.policy.PolicyCancellationService;
+import com.gcul.policy.policy.PolicyRenewalService;
 
 import jakarta.servlet.http.HttpServletRequest;
 
@@ -22,12 +23,15 @@ public class CustomerPolicyController {
 
 	private final PolicyIssuanceService issuance;
 	private final PolicyCancellationService cancellation;
+	private final PolicyRenewalService renewal;
 
 	public CustomerPolicyController(
 			PolicyIssuanceService issuance,
-			PolicyCancellationService cancellation) {
+			PolicyCancellationService cancellation,
+			PolicyRenewalService renewal) {
 		this.issuance = issuance;
 		this.cancellation = cancellation;
+		this.renewal = renewal;
 	}
 
 	@GetMapping("/me")
@@ -60,6 +64,26 @@ public class CustomerPolicyController {
 				body.getReason(),
 				body.getCustomerNote(),
 				body.getConfirmRefundAmountGbp());
+	}
+
+	@PostMapping("/{policyId}/renewal/preview")
+	public Map<String, Object> previewRenewal(
+			@PathVariable String policyId,
+			HttpServletRequest request) {
+		return renewal.previewRenewal(
+				policyId,
+				attribute(request, "userId"),
+				attribute(request, "userEmail"));
+	}
+
+	@PostMapping("/{policyId}/renewal/quote")
+	public Map<String, Object> createRenewalQuote(
+			@PathVariable String policyId,
+			HttpServletRequest request) {
+		return renewal.createRenewalQuote(
+				policyId,
+				attribute(request, "userId"),
+				attribute(request, "userEmail"));
 	}
 
 	private static String attribute(HttpServletRequest request, String name) {
