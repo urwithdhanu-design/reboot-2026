@@ -24,6 +24,7 @@ import { VendorsPage } from './pages/VendorsPage';
 import { CompliancePage } from './pages/CompliancePage';
 import { InsuranceCapitalMarketPage } from './pages/InsuranceCapitalMarketPage';
 import { CantonCapitalBlueprintPage } from './pages/CantonCapitalBlueprintPage';
+import { CantonEnterpriseChallengesPage } from './pages/CantonEnterpriseChallengesPage';
 import { VendorLoginPage, VendorPortalPage } from './pages/VendorPortalPages';
 import type { ReactNode } from 'react';
 
@@ -61,6 +62,7 @@ export default function App() {
           <Route path="/tokenization" element={<ProtectedRoute><TokenizationPage /></ProtectedRoute>} />
           <Route path="/capital-market" element={<ProtectedRoute><InsuranceCapitalMarketPage /></ProtectedRoute>} />
           <Route path="/capital-market/blueprint" element={<ProtectedRoute><CantonCapitalBlueprintPage /></ProtectedRoute>} />
+          <Route path="/capital-market/enterprise" element={<ProtectedRoute><CantonEnterpriseChallengesPage /></ProtectedRoute>} />
           <Route path="/observability" element={<ProtectedRoute><ChainObservabilityPage /></ProtectedRoute>} />
           <Route path="/blockchain" element={<ProtectedRoute><BlockchainLedgerPage /></ProtectedRoute>} />
           <Route path="/contracts" element={<ProtectedRoute><SmartContractsPage /></ProtectedRoute>} />

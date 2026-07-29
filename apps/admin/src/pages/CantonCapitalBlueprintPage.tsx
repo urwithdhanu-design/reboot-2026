@@ -233,10 +233,10 @@ export function CantonCapitalBlueprintPage() {
         ]}
         actions={
           <Link
-            to="/capital-market"
+            to="/capital-market/enterprise"
             className="text-sm font-semibold text-lbg-green hover:underline"
           >
-            Reference docs →
+            Enterprise challenges →
           </Link>
         }
       />

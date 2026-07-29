@@ -436,12 +436,14 @@ export function InsuranceCapitalMarketPage() {
           { label: 'Notional (illustrative)', value: HOME_RISK_NOTE.structure.notional },
         ]}
         actions={
-          <Link
-            to="/capital-market/blueprint"
-            className="text-sm font-semibold text-lbg-green hover:underline"
-          >
-            Animated blueprint →
-          </Link>
+          <div className="flex flex-col sm:flex-row gap-2 sm:items-center text-sm font-semibold text-lbg-green">
+            <Link to="/capital-market/blueprint" className="hover:underline">
+              Animated blueprint →
+            </Link>
+            <Link to="/capital-market/enterprise" className="hover:underline">
+              Enterprise challenges →
+            </Link>
+          </div>
         }
       />
 
