@@ -508,6 +508,7 @@ textarea:focus-visible,
 
 .customer-app-shell--landing .customer-app-content {
   border-top: none;
+  overflow-x: clip;
 }
 
 .customer-app-shell--landing .customer-app-page {
@@ -525,6 +526,42 @@ textarea:focus-visible,
   max-width: 100%;
   width: 100%;
   overflow-x: clip;
+}
+
+.customer-app-shell--landing .landing-header {
+  padding-left: 12px;
+  padding-right: 12px;
+}
+
+.customer-app-shell--landing .landing-nav {
+  overflow: visible;
+  padding-left: 12px;
+  padding-right: 12px;
+  box-sizing: border-box;
+}
+
+.customer-app-shell--landing .landing-nav-row {
+  max-width: 100%;
+}
+
+.customer-app-shell--landing .landing-nav-track {
+  flex: 1 1 0;
+  width: 0;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.customer-app-shell--side.customer-app-shell--landing .landing-nav-scroll {
+  width: 28px;
+  height: 28px;
+  color: var(--lbg-green-deep);
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid var(--line);
+  box-shadow: 0 2px 8px rgba(0, 40, 28, 0.06);
+}
+
+.customer-app-shell--side.customer-app-shell--landing .landing-nav-scroll:disabled {
+  opacity: 0.35;
 }
 
 /* View mode toggle — dashboard control */
@@ -5231,15 +5268,17 @@ a.link-quiet:hover {
   min-width: 0;
   max-width: 100%;
   width: 100%;
-  overflow: hidden;
+  box-sizing: border-box;
+  overflow: visible;
 }
 
 .landing-nav-row {
   display: flex;
   align-items: center;
-  gap: 2px;
+  gap: 4px;
   min-width: 0;
   width: 100%;
+  max-width: 100%;
 }
 
 .landing-nav-scroll {
@@ -5265,12 +5304,18 @@ a.link-quiet:hover {
 
 .landing-nav-scroll:disabled {
   cursor: default;
+  opacity: 0.35;
 }
 
 .landing-nav-scroll--hidden {
   opacity: 0;
   visibility: hidden;
   pointer-events: none;
+  width: 0;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
 }
 
 .landing-nav-scroll-icon--left {
@@ -5279,9 +5324,11 @@ a.link-quiet:hover {
 
 .landing-nav-track {
   display: flex;
-  flex: 1;
+  flex: 1 1 0;
+  width: 0;
   gap: 8px;
   min-width: 0;
+  max-width: 100%;
   overflow-x: auto;
   overflow-y: hidden;
   padding-bottom: 4px;
@@ -5289,6 +5336,7 @@ a.link-quiet:hover {
   -webkit-overflow-scrolling: touch;
   touch-action: pan-x;
   overscroll-behavior-x: contain;
+  scroll-behavior: smooth;
 }
 
 .landing-nav-track::-webkit-scrollbar {
@@ -5297,6 +5345,8 @@ a.link-quiet:hover {
 
 .landing-nav-pill {
   flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
   text-decoration: none;
   font-size: 0.78rem;
   font-weight: 700;
@@ -5306,6 +5356,8 @@ a.link-quiet:hover {
   padding: 8px 14px;
   border-radius: 999px;
   white-space: nowrap;
+  line-height: 1.2;
+  box-shadow: 0 2px 8px rgba(0, 40, 28, 0.05);
   transition: border-color 0.15s ease, color 0.15s ease, background 0.15s ease;
 }
 

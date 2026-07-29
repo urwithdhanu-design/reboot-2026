@@ -149,17 +149,25 @@ function LandingProductNav() {
     const track = trackRef.current;
     if (!track) return;
 
-    updateScrollState();
-    track.addEventListener("scroll", updateScrollState, { passive: true });
+    const runUpdate = () => {
+      requestAnimationFrame(() => {
+        updateScrollState();
+      });
+    };
 
-    const observer = new ResizeObserver(updateScrollState);
+    runUpdate();
+    track.addEventListener("scroll", runUpdate, { passive: true });
+    window.addEventListener("resize", runUpdate);
+
+    const observer = new ResizeObserver(runUpdate);
     observer.observe(track);
     for (const child of track.children) {
       observer.observe(child);
     }
 
     return () => {
-      track.removeEventListener("scroll", updateScrollState);
+      track.removeEventListener("scroll", runUpdate);
+      window.removeEventListener("resize", runUpdate);
       observer.disconnect();
     };
   }, [updateScrollState]);
@@ -196,7 +204,7 @@ function LandingProductNav() {
       <div className="landing-nav-row">
         <button
           type="button"
-          className={`landing-nav-scroll landing-nav-scroll--left${hasOverflow && canScrollLeft ? "" : " landing-nav-scroll--hidden"}`}
+          className={`landing-nav-scroll landing-nav-scroll--left${hasOverflow ? "" : " landing-nav-scroll--hidden"}`}
           aria-label="Scroll products left"
           disabled={!canScrollLeft}
           onClick={() => scrollTrack("left")}
@@ -212,7 +220,7 @@ function LandingProductNav() {
         </div>
         <button
           type="button"
-          className={`landing-nav-scroll landing-nav-scroll--right${hasOverflow && canScrollRight ? "" : " landing-nav-scroll--hidden"}`}
+          className={`landing-nav-scroll landing-nav-scroll--right${hasOverflow ? "" : " landing-nav-scroll--hidden"}`}
           aria-label="Scroll products right"
           disabled={!canScrollRight}
           onClick={() => scrollTrack("right")}
