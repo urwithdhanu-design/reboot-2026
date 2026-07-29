@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Building2, Mail, Rocket, Send } from 'lucide-react';
 import { adminApi, type Vendor } from '../api';
+import { localVendorUiUrl } from '../vendorUiUrls';
 import { AdminLayout } from '../components/layout/AdminLayout';
 import { Badge, Button, Card, ContentPanel, PageHeader, AlertBanner, PaginatedTable } from '../components/ui';
 
@@ -66,7 +67,7 @@ export function VendorsPage() {
     setError(null);
     try {
       const updated = await adminApi.publishVendor(vendor.id, {
-        ui_deploy_url: `https://vendors.reboot2026.local/${vendor.code}`,
+        ui_deploy_url: localVendorUiUrl(vendor.code),
         ui_version: vendor.ui_version || '1.0.0',
       });
       setNotice(`Published ${updated.name} UI ${updated.ui_version} → ${updated.ui_deploy_url}`);
@@ -200,8 +201,19 @@ export function VendorsPage() {
                     {vendor.status}
                   </Badge>
                 </td>
-                <td className="px-5 py-4 text-xs text-lbg-gray-600 max-w-[220px] truncate">
-                  {vendor.ui_deploy_url || '—'}
+                <td className="px-5 py-4 text-xs text-lbg-gray-600 max-w-[260px]">
+                  {vendor.ui_deploy_url ? (
+                    <a
+                      href={vendor.ui_deploy_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-lbg-green font-semibold hover:underline break-all"
+                    >
+                      {vendor.ui_deploy_url}
+                    </a>
+                  ) : (
+                    '—'
+                  )}
                   {vendor.ui_version ? ` · v${vendor.ui_version}` : ''}
                 </td>
                 <td className="px-5 py-4">

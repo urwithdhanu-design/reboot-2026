@@ -19,6 +19,7 @@ function formatDate(iso?: string) {
 
 function approvalLabel(item: KycQueueItem): string {
   if (item.status === 'in_progress') return 'Pending review';
+  if (item.status === 'pending_consent') return 'Awaiting customer consent';
   if (item.status === 'rejected') return 'Rejected';
   if (item.approval_mode === 'auto_agent') return 'Auto-approved';
   if (item.approval_mode === 'manual_admin') return 'Manual approved';
@@ -30,6 +31,7 @@ function approvalBadgeVariant(
   item: KycQueueItem,
 ): 'success' | 'warning' | 'error' | 'info' | 'neutral' {
   if (item.status === 'in_progress') return 'warning';
+  if (item.status === 'pending_consent') return 'info';
   if (item.status === 'rejected') return 'error';
   if (item.approval_mode === 'auto_agent') return 'info';
   if (item.status === 'verified') return 'success';
@@ -83,7 +85,7 @@ export function KYCReviewPage() {
   const filtered = useMemo(() => {
     if (filter === 'all') return queue;
     if (filter === 'pending') return queue.filter((k) => k.status === 'in_progress');
-    if (filter === 'verified') return queue.filter((k) => k.status === 'verified');
+    if (filter === 'verified') return queue.filter((k) => k.status === 'verified' || k.status === 'pending_consent');
     return queue.filter((k) => k.status === 'rejected');
   }, [queue, filter]);
 

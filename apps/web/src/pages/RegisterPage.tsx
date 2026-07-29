@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from "react";
+import { useState, type FormEvent, type MouseEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { api } from "../api";
 import {
@@ -7,7 +7,9 @@ import {
   AuthLayout,
   PasswordStrength,
 } from "../components";
+import { RegistrationTermsModal } from "../components/RegistrationTermsModal";
 import { IconLock, IconMail, IconPhone, IconUser } from "../icons";
+import type { RegistrationTermsSectionId } from "../registrationTerms";
 import { useSession } from "../session";
 
 export function RegisterPage() {
@@ -20,8 +22,17 @@ export function RegisterPage() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [terms, setTerms] = useState(false);
+  const [termsModalOpen, setTermsModalOpen] = useState(false);
+  const [termsModalFocus, setTermsModalFocus] = useState<RegistrationTermsSectionId | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  function openTermsModal(section: RegistrationTermsSectionId, event: MouseEvent) {
+    event.preventDefault();
+    event.stopPropagation();
+    setTermsModalFocus(section);
+    setTermsModalOpen(true);
+  }
 
   const canSubmit =
     terms &&
@@ -189,7 +200,24 @@ export function RegisterPage() {
               checked={terms}
               onChange={(e) => setTerms(e.target.checked)}
             />
-            I agree to the Terms &amp; Conditions and Privacy Policy
+            <span>
+              I agree to the{" "}
+              <button
+                type="button"
+                className="register-terms-link"
+                onClick={(event) => openTermsModal("terms", event)}
+              >
+                Terms &amp; Conditions
+              </button>
+              {" "}and{" "}
+              <button
+                type="button"
+                className="register-terms-link"
+                onClick={(event) => openTermsModal("privacy", event)}
+              >
+                Privacy Policy
+              </button>
+            </span>
           </label>
 
           {error ? <AuthError message={error} /> : null}
@@ -198,6 +226,15 @@ export function RegisterPage() {
             {loading ? "Creating account…" : "Create account"}
           </button>
         </form>
+
+        <RegistrationTermsModal
+          open={termsModalOpen}
+          focusSection={termsModalFocus}
+          onClose={() => {
+            setTermsModalOpen(false);
+            setTermsModalFocus(null);
+          }}
+        />
       </AuthLayout>
   );
 }

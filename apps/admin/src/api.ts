@@ -77,6 +77,34 @@ export type Vendor = {
   temp_password?: string;
 };
 
+export type VendorReserveWalletView = {
+  id: string;
+  vendor_code: string;
+  label: string;
+  balance_gbp: number;
+  currency: string;
+  updated_at?: string | null;
+};
+
+export type VendorReserveTransactionRow = {
+  id: string;
+  type: string;
+  amount: number;
+  currency: string;
+  status: string;
+  reference?: string | null;
+  destination?: string | null;
+  created_at: string;
+  label?: string;
+};
+
+export type VendorReserveView = {
+  vendor_reserve: VendorReserveWalletView;
+  claims_pool: ClaimsPoolView;
+  contributions_total_gbp: number;
+  transactions: VendorReserveTransactionRow[];
+};
+
 export type AdminCustomer = {
   id: string;
   full_name: string;
@@ -183,6 +211,11 @@ export type TokenMintQueueRow = {
   failure_reason?: string | null;
   failed_at?: string | null;
   next_action?: string;
+  pre_mint_checks?: Array<{
+    name: string;
+    status: 'passed' | 'failed' | 'review';
+    detail: string;
+  }>;
 };
 
 export type TokenStandardRow = {
@@ -537,6 +570,14 @@ export type WalletOpsWalletRow = {
   updated_at?: string | null;
 };
 
+export type ClaimsPoolView = {
+  id: string;
+  label: string;
+  balance_gbp: number;
+  currency: string;
+  updated_at?: string | null;
+};
+
 export type WalletOpsView = {
   stats: {
     connected_wallets: number;
@@ -548,7 +589,11 @@ export type WalletOpsView = {
     claim_payouts_gbp: number;
     premium_volume_gbp: number;
     recharge_volume_gbp: number;
+    claims_pool_balance_gbp?: number;
+    claims_pool_top_ups_gbp?: number;
+    claims_pool_debits_gbp?: number;
   };
+  claims_pool?: ClaimsPoolView;
   wallets: WalletOpsWalletRow[];
   transactions: WalletOpsTransactionRow[];
   count: number;
@@ -824,6 +869,15 @@ export const adminApi = {
 
   walletOpsView: () => adminRequest<WalletOpsView>('/api/admin/wallet-ops'),
 
+  topUpClaimsPool: (amount: number, reference?: string, source?: string) =>
+    adminRequest<ClaimsPoolView & { transaction?: WalletOpsTransactionRow }>(
+      '/api/admin/wallet-ops/claims-pool/top-up',
+      {
+        method: 'POST',
+        body: JSON.stringify({ amount, reference, source }),
+      },
+    ),
+
   listVendors: (status?: string) => {
     const qs = status ? `?status=${encodeURIComponent(status)}` : '';
     return adminRequest<{ vendors: Vendor[]; count: number }>(`/api/vendors${qs}`);
@@ -866,11 +920,26 @@ export const adminApi = {
   vendorDashboard: (token: string) =>
     request<{
       vendor: Vendor;
-      products: Array<Record<string, unknown>>;
-      customers: Array<Record<string, unknown>>;
-      claims: Array<Record<string, unknown>>;
-      stats: Record<string, unknown>;
+      reserve?: VendorReserveView;
+      reserve_error?: string;
     }>('/api/vendor-portal/dashboard', {}, token),
+
+  vendorReserve: (token: string) =>
+    request<VendorReserveView>('/api/vendor-portal/reserve', {}, token),
+
+  vendorContributeToClaimsPool: (
+    token: string,
+    amount: number,
+    reference?: string,
+  ) =>
+    request<VendorReserveView & { contribution?: Record<string, unknown> }>(
+      '/api/vendor-portal/claims-pool/contribute',
+      {
+        method: 'POST',
+        body: JSON.stringify({ amount, reference }),
+      },
+      token,
+    ),
 };
 
 /** Merge payment ledger onto policy rows for admin tables. */

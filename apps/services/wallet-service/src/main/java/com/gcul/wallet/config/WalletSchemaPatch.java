@@ -33,6 +33,25 @@ public class WalletSchemaPatch implements ApplicationRunner {
 		addColumn("customer_wallets", "provider", "VARCHAR(64)");
 		addColumn("customer_wallets", "mode", "VARCHAR(32)");
 		addColumn("customer_wallets", "note", "VARCHAR(255)");
+		ensurePlatformWalletsTable();
+	}
+
+	private void ensurePlatformWalletsTable() {
+		try {
+			jdbc.execute("""
+					CREATE TABLE IF NOT EXISTS platform_wallets (
+						id VARCHAR(64) NOT NULL PRIMARY KEY,
+						label VARCHAR(120) NOT NULL,
+						balance_gbp DOUBLE PRECISION NOT NULL DEFAULT 0,
+						currency VARCHAR(8) NOT NULL DEFAULT 'GBP',
+						updated_at TIMESTAMP
+					)
+					""");
+			log.info("platform_wallets table ensured");
+		}
+		catch (Exception ex) {
+			log.warn("Could not ensure platform_wallets table: {}", ex.getMessage());
+		}
 	}
 
 	private void ensureWalletConsentTokensTable() {

@@ -19,6 +19,7 @@ import { RegisterPage } from "./pages/RegisterPage";
 import { ResetPasswordPage } from "./pages/ResetPasswordPage";
 import { WalletPage } from "./pages/WalletPage";
 import { WalletApprovePage } from "./pages/WalletApprovePage";
+import { VendorUiRedirectPage } from "./pages/VendorUiRedirectPage";
 import type { ReactNode } from "react";
 
 function RequireAuth({ children }: { children: ReactNode }) {
@@ -77,6 +78,7 @@ function AppShell() {
               </RequireAuth>
             }
           />
+          <Route path="/vendors/:vendorCode" element={<VendorUiRedirectPage />} />
           <Route path="/quote/:productId" element={<QuoteBuilderPage />} />
           <Route
             path="/payment/success"

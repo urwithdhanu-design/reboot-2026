@@ -49,6 +49,9 @@ public class UserAccount {
 	@Column(name = "kyc_approval_mode", length = 32)
 	private String kycApprovalMode;
 
+	@Column(name = "kyc_consent_at", length = 40)
+	private String kycConsentAt;
+
 	@Column(name = "wallet_address", length = 64)
 	private String walletAddress;
 
@@ -181,6 +184,14 @@ public class UserAccount {
 
 	public void setKycApprovalMode(String kycApprovalMode) {
 		this.kycApprovalMode = kycApprovalMode;
+	}
+
+	public String getKycConsentAt() {
+		return kycConsentAt;
+	}
+
+	public void setKycConsentAt(String kycConsentAt) {
+		this.kycConsentAt = kycConsentAt;
 	}
 
 	public String getWalletAddress() {

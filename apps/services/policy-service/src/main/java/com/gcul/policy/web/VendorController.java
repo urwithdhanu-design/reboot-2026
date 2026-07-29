@@ -72,4 +72,16 @@ public class VendorController {
 	public Map<String, Object> dashboard(@RequestHeader(value = "Authorization", required = false) String auth) {
 		return vendors.vendorDashboard(auth);
 	}
+
+	@GetMapping("/vendor-portal/reserve")
+	public Map<String, Object> reserve(@RequestHeader(value = "Authorization", required = false) String auth) {
+		return vendors.vendorReserveView(auth);
+	}
+
+	@PostMapping("/vendor-portal/claims-pool/contribute")
+	public Map<String, Object> contributeToClaimsPool(
+			@RequestHeader(value = "Authorization", required = false) String auth,
+			@RequestBody Map<String, Object> body) {
+		return vendors.vendorContributeToClaimsPool(auth, body);
+	}
 }

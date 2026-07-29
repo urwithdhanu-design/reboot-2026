@@ -44,25 +44,48 @@ public class KycSubmissionService {
 		boolean readyForReview = body.isDocumentUploaded() && body.isSelfieCaptured();
 
 		boolean autoApprove = agentSettings.isAutoApproveEnabled() && readyForReview;
-		String status = autoApprove ? "verified" : "in_progress";
-		progress.put("complete", autoApprove ? "done" : (readyForReview ? "submitted" : "pending"));
+		String status = autoApprove ? "pending_consent" : "in_progress";
+		progress.put("complete", autoApprove ? "submitted" : (readyForReview ? "submitted" : "pending"));
 
 		user.setKycStatus(status);
 		user.setKycDocumentType(body.getDocumentType());
 		user.setKycProgressJson(UserMapper.toJson(progress));
 		user.setKycSubmittedAt(Instant.now().toString());
 		user.setKycApprovalMode(autoApprove ? KycApprovalModes.AUTO_AGENT : null);
+		user.setKycConsentAt(null);
 		store.save(user);
 
-		if (autoApprove) {
-			customerEvents.customerVerified(user);
-		}
 		adminCustomers.refreshAdminViewCaches();
 
 		Map<String, Object> response = new LinkedHashMap<>();
 		response.put("status", status);
 		response.put("progress", progress);
 		response.put("auto_approved", autoApprove);
+		response.put("requires_consent", autoApprove);
+		return response;
+	}
+
+	@Transactional
+	public Map<String, Object> acceptConsent(UserAccount user) {
+		if (!"pending_consent".equals(user.getKycStatus())) {
+			throw new org.springframework.web.server.ResponseStatusException(
+					org.springframework.http.HttpStatus.BAD_REQUEST,
+					"Digitisation consent is not required for your current verification status");
+		}
+
+		Map<String, String> progress = UserMapper.fromJsonMap(user.getKycProgressJson());
+		progress.put("complete", "done");
+		user.setKycProgressJson(UserMapper.toJson(progress));
+		user.setKycStatus("verified");
+		user.setKycConsentAt(Instant.now().toString());
+		store.save(user);
+		customerEvents.customerVerified(user);
+		adminCustomers.refreshAdminViewCaches();
+
+		Map<String, Object> response = new LinkedHashMap<>();
+		response.put("status", "verified");
+		response.put("consent_accepted", true);
+		response.put("consent_accepted_at", user.getKycConsentAt());
 		return response;
 	}
 }

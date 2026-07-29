@@ -13,5 +13,7 @@ public interface WalletTransactionRepository extends JpaRepository<WalletTransac
 
 	List<WalletTransaction> findTop100ByOrderByCreatedAtDesc();
 
+	List<WalletTransaction> findByUserIdAndType(String userId, String type);
+
 	Optional<WalletTransaction> findByReferenceAndType(String reference, String type);
 }

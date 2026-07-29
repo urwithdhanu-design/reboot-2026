@@ -6,6 +6,7 @@ export type AuthUser = {
   email: string;
   mobile_number: string;
   kyc_status: string;
+  kyc_approval_mode?: string;
   last_login_at?: string | null;
   wallet: { address: string; status: string; balance_gbp?: number; currency?: string } | null;
 };
@@ -339,11 +340,23 @@ export const api = {
       selfie_captured: boolean;
     },
   ) =>
-    request<{ status: string; progress: Record<string, string> }>(
+    request<{
+      status: string;
+      progress: Record<string, string>;
+      auto_approved?: boolean;
+      requires_consent?: boolean;
+    }>(
       "/api/kyc/submit",
       { method: "POST", body: JSON.stringify(body) },
       token,
     ),
+
+  acceptKycConsent: (token: string) =>
+    request<{
+      status: string;
+      consent_accepted: boolean;
+      consent_accepted_at?: string;
+    }>("/api/kyc/consent", { method: "POST" }, token),
 
   uploadKycSelfie: async (token: string, file: File) => {
     const form = new FormData();

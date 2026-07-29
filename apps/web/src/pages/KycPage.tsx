@@ -2,10 +2,13 @@ import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { api } from "../api";
 import { AssistantBar, CustomerAppShell, StepHeader } from "../components";
+import { KycConsentModal } from "../components/KycConsentModal";
 import { SelfieCapture } from "../components/SelfieCapture";
 import { IconDoc } from "../icons";
+import { runKycDemoFill } from "../kycDemoFill";
 import {
   formatKycStatus,
+  isKycPendingConsent,
   isKycVerified,
   kycStatusPillVariant,
   type KycStatus,
@@ -80,6 +83,15 @@ function useKycStepStates(
       };
     }
 
+    if (kycStatus === "pending_consent") {
+      return {
+        Identity: "done",
+        Verify: "done",
+        Liveness: "done",
+        Complete: "active",
+      };
+    }
+
     if (kycStatus === "in_progress") {
       return {
         Identity: "done",
@@ -122,10 +134,20 @@ export function KycPage() {
   const [docUploading, setDocUploading] = useState(false);
   const [refreshing, setRefreshing] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [demoFilling, setDemoFilling] = useState(false);
+  const [consentOpen, setConsentOpen] = useState(false);
+  const [consentLoading, setConsentLoading] = useState(false);
+  const [consentError, setConsentError] = useState<string | null>(null);
   const docInputRef = useRef<HTMLInputElement>(null);
   const kycStatus = user?.kyc_status ?? "not_started";
   const stepStates = useKycStepStates(kycStatus, uploaded, selfie);
   const docLabel = DOC_LABELS[documentType] ?? "Document";
+
+  useEffect(() => {
+    if (isKycPendingConsent(kycStatus)) {
+      setConsentOpen(true);
+    }
+  }, [kycStatus]);
 
   useEffect(() => {
     if (!token) {
@@ -140,6 +162,10 @@ export function KycPage() {
         updateUser(res);
         if (isKycVerified(res.kyc_status)) {
           navigate("/wallet", { replace: true });
+          return;
+        }
+        if (isKycPendingConsent(res.kyc_status)) {
+          setConsentOpen(true);
         }
       })
       .catch(() => undefined)
@@ -150,6 +176,22 @@ export function KycPage() {
       alive = false;
     };
   }, [token, navigate, updateUser]);
+
+  useEffect(() => {
+    if (!token || kycStatus !== "in_progress") return;
+    const timer = window.setInterval(() => {
+      void api
+        .me(token)
+        .then((res) => {
+          updateUser(res);
+          if (isKycPendingConsent(res.kyc_status)) {
+            setConsentOpen(true);
+          }
+        })
+        .catch(() => undefined);
+    }, 10_000);
+    return () => window.clearInterval(timer);
+  }, [token, kycStatus, updateUser]);
 
   async function onDocumentSelected(file: File | null) {
     if (!file || !token) return;
@@ -186,11 +228,48 @@ export function KycPage() {
         navigate("/wallet", { replace: true });
         return;
       }
+      if (res.status === "pending_consent" || res.requires_consent) {
+        setConsentOpen(true);
+        return;
+      }
       navigate("/", { state: { kycSubmitted: true } });
     } catch (err) {
       setError(err instanceof Error ? err.message : "KYC failed");
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function runDemoFill() {
+    if (!token || demoFilling) return;
+    setDemoFilling(true);
+    setError(null);
+    try {
+      const result = await runKycDemoFill(token);
+      setUploaded(result.uploaded);
+      setSelfie(result.selfie);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Demo fill failed");
+    } finally {
+      setDemoFilling(false);
+    }
+  }
+
+  async function approveConsent() {
+    if (!token) return;
+    setConsentLoading(true);
+    setConsentError(null);
+    try {
+      const res = await api.acceptKycConsent(token);
+      if (user) {
+        updateUser({ ...user, kyc_status: res.status });
+      }
+      setConsentOpen(false);
+      navigate("/wallet", { replace: true });
+    } catch (err) {
+      setConsentError(err instanceof Error ? err.message : "Could not save consent");
+    } finally {
+      setConsentLoading(false);
     }
   }
 
@@ -212,7 +291,7 @@ export function KycPage() {
           <h2 id="kyc-pending-title">Your documents are being reviewed</h2>
           <p>
             We have received your identity check and our team is reviewing it. Wallet setup will
-            unlock once verification is approved.
+            unlock once you approve the digitisation consent after approval.
           </p>
           <KycProgressCard status={kycStatus} stepStates={stepStates} />
           <div className="kyc-onboarding-actions">
@@ -229,6 +308,37 @@ export function KycPage() {
     );
   }
 
+  if (kycStatus === "pending_consent") {
+    return (
+      <CustomerAppShell active="profile" className="kyc-screen">
+        <StepHeader title="KYC Verification" />
+        <section className="kyc-pending-panel" aria-labelledby="kyc-consent-pending-title">
+          <p className="kyc-onboarding-eyebrow">Approval received</p>
+          <h2 id="kyc-consent-pending-title">One more step — review consent terms</h2>
+          <p>
+            Your identity check has been approved. Review the UK digitisation and privacy consent
+            terms, then approve to complete verification and unlock your wallet.
+          </p>
+          <KycProgressCard status={kycStatus} stepStates={stepStates} />
+          <div className="kyc-onboarding-actions">
+            <button type="button" className="kyc-onboarding-cta" onClick={() => setConsentOpen(true)}>
+              Review consent terms
+            </button>
+          </div>
+        </section>
+        <KycConsentModal
+          open={consentOpen}
+          loading={consentLoading}
+          error={consentError}
+          approvalMode={user?.kyc_approval_mode}
+          onApprove={() => void approveConsent()}
+          onClose={() => setConsentOpen(false)}
+        />
+        <AssistantBar screen="kyc" />
+      </CustomerAppShell>
+    );
+  }
+
   return (
     <CustomerAppShell active="profile" className="kyc-screen">
       <StepHeader title="KYC Verification" />
@@ -239,6 +349,23 @@ export function KycPage() {
         <div className="kyc-required-alert" role="alert">
           <p>Your previous verification was not approved. Please upload your documents again.</p>
         </div>
+      ) : null}
+
+      <div className="kyc-page-toolbar">
+        <button
+          type="button"
+          className="demo-fill-btn"
+          disabled={demoFilling || loading || !token}
+          onClick={() => void runDemoFill()}
+        >
+          {demoFilling ? "Filling…" : "Demo fill"}
+        </button>
+      </div>
+
+      {demoFilling ? (
+        <p className="demo-fill-banner" role="status">
+          Uploading demo ID and selfie…
+        </p>
       ) : null}
 
       <KycProgressCard status={kycStatus} stepStates={stepStates} />
@@ -324,11 +451,20 @@ export function KycPage() {
         <button
           className="btn-primary kyc-page-submit"
           type="submit"
-          disabled={loading || !uploaded || !selfie}
+          disabled={loading || demoFilling || !uploaded || !selfie}
         >
           {loading ? "Submitting…" : kycStatus === "rejected" ? "Resubmit verification" : "Continue"}
         </button>
       </form>
+
+      <KycConsentModal
+        open={consentOpen}
+        loading={consentLoading}
+        error={consentError}
+        approvalMode={user?.kyc_approval_mode}
+        onApprove={() => void approveConsent()}
+        onClose={() => setConsentOpen(false)}
+      />
 
       <AssistantBar screen="kyc" />
     </CustomerAppShell>

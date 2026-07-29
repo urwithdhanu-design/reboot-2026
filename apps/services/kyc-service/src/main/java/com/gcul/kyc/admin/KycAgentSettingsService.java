@@ -68,10 +68,9 @@ public class KycAgentSettingsService {
 	public int approveAllInProgress() {
 		List<UserAccount> pending = users.findByKycStatusOrderByKycSubmittedAtDesc("in_progress");
 		for (UserAccount user : pending) {
-			user.setKycStatus("verified");
+			user.setKycStatus("pending_consent");
 			user.setKycApprovalMode(KycApprovalModes.AUTO_AGENT);
 			users.save(user);
-			customerEvents.customerVerified(user);
 		}
 		return pending.size();
 	}

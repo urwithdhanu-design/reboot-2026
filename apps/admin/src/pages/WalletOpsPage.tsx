@@ -3,6 +3,7 @@ import {
   Activity,
   ArrowDownLeft,
   ArrowUpRight,
+  Landmark,
   Link2,
   RefreshCw,
   Wallet,
@@ -37,6 +38,8 @@ const typeBadge: Record<string, 'success' | 'warning' | 'error' | 'info' | 'neut
   claim_payout: 'success',
   premium: 'warning',
   recharge: 'info',
+  pool_top_up: 'info',
+  pool_claim_debit: 'warning',
 };
 
 function formatWhen(iso?: string | null) {
@@ -64,6 +67,10 @@ export function WalletOpsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [live, setLive] = useState(true);
+  const [topUpAmount, setTopUpAmount] = useState('10000');
+  const [topUpReference, setTopUpReference] = useState('insurer-funding');
+  const [topUpBusy, setTopUpBusy] = useState(false);
+  const [topUpMessage, setTopUpMessage] = useState<string | null>(null);
 
   const load = useCallback((silent = false) => {
     if (!silent) setLoading(true);
@@ -90,6 +97,26 @@ export function WalletOpsPage() {
     const id = window.setInterval(() => load(true), REFRESH_MS);
     return () => window.clearInterval(id);
   }, [live, load]);
+
+  async function handleTopUp(e: React.FormEvent) {
+    e.preventDefault();
+    const amount = Number.parseFloat(topUpAmount);
+    if (!Number.isFinite(amount) || amount <= 0) {
+      setTopUpMessage('Enter a valid top-up amount greater than zero.');
+      return;
+    }
+    setTopUpBusy(true);
+    setTopUpMessage(null);
+    try {
+      await adminApi.topUpClaimsPool(amount, topUpReference || undefined, 'admin');
+      setTopUpMessage(`Added ${formatGBP(amount)} to the claims reserve.`);
+      load(true);
+    } catch (err) {
+      setTopUpMessage(err instanceof Error ? err.message : 'Top-up failed');
+    } finally {
+      setTopUpBusy(false);
+    }
+  }
 
   const stats = data?.stats;
   const transactions = data?.transactions ?? [];
@@ -122,6 +149,65 @@ export function WalletOpsPage() {
       />
 
       {error ? <AlertBanner>{error}</AlertBanner> : null}
+
+      <ContentPanel
+        title="Insurer claims reserve"
+        description="Platform pool debited on claim settlement before customer wallet credit"
+        className="mb-6"
+      >
+        <div className="grid grid-cols-1 lg:grid-cols-[1fr_auto] gap-6 items-start">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <StatCard
+              label="Pool balance"
+              value={formatGBP(data?.claims_pool?.balance_gbp ?? stats?.claims_pool_balance_gbp ?? 0)}
+              change={data?.claims_pool?.label ?? 'Claims reserve'}
+              icon={Landmark}
+              trend="neutral"
+            />
+            <StatCard
+              label="Pool top-ups"
+              value={formatGBP(stats?.claims_pool_top_ups_gbp ?? 0)}
+              change="Insurer / admin funding"
+              icon={ArrowDownLeft}
+              trend="up"
+            />
+            <StatCard
+              label="Claim debits"
+              value={formatGBP(stats?.claims_pool_debits_gbp ?? 0)}
+              change="Settled from reserve"
+              icon={ArrowUpRight}
+              trend="down"
+            />
+          </div>
+          <form className="flex flex-col gap-3 min-w-[240px]" onSubmit={handleTopUp}>
+            <label className="text-sm font-medium text-lbg-gray-600">
+              Top-up amount (£)
+              <input
+                className="mt-1 w-full rounded-lg border border-lbg-gray-200 px-3 py-2"
+                type="number"
+                min="0.01"
+                step="0.01"
+                value={topUpAmount}
+                onChange={(e) => setTopUpAmount(e.target.value)}
+                required
+              />
+            </label>
+            <label className="text-sm font-medium text-lbg-gray-600">
+              Reference
+              <input
+                className="mt-1 w-full rounded-lg border border-lbg-gray-200 px-3 py-2"
+                type="text"
+                value={topUpReference}
+                onChange={(e) => setTopUpReference(e.target.value)}
+              />
+            </label>
+            <Button type="submit" variant="hero" disabled={topUpBusy}>
+              {topUpBusy ? 'Funding…' : 'Fund claims pool'}
+            </Button>
+            {topUpMessage ? <p className="text-xs text-lbg-gray-500">{topUpMessage}</p> : null}
+          </form>
+        </div>
+      </ContentPanel>
 
       {data?.generated_at ? (
         <p className="text-xs text-lbg-gray-400 mb-4">

@@ -24,6 +24,17 @@ local-dev.cmd start
 | Customer | http://localhost:5174 |
 | Admin | http://localhost:5175 |
 
+**Vendor partner UIs (customer app — Vitality-branded quote flows):**
+
+| Partner | Quote UI | Vendor portal login |
+|---------|----------|---------------------|
+| Vitality | http://localhost:5174/vendors/vitality → Health Plan quote | http://localhost:5175/vendor/login · `vendor.vitality@example.com` / `VendorDemo123!` |
+| HomeShield | http://localhost:5174/vendors/homeshield → Home quote | http://localhost:5175/vendor/login · `vendor.homeshield@example.com` / `VendorDemo123!` |
+
+Vendor portal **reserve funding**: after login at `/vendor/portal`, use **Claims reserve funding** to transfer from your vendor reserve (£50k demo) to the shared insurer claims pool. Claim payouts debit that pool.
+
+Direct quote URLs: http://localhost:5174/quote/health-plan (Vitality) · http://localhost:5174/quote/home-insurance (HomeShield).
+
 **Admin sign-in (local kyc-service, seeded on startup):**
 
 | Field | Value |

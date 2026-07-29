@@ -44,6 +44,12 @@ public class KycController {
 		return submissions.submit(user, body);
 	}
 
+	@PostMapping("/consent")
+	public Map<String, Object> acceptConsent(HttpServletRequest request) {
+		UserAccount user = requireUser(request);
+		return submissions.acceptConsent(user);
+	}
+
 	@PostMapping(value = "/selfie", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
 	public Map<String, Object> uploadSelfie(
 			@RequestParam("file") MultipartFile file,
@@ -76,6 +82,10 @@ public class KycController {
 		response.put("status", user.getKycStatus());
 		response.put("progress", UserMapper.fromJsonMap(user.getKycProgressJson()));
 		response.put("document_type", user.getKycDocumentType() == null ? "" : user.getKycDocumentType());
+		response.put("requires_consent", "pending_consent".equals(user.getKycStatus()));
+		if (user.getKycApprovalMode() != null) {
+			response.put("approval_mode", user.getKycApprovalMode());
+		}
 		return response;
 	}
 

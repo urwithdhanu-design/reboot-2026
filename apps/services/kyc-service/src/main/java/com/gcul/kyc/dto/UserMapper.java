@@ -20,6 +20,12 @@ public final class UserMapper {
 		map.put("mobile_number", user.getMobileNumber());
 		map.put("role", user.getRole() == null ? PlatformRoles.CUSTOMER : user.getRole());
 		map.put("kyc_status", user.getKycStatus() == null ? "not_started" : user.getKycStatus());
+		if (user.getKycApprovalMode() != null) {
+			map.put("kyc_approval_mode", user.getKycApprovalMode());
+		}
+		if (user.getKycConsentAt() != null) {
+			map.put("kyc_consent_at", user.getKycConsentAt());
+		}
 		if (user.hasConnectedWallet()) {
 			Map<String, Object> wallet = new HashMap<>();
 			wallet.put("address", user.getWalletAddress());

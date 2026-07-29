@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Coins, Plus, Flame, Snowflake, Check, X, ExternalLink, RefreshCw, Eye, AlertTriangle } from 'lucide-react';
 import { AdminLayout } from '../components/layout/AdminLayout';
+import { PreMintChecksModal, type PreMintCheck } from '../components/PreMintChecksModal';
 import { Card, PageHeader, Badge, Button, PaginatedTable, StatCard, TablePagination, usePaginatedList, AlertBanner } from '../components/ui';
-import { adminApi, type TokenizationView, type TokenRegistryRow } from '../api';
+import { adminApi, type TokenizationView } from '../api';
 import { formatNumber } from '../data/adminMockData';
 
 const REFRESH_MS = 15_000;
@@ -31,6 +32,14 @@ function queueLabel(status: string) {
   return 'Pending mint';
 }
 
+type PreMintChecksTarget = {
+  title: string;
+  subtitle: string;
+  checks: PreMintCheck[];
+  policyId?: string;
+  canApproveMint?: boolean;
+};
+
 export function TokenizationPage() {
   const [tab, setTab] = useState<'registry' | 'mint-queue' | 'failed-mints' | 'standards'>('registry');
   const [data, setData] = useState<TokenizationView | null>(null);
@@ -38,7 +47,7 @@ export function TokenizationPage() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [actionPolicyId, setActionPolicyId] = useState<string | null>(null);
-  const [selectedToken, setSelectedToken] = useState<TokenRegistryRow | null>(null);
+  const [selectedChecks, setSelectedChecks] = useState<PreMintChecksTarget | null>(null);
 
   const load = useCallback((silent = false) => {
     if (!silent) setLoading(true);
@@ -247,7 +256,11 @@ export function TokenizationPage() {
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={() => setSelectedToken(t)}
+                      onClick={() => setSelectedChecks({
+                        title: t.name,
+                        subtitle: t.policy_number,
+                        checks: t.pre_mint_checks ?? [],
+                      })}
                       aria-label={`View pre-mint checks for ${t.name}`}
                       title="View pre-mint checks"
                     >
@@ -314,11 +327,29 @@ export function TokenizationPage() {
                 <div className="flex gap-2 shrink-0">
                   <Button
                     size="sm"
+                    variant="outline"
+                    onClick={() => setSelectedChecks({
+                      title: m.product_title,
+                      subtitle: `${m.policy_number} · ${m.customer_name}`,
+                      checks: m.pre_mint_checks ?? [],
+                    })}
+                  >
+                    <Eye className="w-4 h-4" />
+                    Pre-mint checks
+                  </Button>
+                  <Button
+                    size="sm"
                     disabled={actionPolicyId !== null}
-                    onClick={() => handleApproveMint(m.id)}
+                    onClick={() => setSelectedChecks({
+                      title: m.product_title,
+                      subtitle: `${m.policy_number} · ${m.customer_name}`,
+                      checks: m.pre_mint_checks ?? [],
+                      policyId: m.id,
+                      canApproveMint: true,
+                    })}
                   >
                     <Check className="w-4 h-4" />
-                    {actionPolicyId === m.id ? 'Minting…' : 'Approve Mint'}
+                    Approve Mint
                   </Button>
                   <Button
                     variant="danger"
@@ -333,6 +364,18 @@ export function TokenizationPage() {
               {m.status === 'pending_wallet' && (
                 <div className="flex flex-col items-end gap-2 shrink-0">
                   <Badge variant="warning">Customer must link wallet</Badge>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => setSelectedChecks({
+                      title: m.product_title,
+                      subtitle: `${m.policy_number} · ${m.customer_name}`,
+                      checks: m.pre_mint_checks ?? [],
+                    })}
+                  >
+                    <Eye className="w-4 h-4" />
+                    Pre-mint checks
+                  </Button>
                   <Button
                     size="sm"
                     variant="outline"
@@ -382,6 +425,18 @@ export function TokenizationPage() {
                 <p className="text-xs text-lbg-gray-400 mt-2">Failed {formatWhen(m.failed_at ?? m.requested_at)}</p>
               </div>
               <div className="flex gap-2 shrink-0">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setSelectedChecks({
+                    title: m.product_title,
+                    subtitle: `${m.policy_number} · ${m.customer_name}`,
+                    checks: m.pre_mint_checks ?? [],
+                  })}
+                >
+                  <Eye className="w-4 h-4" />
+                  Pre-mint checks
+                </Button>
                 <Button size="sm" disabled={actionPolicyId !== null} onClick={() => handleApproveMint(m.id)}>
                   <RefreshCw className={`w-4 h-4 ${actionPolicyId === m.id ? 'animate-spin' : ''}`} />
                   {actionPolicyId === m.id ? 'Retrying…' : 'Retry mint'}
@@ -433,32 +488,23 @@ export function TokenizationPage() {
         </div>
       )}
 
-      {selectedToken && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" role="dialog" aria-modal="true" aria-labelledby="pre-mint-checks-title">
-          <Card className="w-full max-w-xl shadow-xl">
-            <div className="flex items-start justify-between gap-4">
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-wide text-lbg-green">Token registry</p>
-                <h2 id="pre-mint-checks-title" className="mt-1 text-lg font-bold">Pre-mint checks</h2>
-                <p className="mt-1 text-sm text-lbg-gray-500">{selectedToken.name} · {selectedToken.policy_number}</p>
-              </div>
-              <Button variant="ghost" size="sm" onClick={() => setSelectedToken(null)} aria-label="Close pre-mint checks"><X className="w-4 h-4" /></Button>
-            </div>
-            <div className="mt-5 space-y-3">
-              {(selectedToken.pre_mint_checks ?? []).map((check) => (
-                <div key={check.name} className="flex gap-3 rounded-lg border border-lbg-gray-100 p-3">
-                  <Badge variant={check.status === 'passed' ? 'success' : check.status === 'failed' ? 'error' : 'warning'}>{check.status}</Badge>
-                  <div>
-                    <p className="text-sm font-semibold text-lbg-black">{check.name}</p>
-                    <p className="mt-0.5 text-xs text-lbg-gray-500">{check.detail}</p>
-                  </div>
-                </div>
-              ))}
-              {selectedToken.pre_mint_checks?.length === 0 ? <p className="text-sm text-lbg-gray-500">No check details were recorded for this legacy mint.</p> : null}
-            </div>
-          </Card>
-        </div>
-      )}
+      <PreMintChecksModal
+        open={selectedChecks !== null}
+        title={selectedChecks?.title ?? ''}
+        subtitle={selectedChecks?.subtitle ?? ''}
+        checks={selectedChecks?.checks ?? []}
+        minting={selectedChecks?.policyId != null && actionPolicyId === selectedChecks.policyId}
+        canApproveMint={selectedChecks?.canApproveMint}
+        onClose={() => setSelectedChecks(null)}
+        onApproveMint={
+          selectedChecks?.policyId && selectedChecks.canApproveMint
+            ? () => {
+                const policyId = selectedChecks.policyId!;
+                void handleApproveMint(policyId).then(() => setSelectedChecks(null));
+              }
+            : undefined
+        }
+      />
     </AdminLayout>
   );
 }

@@ -1,4 +1,8 @@
-export type KycStatus = "not_started" | "in_progress" | "verified" | "rejected" | string;
+export type KycStatus = "not_started" | "in_progress" | "pending_consent" | "verified" | "rejected" | string;
+
+export function isKycPendingConsent(status: KycStatus | null | undefined) {
+  return status === "pending_consent";
+}
 
 export function isKycVerified(status: KycStatus | null | undefined) {
   return status === "verified";
@@ -24,6 +28,8 @@ export function kycStatusPillVariant(status: KycStatus | null | undefined) {
   switch (status) {
     case "in_progress":
       return "pending";
+    case "pending_consent":
+      return "pending";
     case "rejected":
       return "warning";
     case "verified":
@@ -42,6 +48,14 @@ export function kycPromptCopy(status: KycStatus | null | undefined) {
         body: "Your KYC submission is pending review. You can return here to check status. Wallet setup unlocks once verification is approved.",
         cta: "View KYC status",
         tone: "pending" as const,
+      };
+    case "pending_consent":
+      return {
+        eyebrow: "Action required",
+        title: "Approve digitisation & privacy consent",
+        body: "Your identity check has been approved. Review the UK consent terms and approve to complete verification and unlock your wallet.",
+        cta: "Review consent",
+        tone: "action" as const,
       };
     case "rejected":
       return {

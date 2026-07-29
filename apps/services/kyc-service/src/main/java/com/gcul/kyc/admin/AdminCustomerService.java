@@ -58,11 +58,13 @@ public class AdminCustomerService {
 	public Map<String, Object> stats() {
 		long total = repository.count();
 		long verified = repository.countByKycStatus("verified");
+		long pendingConsent = repository.countByKycStatus("pending_consent");
 		long inProgress = repository.countByKycStatus("in_progress");
 		long notStarted = repository.countByKycStatus("not_started");
 		Map<String, Object> map = new LinkedHashMap<>();
 		map.put("total_customers", total);
 		map.put("kyc_verified", verified);
+		map.put("kyc_pending_consent", pendingConsent);
 		map.put("kyc_in_progress", inProgress);
 		map.put("kyc_not_started", notStarted);
 		return map;
@@ -71,23 +73,25 @@ public class AdminCustomerService {
 	@Transactional
 	public Map<String, Object> updateKycStatus(String userId, String status) {
 		String normalized = status == null ? "" : status.trim().toLowerCase(Locale.ROOT);
-		if (!List.of("verified", "rejected", "in_progress", "not_started").contains(normalized)) {
+		if (!List.of("verified", "rejected", "in_progress", "not_started", "pending_consent").contains(normalized)) {
 			throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-					"status must be verified, rejected, in_progress, or not_started");
+					"status must be verified, rejected, in_progress, pending_consent, or not_started");
 		}
 		UserAccount user = repository.findById(userId)
 				.orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Customer not found"));
-		user.setKycStatus(normalized);
 		if ("verified".equals(normalized)) {
+			user.setKycStatus("pending_consent");
 			user.setKycApprovalMode(KycApprovalModes.MANUAL_ADMIN);
+			user.setKycConsentAt(null);
 		}
-		else if ("in_progress".equals(normalized) || "not_started".equals(normalized)) {
-			user.setKycApprovalMode(null);
+		else {
+			user.setKycStatus(normalized);
+			if ("in_progress".equals(normalized) || "not_started".equals(normalized)) {
+				user.setKycApprovalMode(null);
+				user.setKycConsentAt(null);
+			}
 		}
 		repository.save(user);
-		if ("verified".equals(normalized)) {
-			customerEvents.customerVerified(user);
-		}
 		refreshAdminCaches();
 		return toAdminRow(user);
 	}
@@ -138,6 +142,9 @@ public class AdminCustomerService {
 	private static String accountStatus(UserAccount user) {
 		if ("verified".equals(user.getKycStatus())) {
 			return "active";
+		}
+		if ("pending_consent".equals(user.getKycStatus())) {
+			return "pending_consent";
 		}
 		if ("in_progress".equals(user.getKycStatus())) {
 			return "pending_kyc";

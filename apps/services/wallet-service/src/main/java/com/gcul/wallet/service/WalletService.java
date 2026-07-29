@@ -34,6 +34,7 @@ public class WalletService {
 	private final KycStatusClient kycStatusClient;
 	private final WalletEventPublisher walletEvents;
 	private final WalletConsentService consentService;
+	private final ClaimsPoolService claimsPool;
 	private final SecureRandom random = new SecureRandom();
 
 	public WalletService(
@@ -41,12 +42,14 @@ public class WalletService {
 			WalletTransactionRepository transactions,
 			KycStatusClient kycStatusClient,
 			WalletEventPublisher walletEvents,
-			WalletConsentService consentService) {
+			WalletConsentService consentService,
+			ClaimsPoolService claimsPool) {
 		this.repository = repository;
 		this.transactions = transactions;
 		this.kycStatusClient = kycStatusClient;
 		this.walletEvents = walletEvents;
 		this.consentService = consentService;
+		this.claimsPool = claimsPool;
 	}
 
 	@Transactional
@@ -256,6 +259,8 @@ public class WalletService {
 		}
 
 		double credit = roundMoney(amount);
+		claimsPool.debitForClaim(credit, claimId);
+
 		wallet.setBalanceGbp(roundMoney(wallet.getBalanceGbp() + credit));
 		wallet.setUpdatedAt(Instant.now());
 		wallet = repository.saveAndFlush(wallet);
@@ -275,6 +280,7 @@ public class WalletService {
 
 		Map<String, Object> response = toResponse(wallet);
 		response.put("transaction", toTransactionResponse(tx));
+		response.put("claims_pool", claimsPool.view());
 		response.put("reused", false);
 		return response;
 	}

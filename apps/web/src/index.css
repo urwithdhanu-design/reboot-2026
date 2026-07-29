@@ -1540,6 +1540,144 @@ a.link-quiet:hover {
   cursor: pointer;
 }
 
+.kyc-page-toolbar {
+  display: flex;
+  justify-content: flex-end;
+  margin: 0 0 12px;
+}
+
+.kyc-consent-modal {
+  max-width: 640px;
+  max-height: min(90vh, 820px);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.kyc-consent-body {
+  padding: 0 22px 22px;
+  overflow-y: auto;
+}
+
+.kyc-consent-lead {
+  margin: 0 0 8px;
+  font-size: 0.95rem;
+  line-height: 1.5;
+}
+
+.kyc-consent-sub {
+  margin: 0 0 16px;
+  font-size: 0.8rem;
+}
+
+.kyc-consent-list {
+  list-style: none;
+  margin: 0 0 16px;
+  padding: 0;
+  display: grid;
+  gap: 10px;
+}
+
+.kyc-consent-list li {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: #f3faf6;
+  border: 1px solid #d9ebe2;
+  font-size: 0.82rem;
+  line-height: 1.45;
+}
+
+.kyc-consent-tick {
+  flex-shrink: 0;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--lbg-green);
+  color: #fff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75rem;
+  font-weight: 800;
+}
+
+.kyc-consent-ack {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  font-size: 0.85rem;
+  line-height: 1.45;
+  margin: 0 0 16px;
+  cursor: pointer;
+}
+
+.kyc-consent-ack input {
+  margin-top: 3px;
+  flex-shrink: 0;
+}
+
+.kyc-consent-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+}
+
+.register-terms-link {
+  border: 0;
+  background: none;
+  padding: 0;
+  margin: 0;
+  font: inherit;
+  font-weight: 700;
+  color: var(--lbg-green-deep);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+
+.register-terms-link:hover {
+  color: var(--lbg-green);
+}
+
+.register-terms-body {
+  padding-top: 4px;
+}
+
+.register-terms-section + .register-terms-section {
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid #e8ece9;
+}
+
+.register-terms-heading {
+  margin: 0 0 4px;
+  font-size: 1rem;
+  font-weight: 800;
+  color: var(--ink);
+}
+
+.register-terms-eyebrow {
+  margin: 0 0 12px;
+  font-size: 0.78rem;
+}
+
+.register-terms-section-focus {
+  animation: register-terms-highlight 1.2s ease;
+}
+
+@keyframes register-terms-highlight {
+  0% {
+    background: rgba(0, 106, 77, 0.08);
+  }
+  100% {
+    background: transparent;
+  }
+}
+
 .cancel-wizard-steps {
   display: flex;
   gap: 8px;

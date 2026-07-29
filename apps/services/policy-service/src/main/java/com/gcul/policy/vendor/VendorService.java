@@ -2,7 +2,6 @@ package com.gcul.policy.vendor;
 
 import java.security.SecureRandom;
 import java.time.Instant;
-import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
@@ -17,17 +16,16 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+import com.gcul.policy.client.VendorReserveClient;
 import com.gcul.policy.mail.MailService;
-import com.gcul.policy.model.InsurancePlan;
-import com.gcul.policy.repository.InsurancePlanRepository;
 
 @Service
 public class VendorService {
 
 	private final InsuranceVendorRepository vendors;
 	private final VendorAccountRepository accounts;
-	private final InsurancePlanRepository plans;
 	private final MailService mail;
+	private final VendorReserveClient vendorReserve;
 	private final BCryptPasswordEncoder passwords = new BCryptPasswordEncoder();
 	private final SecureRandom random = new SecureRandom();
 	private final Map<String, Map<String, Object>> vendorSessions = new ConcurrentHashMap<>();
@@ -35,12 +33,12 @@ public class VendorService {
 	public VendorService(
 			InsuranceVendorRepository vendors,
 			VendorAccountRepository accounts,
-			InsurancePlanRepository plans,
-			MailService mail) {
+			MailService mail,
+			VendorReserveClient vendorReserve) {
 		this.vendors = vendors;
 		this.accounts = accounts;
-		this.plans = plans;
 		this.mail = mail;
+		this.vendorReserve = vendorReserve;
 	}
 
 	@Transactional(readOnly = true)
@@ -138,7 +136,7 @@ public class VendorService {
 	public Map<String, Object> publish(String id, Map<String, Object> body) {
 		InsuranceVendor vendor = requireVendor(id);
 		String uiUrl = str(body.get("ui_deploy_url"),
-				"https://vendors.reboot2026.local/" + vendor.getCode());
+				"http://localhost:5174/vendors/" + vendor.getCode().toLowerCase(Locale.ROOT));
 		String version = str(body.get("ui_version"), "1.0.0");
 		String servicesJson = str(body.get("services_config_json"),
 				defaultServicesConfig(vendor));
@@ -218,87 +216,50 @@ public class VendorService {
 
 	@Transactional(readOnly = true)
 	public Map<String, Object> vendorDashboard(String bearerToken) {
-		Map<String, Object> session = requireSession(bearerToken);
-		String vendorId = String.valueOf(session.get("vendor_id"));
-		InsuranceVendor vendor = requireVendor(vendorId);
-
-		List<InsurancePlan> linkedPlans = plans.findAll().stream()
-				.filter(p -> matchesVendor(p, vendor))
-				.collect(Collectors.toList());
+		InsuranceVendor vendor = vendorFromSession(bearerToken);
 
 		Map<String, Object> dashboard = new LinkedHashMap<>();
 		dashboard.put("vendor", toPublic(vendor));
-		dashboard.put("products", linkedPlans.stream().map(this::planSummary).collect(Collectors.toList()));
-		dashboard.put("customers", demoCustomers(vendor));
-		dashboard.put("claims", demoClaims(vendor));
-		dashboard.put("stats", Map.of(
-				"products", linkedPlans.size(),
-				"customers", 3,
-				"open_claims", 1,
-				"status", vendor.getStatus()));
+		try {
+			dashboard.put("reserve", vendorReserve.view(vendor.getCode(), vendor.getName()));
+		}
+		catch (Exception ex) {
+			dashboard.put("reserve_error", ex.getMessage());
+		}
 		return dashboard;
 	}
 
-	private boolean matchesVendor(InsurancePlan plan, InsuranceVendor vendor) {
-		String cats = vendor.getCategories() == null ? "" : vendor.getCategories().toLowerCase(Locale.ROOT);
-		String planCat = plan.getCategory() == null ? "" : plan.getCategory().toLowerCase(Locale.ROOT);
-		if (cats.contains(planCat)) {
-			return true;
+	@Transactional(readOnly = true)
+	public Map<String, Object> vendorReserveView(String bearerToken) {
+		InsuranceVendor vendor = vendorFromSession(bearerToken);
+		return vendorReserve.view(vendor.getCode(), vendor.getName());
+	}
+
+	@Transactional(readOnly = true)
+	public Map<String, Object> vendorContributeToClaimsPool(String bearerToken, Map<String, Object> body) {
+		InsuranceVendor vendor = vendorFromSession(bearerToken);
+		double amount = parseAmount(body.get("amount"));
+		if (amount <= 0) {
+			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "amount must be greater than zero");
 		}
-		String code = vendor.getCode() == null ? "" : vendor.getCode().toLowerCase(Locale.ROOT);
-		String title = plan.getTitle() == null ? "" : plan.getTitle().toLowerCase(Locale.ROOT);
-		return title.contains(code) || ("vitality".equals(code) && title.contains("health"));
+		String reference = body.get("reference") == null ? null : String.valueOf(body.get("reference"));
+		return vendorReserve.contribute(vendor.getCode(), vendor.getName(), amount, reference);
 	}
 
-	private Map<String, Object> planSummary(InsurancePlan plan) {
-		Map<String, Object> map = new LinkedHashMap<>();
-		map.put("id", plan.getId());
-		map.put("title", plan.getTitle());
-		map.put("category", plan.getCategory());
-		map.put("price_from", plan.getPriceFrom());
-		map.put("price_unit", plan.getPriceUnit());
-		return map;
+	private InsuranceVendor vendorFromSession(String bearerToken) {
+		Map<String, Object> session = requireSession(bearerToken);
+		String vendorId = String.valueOf(session.get("vendor_id"));
+		return requireVendor(vendorId);
 	}
 
-	private List<Map<String, Object>> demoCustomers(InsuranceVendor vendor) {
-		List<Map<String, Object>> list = new ArrayList<>();
-		list.add(Map.of(
-				"id", "cust-1",
-				"name", "Alex Morgan",
-				"email", "alex.morgan@email.com",
-				"product", vendor.getCategories().contains("Health") ? "Health Plan" : vendor.getName() + " Cover",
-				"status", "active"));
-		list.add(Map.of(
-				"id", "cust-2",
-				"name", "Priya Shah",
-				"email", "priya.shah@email.com",
-				"product", vendor.getName() + " Cover",
-				"status", "quote"));
-		list.add(Map.of(
-				"id", "cust-3",
-				"name", "James Okafor",
-				"email", "james.o@email.com",
-				"product", vendor.getName() + " Cover",
-				"status", "active"));
-		return list;
-	}
-
-	private List<Map<String, Object>> demoClaims(InsuranceVendor vendor) {
-		return List.of(
-				Map.of(
-						"id", "clm-1001",
-						"customer", "Alex Morgan",
-						"type", "Treatment reimbursement",
-						"amount", 420.0,
-						"status", "open",
-						"vendor", vendor.getName()),
-				Map.of(
-						"id", "clm-1002",
-						"customer", "James Okafor",
-						"type", "GP referral",
-						"amount", 85.0,
-						"status", "paid",
-						"vendor", vendor.getName()));
+	private static double parseAmount(Object raw) {
+		if (raw instanceof Number number) {
+			return number.doubleValue();
+		}
+		if (raw == null) {
+			return 0;
+		}
+		return Double.parseDouble(String.valueOf(raw));
 	}
 
 	private Map<String, Object> requireSession(String bearerToken) {

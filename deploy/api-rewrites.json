@@ -6,6 +6,8 @@
   { "source": "/api/auth/**", "serviceId": "gcul-kyc" },
   { "source": "/api/kyc/**", "serviceId": "gcul-kyc" },
   { "source": "/api/wallet/**", "serviceId": "gcul-wallet" },
+  { "source": "/api/admin/wallet-ops", "serviceId": "gcul-wallet" },
+  { "source": "/api/admin/wallet-ops/**", "serviceId": "gcul-wallet" },
   { "source": "/api/assistant/**", "serviceId": "gcul-kyc" },
   { "source": "/api/admin/customers", "serviceId": "gcul-kyc" },
   { "source": "/api/admin/customers/**", "serviceId": "gcul-kyc" },
