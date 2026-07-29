@@ -25,7 +25,9 @@ public class CustomerAuthFilter extends OncePerRequestFilter {
 		if (path.startsWith("/api/policies/me")) {
 			return false;
 		}
-		return !path.matches("/api/policies/[^/]+/cancel.*");
+		// Customer policy actions must carry the JWT so the controller can enforce
+		// ownership before sending a renewal to the Canton minting workflow.
+		return !path.matches("/api/policies/[^/]+/(cancel|renew).*" );
 	}
 
 	@Override

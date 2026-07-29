@@ -137,6 +137,11 @@ public class PolicyRecordService {
 	}
 
 	private void activateCoverageOnMint(PolicyRecord record, Instant activatedAt) {
+		// Renewals carry a pre-calculated consecutive cover period. Do not replace it
+		// with a quote-derived period beginning at the mint timestamp.
+		if (StringUtils.hasText(record.getRenewalOfPolicyId())) {
+			return;
+		}
 		if (!StringUtils.hasText(record.getQuoteId())) {
 			applyCoverage(record, coverageResolver.activateFallback(
 					record.getProductCategory(), record.getProductTitle(), activatedAt));
@@ -432,7 +437,24 @@ public class PolicyRecordService {
 		map.put("refund_status", record.getRefundStatus());
 		map.put("refund_amount_gbp", record.getRefundAmountGbp());
 		map.put("refund_payment_id", record.getRefundPaymentId());
+		map.put("renewal_of_policy_id", record.getRenewalOfPolicyId());
+		map.put("renewal_sequence", record.getRenewalSequence());
+		map.put("renewed_at", record.getRenewedAt() == null ? null : record.getRenewedAt().toString());
+		map.put("renewal_eligible", isHomeRenewalEligible(record));
 		return map;
+	}
+
+	private static boolean isHomeRenewalEligible(PolicyRecord record) {
+		if (StringUtils.hasText(record.getRenewalOfPolicyId()) || "cancelled".equalsIgnoreCase(record.getStatus())) {
+			return false;
+		}
+		if (!"MINTED".equalsIgnoreCase(record.getMintStatus())) {
+			return false;
+		}
+		return record.getProductTitle() != null
+				&& record.getProductTitle().toLowerCase(java.util.Locale.ROOT).contains("home")
+				&& "Property".equalsIgnoreCase(PolicyCoverageResolver.normalizeProductCategory(
+						record.getProductCategory(), record.getProductTitle()));
 	}
 
 	private static boolean isCoverageActive(PolicyRecord record) {

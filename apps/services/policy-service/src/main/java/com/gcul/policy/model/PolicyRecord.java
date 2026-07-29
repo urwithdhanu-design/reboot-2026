@@ -101,6 +101,14 @@ public class PolicyRecord {
 	@Column(length = 64)
 	private String refundPaymentId;
 
+	/** The previous policy when this record was created by a customer renewal. */
+	@Column(length = 96)
+	private String renewalOfPolicyId;
+
+	private Integer renewalSequence;
+
+	private Instant renewedAt;
+
 	public String getPolicyId() {
 		return policyId;
 	}
@@ -386,5 +394,29 @@ public class PolicyRecord {
 
 	public void setRefundPaymentId(String refundPaymentId) {
 		this.refundPaymentId = refundPaymentId;
+	}
+
+	public String getRenewalOfPolicyId() {
+		return renewalOfPolicyId;
+	}
+
+	public void setRenewalOfPolicyId(String renewalOfPolicyId) {
+		this.renewalOfPolicyId = renewalOfPolicyId;
+	}
+
+	public Integer getRenewalSequence() {
+		return renewalSequence;
+	}
+
+	public void setRenewalSequence(Integer renewalSequence) {
+		this.renewalSequence = renewalSequence;
+	}
+
+	public Instant getRenewedAt() {
+		return renewedAt;
+	}
+
+	public void setRenewedAt(Instant renewedAt) {
+		this.renewedAt = renewedAt;
 	}
 }

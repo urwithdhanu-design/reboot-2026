@@ -120,7 +120,15 @@ function policySortRank(policy: CustomerPolicyRecord): number {
   return 3;
 }
 
-function PolicyCard({ policy }: { policy: CustomerPolicyRecord }) {
+function PolicyCard({
+  policy,
+  onRenew,
+  renewing,
+}: {
+  policy: CustomerPolicyRecord;
+  onRenew: (policy: CustomerPolicyRecord) => void;
+  renewing: boolean;
+}) {
   const [showDigital, setShowDigital] = useState(false);
   const isCanton =
     policy.ledger_type === "canton"
@@ -218,6 +226,23 @@ function PolicyCard({ policy }: { policy: CustomerPolicyRecord }) {
           ) : null}
         </div>
       ) : null}
+
+      {policy.renewal_eligible ? (
+        <div className="policy-card-digital">
+          <strong>Renew your Home Insurance</strong>
+          <p className="muted" style={{ margin: "4px 0 10px" }}>
+            A new one-year policy will be stored in your account and minted to your linked wallet on Canton.
+          </p>
+          <button
+            type="button"
+            className="btn-primary"
+            disabled={renewing}
+            onClick={() => onRenew(policy)}
+          >
+            {renewing ? "Renewing on Canton…" : "Renew policy"}
+          </button>
+        </div>
+      ) : null}
     </article>
   );
 }
@@ -248,6 +273,7 @@ export function PoliciesPage() {
   const [quotesLoading, setQuotesLoading] = useState(true);
   const [selectedQuoteId, setSelectedQuoteId] = useState<string | null>(null);
   const [cancelWizardOpen, setCancelWizardOpen] = useState(false);
+  const [renewingPolicyId, setRenewingPolicyId] = useState<string | null>(null);
 
   const displayQuotes = useMemo(() => {
     const issued = new Set(issuedQuoteIds);
@@ -369,7 +395,30 @@ export function PoliciesPage() {
       setNotice(null);
       return;
     }
+    if (id === "renewal") {
+      setNotice("Choose ‘Renew policy’ on an eligible Home Insurance policy below.");
+      return;
+    }
     setNotice(ACTION_MESSAGES[id] ?? "We'll open this for you shortly.");
+  }
+
+  async function renewPolicy(policy: CustomerPolicyRecord) {
+    if (!token) {
+      setNotice("Sign in to renew a policy online.");
+      return;
+    }
+    setRenewingPolicyId(policy.policy_id);
+    setNotice(null);
+    try {
+      const result = await api.renewHomePolicy(token, policy.policy_id);
+      const rows = await fetchMyPolicies(token);
+      setPolicies(rows);
+      setNotice(`${result.message} New policy: ${result.renewal.policy_number}.`);
+    } catch (err) {
+      setNotice(err instanceof Error ? err.message : "Could not renew this policy.");
+    } finally {
+      setRenewingPolicyId(null);
+    }
   }
 
   const activeCoverCount = policies.filter(
@@ -438,7 +487,12 @@ export function PoliciesPage() {
         ) : sortedPolicies.length > 0 ? (
           <div className="policy-card-list">
             {sortedPolicies.map((policy) => (
-              <PolicyCard key={policy.policy_id} policy={policy} />
+              <PolicyCard
+                key={policy.policy_id}
+                policy={policy}
+                onRenew={(selected) => void renewPolicy(selected)}
+                renewing={renewingPolicyId === policy.policy_id}
+              />
             ))}
           </div>
         ) : (

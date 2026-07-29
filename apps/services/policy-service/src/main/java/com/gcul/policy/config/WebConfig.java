@@ -51,7 +51,9 @@ public class WebConfig {
 	FilterRegistrationBean<CustomerAuthFilter> customerAuthFilter(JwtService jwtService) {
 		FilterRegistrationBean<CustomerAuthFilter> registration = new FilterRegistrationBean<>();
 		registration.setFilter(new CustomerAuthFilter(jwtService));
-		registration.addUrlPatterns("/api/policies/me", "/api/policies/*/cancel", "/api/policies/*/cancel/*");
+		// Servlet filter patterns can contain only one trailing wildcard. Register
+		// the policy namespace and let CustomerAuthFilter select customer actions.
+		registration.addUrlPatterns("/api/policies/*");
 		registration.setOrder(2);
 		return registration;
 	}

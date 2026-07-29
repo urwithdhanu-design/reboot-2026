@@ -172,6 +172,16 @@ export type CustomerPolicyRecord = {
   refund_status?: string | null;
   refund_amount_gbp?: number | null;
   refund_payment_id?: string | null;
+  renewal_of_policy_id?: string | null;
+  renewal_sequence?: number | null;
+  renewed_at?: string | null;
+  renewal_eligible?: boolean;
+};
+
+export type PolicyRenewalResponse = {
+  source_policy_id: string;
+  renewal: CustomerPolicyRecord;
+  message: string;
 };
 
 export type PolicyCancelPreview = {
@@ -462,6 +472,13 @@ export const api = {
     request<PolicyCancelResponse>(
       `/api/policies/${encodeURIComponent(policyId)}/cancel`,
       { method: "POST", body: JSON.stringify(body) },
+      token,
+    ),
+
+  renewHomePolicy: (token: string, policyId: string) =>
+    request<PolicyRenewalResponse>(
+      `/api/policies/${encodeURIComponent(policyId)}/renew`,
+      { method: "POST" },
       token,
     ),
 

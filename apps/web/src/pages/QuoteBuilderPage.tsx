@@ -214,12 +214,14 @@ export function QuoteBuilderPage() {
   }
 
   async function runHomeDemoFill() {
-    if (!user || !product || demoFilling || submitting) return;
+    if (!product || demoFilling || submitting) return;
     setDemoFilling(true);
     setDemoFlash(true);
     setError(null);
     setShowQuote(false);
-    const full = buildHomeDemoAnswers(user);
+    const full = buildHomeDemoAnswers(
+      user ?? { full_name: "Demo Customer", email: "demo.home@example.com" },
+    );
     const steps = homeDemoStepSequence(full.claims_count);
 
     try {
@@ -443,8 +445,8 @@ export function QuoteBuilderPage() {
         error={error}
         demoFilling={demoFilling}
         demoFlash={demoFlash}
-        userName={user?.full_name}
-        canDemoFill={!!user}
+        userName={user?.full_name ?? "Demo Customer"}
+        canDemoFill
         onDemoFill={() => void runHomeDemoFill()}
         onBack={onBack}
         onNext={onNextStep}

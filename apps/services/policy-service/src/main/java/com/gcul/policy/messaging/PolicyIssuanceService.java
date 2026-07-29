@@ -349,6 +349,32 @@ public class PolicyIssuanceService {
 		}
 	}
 
+	/**
+	 * Performs the same KYC, UK compliance and Canton mint process used for a
+	 * paid policy. Renewal records are already persisted before this is called,
+	 * so a Canton failure remains visible off-chain for safe retry and support.
+	 */
+	public Map<String, Object> mintRenewalPolicy(PolicyRecord record, String authenticatedUserId, String authenticatedEmail) {
+		if (!StringUtils.hasText(record.getWalletAddress())) {
+			throw new org.springframework.web.server.ResponseStatusException(
+					org.springframework.http.HttpStatus.BAD_REQUEST,
+					"A linked customer wallet is required before a policy can be renewed");
+		}
+		if (!kycInternalClient.isVerifiedForAny(
+				authenticatedUserId,
+				authenticatedEmail,
+				record.getCustomerId(),
+				record.getCustomerEmail())) {
+			throw new org.springframework.web.server.ResponseStatusException(
+					org.springframework.http.HttpStatus.BAD_REQUEST,
+					"KYC verification is required before a policy can be renewed");
+		}
+		requestBlockchainMint(record, true, true);
+		return policyRecords.findByPolicyId(record.getPolicyId())
+				.map(policyRecords::toResponse)
+				.orElseThrow();
+	}
+
 	private boolean approveCompliance(PolicyRecord record, boolean kycVerified) {
 		boolean consent = record.getCustomerEmail() != null && !record.getCustomerEmail().isBlank();
 		boolean duplicate = record.getTokenId() != null && !record.getTokenId().isBlank();

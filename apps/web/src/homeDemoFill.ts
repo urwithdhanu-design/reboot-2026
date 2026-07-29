@@ -1,10 +1,11 @@
-import type { AuthUser } from "./api";
 import { splitFullName } from "./healthDemoFill";
 
 const HOME_DEMO_ADDRESS = "BUCKINGHAM PALACE\nTHE MALL\nLONDON\nSW1A 1AA";
 
 /** Demo answers for the 13-step home insurance quote wizard. */
-export function buildHomeDemoAnswers(user: AuthUser): Record<string, string> {
+export function buildHomeDemoAnswers(
+  user: Pick<import("./api").AuthUser, "full_name" | "email">,
+): Record<string, string> {
   const { first, last } = splitFullName(user.full_name);
   const start = new Date();
   start.setDate(start.getDate() + 3);

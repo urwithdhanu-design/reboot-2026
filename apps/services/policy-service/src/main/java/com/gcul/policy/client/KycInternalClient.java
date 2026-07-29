@@ -1,6 +1,7 @@
 package com.gcul.policy.client;
 
 import java.util.Map;
+import java.util.LinkedHashSet;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -22,22 +23,33 @@ public class KycInternalClient {
 
 	@SuppressWarnings("unchecked")
 	public boolean isVerified(String customerId) {
-		if (!StringUtils.hasText(customerId)) {
-			return false;
+		return isVerifiedForAny(customerId);
+	}
+
+	/** A legacy policy may hold an email or pre-wallet user ID; accept any proven customer identity. */
+	@SuppressWarnings("unchecked")
+	public boolean isVerifiedForAny(String... customerIdsOrEmails) {
+		var candidates = new LinkedHashSet<String>();
+		for (String candidate : customerIdsOrEmails) {
+			if (StringUtils.hasText(candidate)) candidates.add(candidate.trim());
 		}
-		try {
-			Map<String, Object> body = restClient.get()
-					.uri(uriBuilder -> uriBuilder
-							.path("/api/internal/kyc/status")
-							.queryParam("customerId", customerId.trim())
-							.build())
-					.retrieve()
-					.body(Map.class);
-			return body != null && "verified".equalsIgnoreCase(String.valueOf(body.get("status")));
+		for (String candidate : candidates) {
+			try {
+				Map<String, Object> body = restClient.get()
+						.uri(uriBuilder -> uriBuilder
+								.path("/api/internal/kyc/status")
+								.queryParam("customerId", candidate)
+								.build())
+						.retrieve()
+						.body(Map.class);
+				if (body != null && "verified".equalsIgnoreCase(String.valueOf(body.get("status")))) {
+					return true;
+				}
+			}
+			catch (Exception ex) {
+				log.debug("KYC lookup failed for {}: {}", candidate, ex.getMessage());
+			}
 		}
-		catch (Exception ex) {
-			log.debug("KYC lookup failed for {}: {}", customerId, ex.getMessage());
-			return false;
-		}
+		return false;
 	}
 }

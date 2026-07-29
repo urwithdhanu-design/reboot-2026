@@ -12,6 +12,8 @@ public interface PolicyRecordRepository extends JpaRepository<PolicyRecord, Stri
 
 	Optional<PolicyRecord> findByQuoteId(String quoteId);
 
+	Optional<PolicyRecord> findFirstByRenewalOfPolicyIdOrderByRenewalSequenceDesc(String renewalOfPolicyId);
+
 	List<PolicyRecord> findByCustomerIdOrderByIssuedAtDesc(String customerId);
 
 	List<PolicyRecord> findByCustomerEmailOrderByIssuedAtDesc(String customerEmail);
