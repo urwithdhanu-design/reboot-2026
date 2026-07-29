@@ -47,3 +47,22 @@ template InsurancePolicy
 
     key (insurer, policyReferenceHash) : (Party, Text)
     maintainer key._1
+
+-- Immutable on-ledger record of a GBP claim payout after the customer wallet has been credited.
+template ClaimSettlement
+  with
+    insurer : Party
+    customer : Party
+    claimId : Text
+    policyId : Text
+    customerId : Text
+    walletAddress : Text
+    amountGbp : Decimal
+    settlementSource : Text
+    settledAt : Time
+  where
+    signatory insurer
+    observer customer
+
+    key (insurer, claimId) : (Party, Text)
+    maintainer key._1

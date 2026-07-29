@@ -280,9 +280,12 @@ public class ClaimWorkflowService {
 					claim.getPolicyRef(),
 					payout,
 					claim.getCustomerId(),
+					walletAddress,
+					claim.getSource(),
 					num(coverage.get("coverage_limit_gbp"), 0),
 					num(coverage.get("coverage_remaining_gbp"), 0));
 			claim.setSettlementTransactionId(firstNonBlank(
+					str(settlement.get("canton_contract_id")),
 					str(settlement.get("id")),
 					str(settlement.get("digest"))));
 		}

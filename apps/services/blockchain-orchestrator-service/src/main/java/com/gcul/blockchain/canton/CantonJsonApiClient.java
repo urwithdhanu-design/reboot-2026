@@ -8,6 +8,7 @@ import java.util.Optional;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
@@ -156,6 +157,42 @@ public class CantonJsonApiClient {
 		contractId.ifPresent(id -> result.put("contractId", id));
 		contractId.ifPresent(id -> result.put("templateId", resolveTemplateId("Gcul.InsurancePolicy", "InsurancePolicy")));
 		return result;
+	}
+
+	public CantonClaimSettlementResult settleClaim(CantonClaimSettlementCommand command) {
+		String insurerParty = resolveInsurerParty();
+		String customerParty = resolveCustomerParty(command.customerId());
+		String templateId = resolveTemplateId("Gcul.InsurancePolicy", "ClaimSettlement");
+
+		Map<String, Object> payload = new LinkedHashMap<>();
+		payload.put("insurer", insurerParty);
+		payload.put("customer", customerParty);
+		payload.put("claimId", command.claimId());
+		payload.put("policyId", command.policyId());
+		payload.put("customerId", command.customerId());
+		payload.put("walletAddress", command.walletAddress());
+		payload.put("amountGbp", String.format(java.util.Locale.ROOT, "%.2f", command.amountGbp()));
+		payload.put("settlementSource", command.settlementSource());
+		payload.put("settledAt", java.time.Instant.now().toString());
+
+		Map<String, Object> body = new LinkedHashMap<>();
+		body.put("templateId", templateId);
+		body.put("payload", payload);
+		body.put("commandId", "gcul-claim-settlement-" + command.claimId().replaceAll("[^A-Za-z0-9_-]", "-"));
+
+		JsonNode response = postJson("/v1/create", body,
+				CantonJwtFactory.submitToken(objectMapper, ledgerId(), List.of(insurerParty)));
+		JsonNode result = response.path("result");
+		String contractId = textOrEmpty(result.path("contractId"));
+		String updateId = textOrEmpty(result.path("updateId"));
+		long offset = result.path("offset").asLong(props.getLedgerOffset());
+		if (contractId.isBlank()) {
+			throw new ResponseStatusException(HttpStatus.BAD_GATEWAY,
+					"Canton claim settlement did not return contractId");
+		}
+		return new CantonClaimSettlementResult(contractId,
+				updateId.isBlank() ? "canton-claim-update-" + offset : updateId,
+				offset, templateId, props.getNetwork());
 	}
 
 	private Optional<String> queryPolicyContractId(String insurerParty, String policyReferenceHash) {
@@ -309,32 +346,7 @@ public class CantonJsonApiClient {
 		if (StringUtils.hasText(props.getPackageId())) {
 			return props.getPackageId().trim() + ":" + module + ":" + template;
 		}
-		String discovered = discoverPackageId();
-		if (StringUtils.hasText(discovered)) {
-			props.setPackageId(discovered);
-			return discovered + ":" + module + ":" + template;
-		}
 		return module + ":" + template;
-	}
-
-	private String discoverPackageId() {
-		try {
-			JsonNode response = getJson("/v1/packages");
-			JsonNode result = response.path("result");
-			if (!result.isArray()) {
-				return "";
-			}
-			for (JsonNode pkg : result) {
-				String packageId = textOrEmpty(pkg);
-				if (!packageId.isBlank()) {
-					return packageId;
-				}
-			}
-		}
-		catch (Exception ex) {
-			log.debug("Unable to discover Canton package id: {}", ex.getMessage());
-		}
-		return "";
 	}
 
 	private static String customerPartyHint(String customerId) {
@@ -376,6 +388,23 @@ public class CantonJsonApiClient {
 			long offset,
 			String insurerParty,
 			String customerParty,
+			String templateId,
+		String network) {
+	}
+
+	public record CantonClaimSettlementCommand(
+			String claimId,
+			String policyId,
+			String customerId,
+			String walletAddress,
+			double amountGbp,
+			String settlementSource) {
+	}
+
+	public record CantonClaimSettlementResult(
+			String contractId,
+			String updateId,
+			long offset,
 			String templateId,
 			String network) {
 	}

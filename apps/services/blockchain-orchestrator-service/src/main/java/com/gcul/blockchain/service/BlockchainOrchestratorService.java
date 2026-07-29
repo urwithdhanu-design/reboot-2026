@@ -11,6 +11,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
+import com.gcul.blockchain.canton.CantonJsonApiClient;
 import com.gcul.blockchain.chain.ChainLedger;
 import com.gcul.blockchain.chain.ChainTransactionType;
 import com.gcul.blockchain.chain.InsuranceChainService;
@@ -25,14 +26,17 @@ BlockchainOrchestratorService {
 
 	private final LedgerTransactionRepository repo;
 	private final GculSidecarClient gcul;
+	private final CantonJsonApiClient canton;
 	private final InsuranceChainService insuranceChain;
 
 	public BlockchainOrchestratorService(
 			LedgerTransactionRepository repo,
 			GculSidecarClient gcul,
+			CantonJsonApiClient canton,
 			InsuranceChainService insuranceChain) {
 		this.repo = repo;
 		this.gcul = gcul;
+		this.canton = canton;
 		this.insuranceChain = insuranceChain;
 	}
 
@@ -126,7 +130,26 @@ BlockchainOrchestratorService {
 		payload.putIfAbsent("type", "claim_settlement");
 		payload.putIfAbsent("from_wallet", "gcul:claims-pool");
 		payload.putIfAbsent("reference", str(body.get("claim_id")));
-		return submit(payload);
+		Map<String, Object> settlement = submit(payload);
+		try {
+			CantonJsonApiClient.CantonClaimSettlementResult cantonSettlement = canton.settleClaim(
+					new CantonJsonApiClient.CantonClaimSettlementCommand(
+							str(body.get("claim_id")),
+							str(body.get("policy_ref")),
+							str(body.get("customer_id")),
+							str(body.get("wallet_address")),
+							num(body.get("amount"), 0),
+							firstNonBlank(str(body.get("source")), "manual")));
+			settlement.put("canton_contract_id", cantonSettlement.contractId());
+			settlement.put("canton_update_id", cantonSettlement.updateId());
+			settlement.put("canton_network", cantonSettlement.network());
+			settlement.put("canton_status", "recorded");
+		}
+		catch (Exception ex) {
+			settlement.put("canton_status", "deferred");
+			settlement.put("canton_error", ex.getMessage());
+		}
+		return settlement;
 	}
 
 	public Map<String, Object> recordParametricClaimInitiated(Map<String, Object> body) {
