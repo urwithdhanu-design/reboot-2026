@@ -18,6 +18,7 @@ import {
   Zap,
   ClipboardCheck,
   BookOpen,
+  Sparkles,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -43,6 +44,7 @@ export const navItems: NavItem[] = [
   { to: '/compliance', label: 'Compliance Controls', icon: ClipboardCheck, section: 'Blockchain' },
   { to: '/observability', label: 'Chain Monitor', icon: Radio, section: 'Blockchain' },
   { to: '/blockchain', label: 'Blockchain Ledger', icon: Link2, section: 'Blockchain' },
+  { to: '/blockchain-benefits', label: 'Business Benefits', icon: Sparkles, section: 'Blockchain' },
   { to: '/contracts', label: 'Smart Contracts', icon: FileCode2, section: 'Blockchain' },
   { to: '/wallet', label: 'Wallet Ops', icon: Wallet, section: 'Blockchain' },
   { to: '/vendors', label: 'Vendors', icon: Building2, section: 'Configuration' },
