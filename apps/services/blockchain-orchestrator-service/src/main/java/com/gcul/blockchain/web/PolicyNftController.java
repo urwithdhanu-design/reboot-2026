@@ -13,10 +13,12 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
 
-import com.gcul.blockchain.ledger.PolicyNftMintResult;
-import com.gcul.blockchain.ledger.PolicyNftMintService;
+import com.gcul.blockchain.config.CantonProperties;
 import com.gcul.blockchain.ledger.LedgerAdapter;
 import com.gcul.blockchain.ledger.LedgerAdapterRegistry;
+import com.gcul.blockchain.ledger.LedgerAttestation;
+import com.gcul.blockchain.ledger.PolicyNftMintResult;
+import com.gcul.blockchain.ledger.PolicyNftMintService;
 import com.gcul.blockchain.messaging.PolicyMintService;
 import com.gcul.blockchain.model.PolicyLedgerAttestation;
 import com.gcul.blockchain.model.PolicyNftRecord;
@@ -31,14 +33,17 @@ public class PolicyNftController {
 	private final PolicyNftMintService mintService;
 	private final PolicyMintService policyMintService;
 	private final LedgerAdapterRegistry ledgerRegistry;
+	private final CantonProperties cantonProperties;
 
 	public PolicyNftController(
 			PolicyNftMintService mintService,
 			PolicyMintService policyMintService,
-			LedgerAdapterRegistry ledgerRegistry) {
+			LedgerAdapterRegistry ledgerRegistry,
+			CantonProperties cantonProperties) {
 		this.mintService = mintService;
 		this.policyMintService = policyMintService;
 		this.ledgerRegistry = ledgerRegistry;
+		this.cantonProperties = cantonProperties;
 	}
 
 	@GetMapping("/status")
@@ -67,11 +72,6 @@ public class PolicyNftController {
 		return response;
 	}
 
-	/**
-	 * On-ledger verification for the primary configured ledger.
-	 * Claims verification should use the primary attestation in policy_ledger_attestations;
-	 * secondary ledger mirrors are a Phase 2 concern.
-	 */
 	@GetMapping("/{policyId}/verify")
 	public Map<String, Object> verify(
 			@PathVariable String policyId,
@@ -79,8 +79,11 @@ public class PolicyNftController {
 		if (policyReferenceHash == null || policyReferenceHash.isBlank()) {
 			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "policyReferenceHash is required");
 		}
-		LedgerAdapter adapter = ledgerRegistry.primaryAdapter();
-		return adapter.verify(policyId, policyReferenceHash.trim())
+		String mintLedgerId = mintService.findPrimaryAttestation(policyId)
+				.map(PolicyLedgerAttestation::getLedgerId)
+				.orElse(ledgerRegistry.primaryLedgerId());
+		LedgerAdapter adapter = ledgerRegistry.requireAdapter(mintLedgerId);
+		Map<String, Object> verifyResult = adapter.verify(policyId, policyReferenceHash.trim())
 				.orElseGet(() -> {
 					Map<String, Object> offline = new LinkedHashMap<>();
 					offline.put("policyId", policyId);
@@ -90,6 +93,7 @@ public class PolicyNftController {
 					offline.put("reason", "Verification not available for ledger " + adapter.ledgerId());
 					return offline;
 				});
+		return LedgerAttestation.enrichVerify(verifyResult, cantonProperties, mintLedgerId);
 	}
 
 	@PostMapping("/mint")
@@ -107,25 +111,7 @@ public class PolicyNftController {
 			payload.putAll(body.metadata());
 		}
 		PolicyNftMintResult result = policyMintService.mintFromApi(payload);
-		return toMintResponse(result);
-	}
-
-	private Map<String, Object> toMintResponse(PolicyNftMintResult result) {
-		Map<String, Object> map = new LinkedHashMap<>();
-		map.put("policyId", result.policyId());
-		map.put("policyReferenceHash", result.policyReferenceHash());
-		map.put("tokenId", result.tokenId());
-		map.put("transactionHash", result.transactionHash());
-		map.put("walletAddress", result.walletAddress());
-		map.put("contractAddress", result.contractAddress());
-		map.put("chainId", result.chainId());
-		map.put("blockNumber", result.blockNumber());
-		map.put("network", result.network());
-		map.put("metadataURI", result.metadataUri());
-		map.put("mode", result.mode());
-		map.put("ledgerId", result.mode());
-		map.put("mintStatus", result.mintStatus());
-		return map;
+		return LedgerAttestation.fromMint(result, cantonProperties);
 	}
 
 	private Map<String, Object> toResponse(PolicyNftRecord record) {
@@ -144,6 +130,8 @@ public class PolicyNftController {
 		map.put("metadataURI", record.getTokenUri());
 		map.put("mode", record.getMintMode());
 		map.put("ledgerId", record.getMintMode());
+		map.put("ledgerMode", record.getMintMode());
+		map.put("ledger_mode", record.getMintMode());
 		map.put("mintStatus", record.getMintStatus());
 		map.put("mintedAt", record.getMintedAt().toString());
 		return map;
@@ -153,6 +141,8 @@ public class PolicyNftController {
 		Map<String, Object> map = new LinkedHashMap<>();
 		map.put("policyId", attestation.getPolicyId());
 		map.put("ledgerId", attestation.getLedgerId());
+		map.put("ledgerMode", attestation.getLedgerId());
+		map.put("ledger_mode", attestation.getLedgerId());
 		map.put("policyReferenceHash", attestation.getPolicyReferenceHash());
 		map.put("tokenId", attestation.getTokenId());
 		map.put("transactionHash", attestation.getTransactionHash());

@@ -59,12 +59,23 @@ public class SimulatedLedgerAdapter implements LedgerAdapter {
 				NETWORK,
 				metadataUri,
 				"simulated",
-				"MINTED");
+				"MINTED",
+				LedgerMode.SIMULATED.id(),
+				"");
 	}
 
 	@Override
 	public Optional<Map<String, Object>> verify(String policyId, String policyReferenceHash) {
-		return Optional.empty();
+		Map<String, Object> result = new LinkedHashMap<>();
+		result.put("policyId", policyId);
+		result.put("policyReferenceHash", policyReferenceHash);
+		result.put("verified", false);
+		result.put("ledgerId", ledgerId());
+		result.put("ledger", ledgerId());
+		result.put("ledgerMode", LedgerMode.SIMULATED.id());
+		result.put("mode", "simulated");
+		result.put("reason", "Simulated ledger — no on-chain Canton contract");
+		return Optional.of(result);
 	}
 
 	private static String firstNonBlank(String... values) {

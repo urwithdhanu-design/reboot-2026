@@ -1,0 +1,48 @@
+module Gcul.Common.OracleAttestation where
+
+import DA.Time
+
+-- Committee-signed attestation for catastrophe / parametric triggers (off-chain evidence hash only).
+template OracleCommitteeAuthority
+  with
+    committee : Party
+  where
+    signatory committee
+
+    nonconsuming choice SubmitAttestation : ContractId OracleAttestation
+      with
+        triggerId : Text
+        evidenceHash : Text
+        methodologyVersion : Text
+        disputeWindowDays : Int
+      controller committee
+      do
+        now <- getTime
+        create OracleAttestation with
+          committee
+          triggerId
+          evidenceHash
+          methodologyVersion
+          attestedAt = now
+          disputeWindowDays
+
+template OracleAttestation
+  with
+    committee : Party
+    triggerId : Text
+    evidenceHash : Text
+    methodologyVersion : Text
+    attestedAt : Time
+    disputeWindowDays : Int
+  where
+    signatory committee
+
+    ensure disputeWindowDays >= 0
+
+    choice FinalizeAfterDispute : ContractId OracleAttestation
+      controller committee
+      do
+        now <- getTime
+        let disputeEnd = addRelTime attestedAt (days disputeWindowDays)
+        assert (now >= disputeEnd)
+        create this

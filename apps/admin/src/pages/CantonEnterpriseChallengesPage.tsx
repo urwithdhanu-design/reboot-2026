@@ -148,7 +148,8 @@ function LimitsTab() {
       <AlertBanner variant="info">
         Canton is the <strong>technology layer</strong>. Legal, regulatory, actuarial, capital markets, and insurance
         expertise remain mandatory. Pair with{' '}
-        <Link to="/capital-market/blueprint" className="underline font-semibold">Canton blueprint</Link> and{' '}
+        <Link to="/capital-market/kit" className="underline font-semibold">Canton kit blueprint</Link>,{' '}
+        <Link to="/capital-market/blueprint" className="underline font-semibold">Canton blueprint</Link>, and{' '}
         <Link to="/capital-market" className="underline font-semibold">insurance capital market</Link> reference pages.
       </AlertBanner>
     </>
@@ -183,13 +184,15 @@ export function CantonEnterpriseChallengesPage() {
           { label: 'Focus', value: 'Production DLT' },
         ]}
         actions={
-          <Link
-            to="/capital-market/blueprint"
-            className="text-sm font-semibold text-lbg-green hover:underline inline-flex items-center gap-1"
-          >
-            Canton blueprint
-            <ExternalLink className="w-3.5 h-3.5" aria-hidden />
-          </Link>
+          <div className="flex flex-col sm:flex-row gap-2 sm:items-center text-sm font-semibold text-lbg-green">
+            <Link to="/capital-market/kit" className="hover:underline inline-flex items-center gap-1">
+              Canton kit blueprint
+              <ExternalLink className="w-3.5 h-3.5" aria-hidden />
+            </Link>
+            <Link to="/capital-market/blueprint" className="hover:underline">
+              Canton blueprint
+            </Link>
+          </div>
         }
       />
 

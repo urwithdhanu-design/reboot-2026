@@ -11,6 +11,7 @@ import org.springframework.util.StringUtils;
 
 import com.gcul.messaging.EventTopics;
 import com.gcul.messaging.GculEventPublisher;
+import com.gcul.messaging.spring.GculPubSubProperties;
 import com.gcul.policy.client.BlockchainMintClient;
 import com.gcul.policy.client.BlockchainMintClient.PolicyRecordView;
 import com.gcul.policy.client.KycInternalClient;
@@ -41,6 +42,7 @@ public class PolicyIssuanceService {
 	private final MotorParametricProvisioner motorParametricProvisioner;
 	private final PolicyCoverageResolver coverageResolver;
 	private final PolicyRenewalService policyRenewal;
+	private final GculPubSubProperties pubSubProperties;
 
 	public PolicyIssuanceService(
 			QuoteService quotes,
@@ -52,7 +54,8 @@ public class PolicyIssuanceService {
 			TravelParametricProvisioner travelParametricProvisioner,
 			MotorParametricProvisioner motorParametricProvisioner,
 			PolicyCoverageResolver coverageResolver,
-			PolicyRenewalService policyRenewal) {
+			PolicyRenewalService policyRenewal,
+			GculPubSubProperties pubSubProperties) {
 		this.quotes = quotes;
 		this.publisher = publisher;
 		this.blockchainMintClient = blockchainMintClient;
@@ -63,6 +66,7 @@ public class PolicyIssuanceService {
 		this.motorParametricProvisioner = motorParametricProvisioner;
 		this.coverageResolver = coverageResolver;
 		this.policyRenewal = policyRenewal;
+		this.pubSubProperties = pubSubProperties;
 	}
 
 	public void onPremiumPaid(Map<String, Object> payload) {
@@ -345,21 +349,32 @@ public class PolicyIssuanceService {
 		Map<String, Object> mintRequest = blockchainMintClient.buildMintRequest(toView(record), kycVerified);
 		Map<String, Object> requested = new LinkedHashMap<>(mintRequest);
 		requested.put("eventType", "PolicyMintRequested");
-		publisher.publish(EventTopics.POLICY, requested);
 
-		try {
-			Map<String, Object> mintResult = blockchainMintClient.mintPolicyNft(mintRequest);
-			onPolicyMinted(mintResult);
-		}
-		catch (Exception ex) {
-			policyRecords.markMintFailed(record.getPolicyId(), ex.getMessage());
-			log.error("Blockchain mint failed for {}: {}", record.getPolicyId(), ex.getMessage());
-			if (throwOnFailure) {
+		if (throwOnFailure) {
+			// Admin synchronous mint — direct orchestrator HTTP (no duplicate event path).
+			try {
+				Map<String, Object> mintResult = blockchainMintClient.mintPolicyNft(mintRequest);
+				onPolicyMinted(mintResult);
+			}
+			catch (Exception ex) {
+				policyRecords.markMintFailed(record.getPolicyId(), ex.getMessage());
+				log.error("Blockchain mint failed for {}: {}", record.getPolicyId(), ex.getMessage());
 				throw new org.springframework.web.server.ResponseStatusException(
 						org.springframework.http.HttpStatus.BAD_GATEWAY,
 						"Canton mint failed: " + ex.getMessage());
 			}
+			return;
 		}
+
+		publisher.publish(EventTopics.POLICY, requested);
+
+		if (pubSubProperties.isEnabled()) {
+			// Cloud: orchestrator mints via Pub/Sub subscriber; PolicyMinted event updates policy DB.
+			return;
+		}
+
+		// Local: LocalEventBus delivers PolicyMintRequested to orchestrator synchronously,
+		// then PolicyMinted back to this service — no direct HTTP mint (single path).
 	}
 
 	private boolean approveCompliance(PolicyRecord record, boolean kycVerified) {

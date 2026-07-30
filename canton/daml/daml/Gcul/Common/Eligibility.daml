@@ -1,0 +1,48 @@
+module Gcul.Common.Eligibility where
+
+-- Per-investor eligibility record for regulated secondary transfers (ILS notes, tokenised assets).
+template InvestorEligibility
+  with
+    issuer : Party
+    investor : Party
+    investorId : Text
+    eligible : Bool
+  where
+    signatory issuer
+    observer investor
+
+    choice UpdateEligibility : ContractId InvestorEligibility
+      with
+        newEligible : Bool
+      controller issuer
+      do
+        create this with eligible = newEligible
+
+-- Issuer-maintained gate for granting eligibility before DvP or note transfers.
+template InvestorEligibilityGate
+  with
+    issuer : Party
+  where
+    signatory issuer
+
+    nonconsuming choice GrantInvestorEligibility : ContractId InvestorEligibility
+      with
+        investor : Party
+        investorId : Text
+      controller issuer
+      do
+        create InvestorEligibility with
+          issuer
+          investor
+          investorId
+          eligible = True
+
+    nonconsuming choice RevokeInvestorEligibility : ()
+      with
+        eligibilityCid : ContractId InvestorEligibility
+      controller issuer
+      do
+        eligibility <- fetch eligibilityCid
+        assert (eligibility.issuer == issuer)
+        _ <- exercise eligibilityCid UpdateEligibility with newEligible = False
+        return ()

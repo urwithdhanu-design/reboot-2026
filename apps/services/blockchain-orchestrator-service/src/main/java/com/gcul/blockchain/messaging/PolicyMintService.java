@@ -129,7 +129,9 @@ public class PolicyMintService {
 				record.getNetwork(),
 				record.getTokenUri(),
 				record.getMintMode(),
-				record.getMintStatus());
+				record.getMintStatus(),
+				record.getMintMode(),
+				"");
 	}
 
 	private void publishMintedEvent(Map<String, Object> payload, PolicyNftMintResult result) {
@@ -149,6 +151,10 @@ public class PolicyMintService {
 		minted.put("metadataURI", result.metadataUri());
 		minted.put("mode", result.mode());
 		minted.put("ledgerId", result.mode());
+		minted.put("ledgerMode", result.ledgerMode());
+		minted.put("ledger_mode", result.ledgerMode());
+		minted.put("packageId", result.packageId());
+		minted.put("package_id", result.packageId());
 		minted.put("mintStatus", result.mintStatus());
 		publisher.publish(EventTopics.BLOCKCHAIN, minted);
 	}

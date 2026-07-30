@@ -21,6 +21,9 @@ public class LedgerProperties {
 	/** Comma-separated secondary ledger ids for future async mirror (Phase 2) */
 	private String secondary = "";
 
+	/** When true, mint fails if Canton is unavailable — no simulated fallback (GCUL_CANTON_STRICT). */
+	private boolean strict = false;
+
 	public String resolvedPrimary() {
 		if (StringUtils.hasText(backend) && !backend.equals(primary)) {
 			return backend.trim().toLowerCase();
@@ -61,5 +64,13 @@ public class LedgerProperties {
 
 	public void setSecondary(String secondary) {
 		this.secondary = secondary;
+	}
+
+	public boolean isStrict() {
+		return strict;
+	}
+
+	public void setStrict(boolean strict) {
+		this.strict = strict;
 	}
 }

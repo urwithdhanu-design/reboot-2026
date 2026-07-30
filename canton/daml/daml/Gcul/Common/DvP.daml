@@ -1,0 +1,52 @@
+module Gcul.Common.DvP where
+
+import Gcul.Common.Eligibility
+
+-- Atomic delivery-versus-payment proposal for insurance-linked notes ↔ tokenised deposits (LBG-style).
+template DvPProposal
+  with
+    proposer : Party
+    buyer : Party
+    seller : Party
+    proposalId : Text
+    assetId : Text
+    assetDescription : Text
+    cashAmountGbp : Decimal
+  where
+    signatory proposer
+    observer buyer, seller
+
+    choice AcceptDvP : ContractId DvPSettlement
+      with
+        eligibilityCid : ContractId InvestorEligibility
+      controller buyer, seller
+      do
+        eligibility <- fetch eligibilityCid
+        assert (eligibility.investor == buyer)
+        assert eligibility.eligible
+        now <- getTime
+        create DvPSettlement with
+          buyer
+          seller
+          proposalId
+          assetId
+          assetDescription
+          cashAmountGbp
+          settledAt = now
+
+    choice CancelDvP : ()
+      controller proposer
+      do return ()
+
+-- Immutable settlement record after both legs agree (atomic DvP complete).
+template DvPSettlement
+  with
+    buyer : Party
+    seller : Party
+    proposalId : Text
+    assetId : Text
+    assetDescription : Text
+    cashAmountGbp : Decimal
+    settledAt : Time
+  where
+    signatory buyer, seller

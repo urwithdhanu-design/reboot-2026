@@ -1,0 +1,65 @@
+module Gcul.CapitalMarket.InsuranceLinkedNote where
+
+import DA.Time
+import Gcul.Common.OracleAttestation
+
+-- Illustrative home cat insurance-linked note — portfolio-level fields only (no PII on-ledger).
+template InsuranceLinkedNote
+  with
+    issuer : Party
+    investor : Party
+    noteId : Text
+    portfolioId : Text
+    securityId : Text
+    notionalGbp : Decimal
+    triggerThresholdPct : Decimal
+    triggered : Bool
+    impairedPct : Decimal
+    triggerEvidenceHash : Optional Text
+    triggeredAt : Optional Time
+    disputeEndsAt : Optional Time
+  where
+    signatory issuer
+    observer investor
+
+    ensure notionalGbp > 0.0
+
+    choice ApplyOracleTrigger : ContractId InsuranceLinkedNote
+      with
+        attestationCid : ContractId OracleAttestation
+        impairmentPct : Decimal
+      controller issuer
+      do
+        attestation <- fetch attestationCid
+        assert (attestation.triggerId == portfolioId)
+        now <- getTime
+        let disputeEnd = addRelTime attestation.attestedAt (days attestation.disputeWindowDays)
+        create this with
+          triggered = True
+          impairedPct = impairmentPct
+          triggerEvidenceHash = Some attestation.evidenceHash
+          triggeredAt = Some now
+          disputeEndsAt = Some disputeEnd
+
+    choice FinalizeImpairment : ContractId InsuranceLinkedNote
+      with
+        attestationCid : ContractId OracleAttestation
+      controller issuer
+      do
+        assert triggered
+        now <- getTime
+        case disputeEndsAt of
+          None -> abort "Dispute window not set"
+          Some end -> assert (now >= end)
+        attestation <- fetch attestationCid
+        assert (attestation.triggerId == portfolioId)
+        _ <- exercise attestationCid FinalizeAfterDispute
+        create this
+
+    choice RecordCoupon : ContractId InsuranceLinkedNote
+      with
+        couponPct : Decimal
+      controller issuer
+      do
+        assert (not triggered || impairedPct < 100.0)
+        create this

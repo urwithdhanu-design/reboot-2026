@@ -2306,6 +2306,15 @@ body {
   flex-shrink: 0;
 }
 
+.kit-deliverable-card {
+  border-color: rgba(0, 134, 79, 0.12);
+}
+
+.kit-module-table td:first-child {
+  width: auto;
+  font-weight: 400;
+}
+
 .enterprise-limit-item {
   display: flex;
   align-items: center;
@@ -2316,4 +2325,233 @@ body {
   background: #fef2f2;
   border: 1px solid #fecaca;
   color: #991b1b;
+}
+
+/* Canton kit live guide */
+.kit-live-sim-grid {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  margin-bottom: 1rem;
+}
+
+.kit-live-node {
+  min-width: 7rem;
+  padding: 0.65rem 0.75rem;
+  border-radius: 10px;
+  border: 1px solid var(--color-lbg-gray-200);
+  background: #fff;
+  text-align: center;
+  transition: border-color 0.3s, box-shadow 0.3s, transform 0.3s;
+}
+
+.kit-live-node--on {
+  border-color: var(--color-lbg-green);
+  box-shadow: 0 0 0 2px rgba(0, 134, 79, 0.15);
+}
+
+.kit-live-node--pulse {
+  animation: blueprint-glow 2s ease-in-out infinite;
+}
+
+.kit-live-node--api {
+  border-color: #93c5fd;
+}
+
+.kit-live-node--ledger {
+  border-color: #c4b5fd;
+}
+
+.kit-live-node-label {
+  display: block;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--color-lbg-black);
+}
+
+.kit-live-node small {
+  font-size: 0.65rem;
+  color: var(--color-lbg-gray-500);
+}
+
+.kit-live-arrow {
+  color: var(--color-lbg-gray-400);
+  font-weight: 700;
+}
+
+.kit-live-arrow--flow {
+  color: var(--color-lbg-green);
+  animation: blueprint-flow-line 1s ease infinite;
+}
+
+.kit-live-step-rail {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-bottom: 0.75rem;
+}
+
+.kit-live-step-chip {
+  font-size: 0.7rem;
+  padding: 0.25rem 0.5rem;
+  border-radius: 999px;
+  background: var(--color-lbg-gray-50);
+  border: 1px solid var(--color-lbg-gray-100);
+  color: var(--color-lbg-gray-500);
+  transition: all 0.25s;
+}
+
+.kit-live-step-chip--active {
+  background: var(--color-lbg-green);
+  color: #fff;
+  border-color: var(--color-lbg-green);
+}
+
+.kit-live-step-chip--done {
+  background: var(--color-lbg-green-light);
+  border-color: rgba(0, 134, 79, 0.3);
+  color: var(--color-lbg-green-dark);
+}
+
+.kit-live-step-detail {
+  padding: 0.75rem 1rem;
+  border-radius: 10px;
+  background: var(--color-lbg-gray-50);
+  border: 1px solid var(--color-lbg-gray-100);
+}
+
+.kit-live-phases {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 0.75rem;
+}
+
+.kit-live-phase-card {
+  padding: 0.75rem;
+  border-radius: 10px;
+  border: 1px solid var(--color-lbg-gray-100);
+  background: #fff;
+  transition: border-color 0.3s, box-shadow 0.3s;
+}
+
+.kit-live-phase-card--active {
+  border-color: var(--phase-color, var(--color-lbg-green));
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.06);
+}
+
+.kit-live-phase-card--done {
+  background: rgba(0, 134, 79, 0.04);
+}
+
+.kit-live-phase-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem;
+  margin-bottom: 0.5rem;
+}
+
+.kit-live-phase-badge {
+  font-size: 0.65rem;
+  font-weight: 800;
+  padding: 0.15rem 0.45rem;
+  border-radius: 4px;
+  background: var(--phase-color, var(--color-lbg-green));
+  color: #fff;
+}
+
+.kit-live-phase-title {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--color-lbg-black);
+}
+
+.kit-live-phase-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  font-size: 0.75rem;
+  color: var(--color-lbg-gray-500);
+}
+
+.kit-live-phase-list li {
+  padding: 0.15rem 0;
+}
+
+.kit-live-phase-list--on {
+  color: var(--color-lbg-gray-800);
+}
+
+.kit-live-hybrid-flow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  margin-top: 1rem;
+  padding: 0.75rem;
+  border-radius: 10px;
+  background: var(--color-lbg-green-light);
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.kit-live-hybrid-canton {
+  color: var(--color-lbg-green-dark);
+}
+
+.kit-live-capital-rail {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.kit-live-viz-panel {
+  padding: 0.75rem;
+  border-radius: 10px;
+  border: 1px solid var(--color-lbg-gray-100);
+  background: #fff;
+}
+
+.kit-live-template-tree {
+  padding: 0.75rem;
+  border-radius: 10px;
+  background: var(--color-lbg-gray-50);
+  border: 1px dashed var(--color-lbg-gray-200);
+}
+
+.kit-live-tree-root {
+  font-weight: 800;
+  font-size: 0.85rem;
+  color: var(--color-lbg-green-dark);
+}
+
+.kit-live-tree-forks {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.kit-live-tree-fork {
+  padding: 0.5rem;
+  border-radius: 8px;
+  background: #fff;
+  border: 1px solid var(--color-lbg-gray-100);
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.kit-live-tree-fork--cap {
+  border-color: #e9d5ff;
+  background: #faf5ff;
+}
+
+.kit-live-tree-fork small {
+  display: block;
+  font-weight: 400;
+  font-size: 0.65rem;
+  color: var(--color-lbg-gray-500);
 }

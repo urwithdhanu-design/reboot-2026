@@ -1,0 +1,75 @@
+module Gcul.CapitalMarketDemo where
+
+import Daml.Script
+import DA.Time
+import Gcul.Common.DvP
+import Gcul.Common.Eligibility
+import Gcul.Common.OracleAttestation
+import Gcul.CapitalMarket.InsuranceLinkedNote
+
+-- Runnable demo for Phase D: eligibility gate, DvP accept, oracle trigger on ILS note.
+demo : Script ()
+demo = script do
+  issuer <- allocatePartyWithHint "GCUL_Issuer" (PartyIdHint "GCUL_Issuer")
+  investor <- allocatePartyWithHint "GCUL_Investor" (PartyIdHint "GCUL_Investor")
+  seller <- allocatePartyWithHint "GCUL_Seller" (PartyIdHint "GCUL_Seller")
+  committee <- allocatePartyWithHint "GCUL_Oracle" (PartyIdHint "GCUL_Oracle")
+
+  gateCid <- submit issuer do
+    createCmd InvestorEligibilityGate with issuer = issuer
+
+  eligibilityCid <- submit issuer do
+    exerciseCmd gateCid GrantInvestorEligibility with
+      investor = investor
+      investorId = "INV-DEMO-001"
+
+  proposalCid <- submit issuer do
+    createCmd DvPProposal with
+      proposer = issuer
+      buyer = investor
+      seller = seller
+      proposalId = "DVP-DEMO-001"
+      assetId = "HOME-CAT-NOTE-001"
+      assetDescription = "Home cat ILS note token"
+      cashAmountGbp = 1000000.0
+
+  settlementCid <- submitMulti [investor, seller] [] do
+    exerciseCmd proposalCid AcceptDvP with eligibilityCid = eligibilityCid
+
+  _settlement <- submitMulti [investor, seller] [] do
+    fetchCmd settlementCid
+
+  oracleAuthCid <- submit committee do
+    createCmd OracleCommitteeAuthority with committee = committee
+
+  attestationCid <- submit committee do
+    exerciseCmd oracleAuthCid SubmitAttestation with
+      triggerId = "HOME-CAT-PORT-001"
+      evidenceHash = "demo-evidence-hash-sha256"
+      methodologyVersion = "v1.0"
+      disputeWindowDays = 0
+
+  noteCid <- submit issuer do
+    createCmd InsuranceLinkedNote with
+      issuer = issuer
+      investor = investor
+      noteId = "ILN-DEMO-001"
+      portfolioId = "HOME-CAT-PORT-001"
+      securityId = "HOME-CAT-NOTE-001"
+      notionalGbp = 100000000.0
+      triggerThresholdPct = 5.0
+      triggered = False
+      impairedPct = 0.0
+      triggerEvidenceHash = None
+      triggeredAt = None
+      disputeEndsAt = None
+
+  triggeredNoteCid <- submit issuer do
+    exerciseCmd noteCid ApplyOracleTrigger with
+      attestationCid = attestationCid
+      impairmentPct = 25.0
+
+  _finalNote <- submit issuer do
+    exerciseCmd triggeredNoteCid FinalizeImpairment with attestationCid = attestationCid
+
+  return ()

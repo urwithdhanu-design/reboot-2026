@@ -10,29 +10,37 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
+import org.springframework.util.StringUtils;
 import org.springframework.web.client.RestClient;
+import org.springframework.web.client.RestClient.RequestHeadersSpec;
 import org.springframework.web.client.RestClientException;
 
 @Component
 public class BlockchainMintClient {
 
+	private static final String INTERNAL_KEY_HEADER = "X-Gcul-Internal-Key";
+
 	private static final Logger log = LoggerFactory.getLogger(BlockchainMintClient.class);
 
 	private final RestClient restClient;
+	private final String internalApiKey;
 
-	public BlockchainMintClient(@Value("${gcul.blockchain-service.url:http://127.0.0.1:8088}") String baseUrl) {
+	public BlockchainMintClient(
+			@Value("${gcul.blockchain-service.url:http://127.0.0.1:8088}") String baseUrl,
+			@Value("${gcul.internal-api.key:}") String internalApiKey) {
 		this.restClient = RestClient.builder()
 				.baseUrl(baseUrl)
 				.build();
+		this.internalApiKey = internalApiKey == null ? "" : internalApiKey.trim();
 	}
 
 	@SuppressWarnings("unchecked")
 	public Map<String, Object> mintPolicyNft(Map<String, Object> request) {
 		try {
-			Map<String, Object> response = restClient.post()
+			Map<String, Object> response = withInternalAuth(restClient.post()
 					.uri("/api/blockchain/internal/policy-nft/mint")
 					.contentType(MediaType.APPLICATION_JSON)
-					.body(request)
+					.body(request))
 					.retrieve()
 					.onStatus(HttpStatusCode::isError, (req, res) -> {
 						String body = res.getBody() == null
@@ -58,8 +66,8 @@ public class BlockchainMintClient {
 	@SuppressWarnings("unchecked")
 	public Map<String, Object> fetchNftStatus() {
 		try {
-			Map<String, Object> response = restClient.get()
-					.uri("/api/blockchain/internal/policy-nft/status")
+			Map<String, Object> response = withInternalAuth(restClient.get()
+					.uri("/api/blockchain/internal/policy-nft/status"))
 					.retrieve()
 					.body(Map.class);
 			return response == null ? Map.of() : response;
@@ -73,6 +81,13 @@ public class BlockchainMintClient {
 					"live", false,
 					"enabled", false);
 		}
+	}
+
+	private <T extends RequestHeadersSpec<?>> T withInternalAuth(T spec) {
+		if (StringUtils.hasText(internalApiKey)) {
+			return spec.header(INTERNAL_KEY_HEADER, internalApiKey);
+		}
+		return spec;
 	}
 
 	public Map<String, Object> buildMintRequest(PolicyRecordView policy, boolean kycVerified) {

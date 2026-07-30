@@ -56,11 +56,20 @@ public class CantonPolicyMintService {
 			offline.put("policyReferenceHash", policyReferenceHash);
 			offline.put("verified", false);
 			offline.put("ledger", "canton");
+			offline.put("ledgerId", "canton");
+			offline.put("ledgerMode", com.gcul.blockchain.ledger.LedgerMode.CANTON.id());
 			offline.put("mode", "canton-offline");
 			offline.put("reason", "Canton ledger not reachable");
 			return offline;
 		}
 		return client.verifyPolicy(policyId, policyReferenceHash);
+	}
+
+	public java.util.Optional<String> verifyPolicyContract(String policyReferenceHash) {
+		if (!isActive()) {
+			return java.util.Optional.empty();
+		}
+		return client.verifyPolicyContract(policyReferenceHash);
 	}
 
 	public PolicyNftMintResult mintPolicy(MintRequest request) {
@@ -85,7 +94,9 @@ public class CantonPolicyMintService {
 				result.network(),
 				firstNonBlank(request.metadataUri(), "ipfs://gcul-policy/" + request.policyId()),
 				"canton",
-				"MINTED");
+				"MINTED",
+				com.gcul.blockchain.ledger.LedgerMode.CANTON.id(),
+				props.getPackageId());
 	}
 
 	private static String shortenContractId(String contractId) {

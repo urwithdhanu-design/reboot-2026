@@ -127,7 +127,12 @@ public class PolicyRecordService {
 	@Transactional
 	public PolicyRecord applyMintResult(String policyId, Map<String, Object> mintResult) {
 		PolicyRecord record = repository.findById(policyId).orElseThrow();
-		String ledgerId = firstNonBlank(str(mintResult.get("ledgerId")), str(mintResult.get("mode")), "canton");
+		String ledgerId = firstNonBlank(
+				str(mintResult.get("ledgerId")),
+				str(mintResult.get("ledger_mode")),
+				str(mintResult.get("ledgerMode")),
+				str(mintResult.get("mode")),
+				"canton");
 		record.setTokenId(str(mintResult.get("tokenId")));
 		record.setTransactionHash(str(mintResult.get("transactionHash")));
 		record.setContractAddress(str(mintResult.get("contractAddress")));
@@ -442,7 +447,9 @@ public class PolicyRecordService {
 		map.put("issued_at", record.getIssuedAt() == null ? null : record.getIssuedAt().toString());
 		map.put("activated_at", record.getActivatedAt() == null ? null : record.getActivatedAt().toString());
 		map.put("explorer_url", buildExplorerUrl(record));
-		map.put("ledger_type", ledgerType(record));
+		String ledgerMode = ledgerMode(record);
+		map.put("ledger_type", ledgerMode);
+		map.put("ledger_mode", ledgerMode);
 		map.put("product_category", PolicyCoverageResolver.normalizeProductCategory(
 				record.getProductCategory(),
 				record.getProductTitle()));
@@ -524,6 +531,13 @@ public class PolicyRecordService {
 		return Instant.now().isAfter(record.getCoverExpiresAt());
 	}
 
+	private static String ledgerMode(PolicyRecord record) {
+		if ("FAILED".equalsIgnoreCase(record.getMintStatus())) {
+			return "failed";
+		}
+		return ledgerType(record);
+	}
+
 	private static String ledgerType(PolicyRecord record) {
 		if (StringUtils.hasText(record.getPrimaryLedgerId())) {
 			return record.getPrimaryLedgerId();
@@ -539,7 +553,7 @@ public class PolicyRecordService {
 	}
 
 	private static String buildExplorerUrl(PolicyRecord record) {
-		return buildExplorerUrl(ledgerType(record), record.getTransactionHash());
+		return buildExplorerUrl(ledgerMode(record), record.getTransactionHash());
 	}
 
 	private static String buildExplorerUrl(String ledgerId, String transactionHash) {

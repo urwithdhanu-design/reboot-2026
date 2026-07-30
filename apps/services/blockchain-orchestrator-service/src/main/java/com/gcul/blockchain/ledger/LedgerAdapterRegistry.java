@@ -50,7 +50,7 @@ public class LedgerAdapterRegistry {
 
 	/**
 	 * Resolves the adapter for minting. Honors {@code gcul.ledger.primary} when active;
-	 * falls back to the local simulated adapter when Canton is unavailable.
+	 * falls back to simulated when Canton is unavailable unless {@code gcul.ledger.strict} is true.
 	 */
 	public LedgerAdapter resolveMintAdapter() {
 		String primaryId = primaryLedgerId();
@@ -58,12 +58,48 @@ public class LedgerAdapterRegistry {
 		if (primary.isActive()) {
 			return primary;
 		}
+		if (ledgerProperties.isStrict()) {
+			throw new ResponseStatusException(
+					HttpStatus.SERVICE_UNAVAILABLE,
+					"Canton ledger unavailable — strict mode prevents simulated fallback");
+		}
 		return requireAdapter("simulated");
+	}
+
+	public String resolveMintAdapterId() {
+		return resolveMintAdapter().ledgerId();
+	}
+
+	public Map<String, Object> mintAdapterStatus() {
+		Map<String, Object> status = new LinkedHashMap<>();
+		status.put("strictMode", ledgerProperties.isStrict());
+		String primaryId = primaryLedgerId();
+		LedgerAdapter primary = requireAdapter(primaryId);
+		status.put("primaryLedger", primaryId);
+		if (primary.isActive()) {
+			status.put("activeLedger", primaryId);
+			status.putAll(primary.status());
+			return status;
+		}
+		if (ledgerProperties.isStrict()) {
+			status.put("activeLedger", "unavailable");
+			status.put("live", false);
+			status.put("mode", "canton-unavailable-strict");
+			status.put("fallback", false);
+			status.putAll(primary.status());
+			return status;
+		}
+		LedgerAdapter simulated = requireAdapter("simulated");
+		status.put("activeLedger", simulated.ledgerId());
+		status.put("fallback", true);
+		status.putAll(simulated.status());
+		return status;
 	}
 
 	public Map<String, Object> allStatus() {
 		Map<String, Object> status = new LinkedHashMap<>();
 		status.put("primaryLedger", primaryLedgerId());
+		status.put("strictMode", ledgerProperties.isStrict());
 		status.put("secondaryLedgers", secondaryLedgerIds());
 		Map<String, Object> adapters = new LinkedHashMap<>();
 		for (LedgerAdapter adapter : adaptersById.values()) {

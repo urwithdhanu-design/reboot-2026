@@ -95,36 +95,44 @@ public class CantonJsonApiClient {
 	public CantonMintResult mintPolicy(CantonMintCommand command) {
 		String insurerParty = resolveInsurerParty();
 		String customerParty = resolveCustomerParty(command.customerId());
-		String templateId = resolveTemplateId("Gcul.InsurancePolicy", "InsurancePolicy");
+		String authorityContractId = findAuthorityContractId(insurerParty);
+		String authorityTemplateId = resolveTemplateId("Gcul.InsurancePolicy", "InsurerMintAuthority");
+		String policyTemplateId = resolveTemplateId("Gcul.InsurancePolicy", "InsurancePolicy");
 
-		Map<String, Object> payload = new LinkedHashMap<>();
-		payload.put("insurer", insurerParty);
-		payload.put("customer", customerParty);
-		payload.put("policyId", command.policyId());
-		payload.put("policyNumber", command.policyNumber());
-		payload.put("policyReferenceHash", command.policyReferenceHash());
-		payload.put("customerId", command.customerId());
-		payload.put("walletAddress", command.walletAddress());
-		payload.put("metadataUri", command.metadataUri());
-		payload.put("mintedAt", java.time.Instant.now().toString());
+		Map<String, Object> argument = new LinkedHashMap<>();
+		argument.put("customer", customerParty);
+		argument.put("policyId", command.policyId());
+		argument.put("policyNumber", command.policyNumber());
+		argument.put("policyReferenceHash", command.policyReferenceHash());
+		argument.put("customerId", command.customerId());
+		argument.put("walletAddress", command.walletAddress());
+		argument.put("metadataUri", command.metadataUri());
 
 		Map<String, Object> body = new LinkedHashMap<>();
-		body.put("templateId", templateId);
-		body.put("payload", payload);
+		body.put("templateId", authorityTemplateId);
+		body.put("contractId", authorityContractId);
+		body.put("choice", "MintPolicy");
+		body.put("argument", argument);
 		body.put("commandId", "gcul-mint-" + command.policyId().replaceAll("[^A-Za-z0-9_-]", "-"));
 
-		JsonNode response = postJson("/v1/create", body, CantonJwtFactory.submitToken(objectMapper, ledgerId(), List.of(insurerParty)));
+		JsonNode response = postJson(
+				"/v1/exercise",
+				body,
+				CantonJwtFactory.submitToken(objectMapper, ledgerId(), List.of(insurerParty)));
 		JsonNode result = response.path("result");
-		String contractId = textOrEmpty(result.path("contractId"));
+		String contractId = extractCreatedContractId(result).orElseGet(() -> textOrEmpty(result.path("contractId")));
 		String updateId = textOrEmpty(result.path("updateId"));
+		if (updateId.isBlank()) {
+			updateId = textOrEmpty(result.path("transactionId"));
+		}
 		long offset = result.path("offset").asLong(props.getLedgerOffset());
 		if (contractId.isBlank()) {
 			throw new ResponseStatusException(
 					org.springframework.http.HttpStatus.BAD_GATEWAY,
-					"Canton create did not return contractId");
+					"Canton MintPolicy exercise did not return InsurancePolicy contractId");
 		}
 
-		log.info("Canton policy minted policyId={} contractId={} updateId={} offset={}",
+		log.info("Canton policy minted via MintPolicy exercise policyId={} contractId={} updateId={} offset={}",
 				command.policyId(), contractId, updateId, offset);
 
 		return new CantonMintResult(
@@ -133,8 +141,12 @@ public class CantonJsonApiClient {
 				offset,
 				insurerParty,
 				customerParty,
-				templateId,
+				policyTemplateId,
 				props.getNetwork());
+	}
+
+	public JsonNode getPackages() {
+		return getJson("/v1/packages");
 	}
 
 	public Optional<String> verifyPolicyContract(String policyReferenceHash) {
@@ -153,7 +165,11 @@ public class CantonJsonApiClient {
 		result.put("policyReferenceHash", policyReferenceHash);
 		result.put("verified", contractId.isPresent());
 		result.put("ledger", "canton");
+		result.put("ledgerId", "canton");
+		result.put("ledgerMode", com.gcul.blockchain.ledger.LedgerMode.CANTON.id());
 		result.put("network", props.getNetwork());
+		result.put("packageId", props.getPackageId());
+		result.put("package_id", props.getPackageId());
 		contractId.ifPresent(id -> result.put("contractId", id));
 		contractId.ifPresent(id -> result.put("templateId", resolveTemplateId("Gcul.InsurancePolicy", "InsurancePolicy")));
 		return result;
@@ -171,9 +187,9 @@ public class CantonJsonApiClient {
 		payload.put("policyId", command.policyId());
 		payload.put("customerId", command.customerId());
 		payload.put("walletAddress", command.walletAddress());
-		payload.put("amountGbp", String.format(java.util.Locale.ROOT, "%.2f", command.amountGbp()));
+		payload.put("amountGbp", DamlTypeEncoder.decimal(command.amountGbp()));
 		payload.put("settlementSource", command.settlementSource());
-		payload.put("settledAt", java.time.Instant.now().toString());
+		payload.put("settledAt", DamlTypeEncoder.time(java.time.Instant.now()));
 
 		Map<String, Object> body = new LinkedHashMap<>();
 		body.put("templateId", templateId);

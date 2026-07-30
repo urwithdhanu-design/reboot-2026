@@ -9,4 +9,9 @@ dependencies:
 exposed-modules:
   - Gcul.InsurancePolicy
   - Gcul.Setup
+  - Gcul.CapitalMarketDemo
+  - Gcul.Common.DvP
+  - Gcul.Common.Eligibility
+  - Gcul.Common.OracleAttestation
+  - Gcul.CapitalMarket.InsuranceLinkedNote
 init-script: Gcul.Setup:initialize

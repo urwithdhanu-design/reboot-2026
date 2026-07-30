@@ -443,6 +443,9 @@ export function InsuranceCapitalMarketPage() {
             <Link to="/capital-market/enterprise" className="hover:underline">
               Enterprise challenges →
             </Link>
+            <Link to="/capital-market/kit" className="hover:underline">
+              Canton kit blueprint →
+            </Link>
           </div>
         }
       />

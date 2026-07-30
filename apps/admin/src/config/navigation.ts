@@ -22,6 +22,8 @@ import {
   Radar,
   Landmark,
   TriangleAlert,
+  Boxes,
+  Sparkles,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -49,6 +51,8 @@ export const navItems: NavItem[] = [
   { to: '/capital-market', label: 'Insurance capital market', icon: Landmark, section: 'Blockchain' },
   { to: '/capital-market/blueprint', label: 'Canton blueprint', icon: BookOpen, section: 'Blockchain' },
   { to: '/capital-market/enterprise', label: 'Canton enterprise challenges', icon: TriangleAlert, section: 'Blockchain' },
+  { to: '/capital-market/kit', label: 'Canton kit blueprint', icon: Boxes, section: 'Blockchain' },
+  { to: '/capital-market/canton-live', label: 'Canton live guide', icon: Sparkles, section: 'Blockchain' },
   { to: '/compliance', label: 'Compliance Controls', icon: ClipboardCheck, section: 'Blockchain' },
   { to: '/observability', label: 'Chain Monitor', icon: Radio, section: 'Blockchain' },
   { to: '/blockchain', label: 'Blockchain Ledger', icon: Link2, section: 'Blockchain' },

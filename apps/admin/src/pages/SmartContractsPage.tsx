@@ -261,8 +261,27 @@ export function SmartContractsPage() {
             <dd className="font-mono text-xs mt-1 break-all">{cantonStatus?.jsonApiUrl ?? '—'}</dd>
           </div>
           <div>
-            <dt className="text-lbg-gray-400 text-xs uppercase">Insurer party</dt>
-            <dd className="font-mono text-xs mt-1">{cantonStatus?.insurerPartyHint ?? '—'}</dd>
+            <dt className="text-lbg-gray-400 text-xs uppercase">Canton probe</dt>
+            <dd className="mt-1">
+              <Badge variant={liveBadge(cantonStatus?.probe?.status === 'ok')}>
+                {cantonStatus?.probe?.status ?? '—'}
+              </Badge>
+              {cantonStatus?.probe?.latencyMs != null ? (
+                <span className="text-xs text-lbg-gray-500 ml-2">{cantonStatus.probe.latencyMs} ms</span>
+              ) : null}
+            </dd>
+          </div>
+          <div>
+            <dt className="text-lbg-gray-400 text-xs uppercase">Canton strict mode</dt>
+            <dd className="mt-1">
+              <Badge variant={cantonStatus?.probe?.strictMode ? 'warning' : 'neutral'}>
+                {cantonStatus?.probe?.strictMode ? 'On (no simulated fallback)' : 'Off'}
+              </Badge>
+            </dd>
+          </div>
+          <div>
+            <dt className="text-lbg-gray-400 text-xs uppercase">Mint adapter</dt>
+            <dd className="font-mono text-xs mt-1">{cantonStatus?.probe?.mintAdapter ?? '—'}</dd>
           </div>
           <div>
             <dt className="text-lbg-gray-400 text-xs uppercase">Mint queue</dt>

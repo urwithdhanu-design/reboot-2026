@@ -534,6 +534,19 @@ export type ChainObservabilityResponse = {
   throughput_24h: Array<{ hour: string; count: number }>;
 };
 
+export type CantonHealthProbe = {
+  status?: string;
+  reachable?: boolean;
+  live?: boolean;
+  latencyMs?: number;
+  jsonApiUrl?: string;
+  strictMode?: boolean;
+  mintAdapter?: string;
+  mintAdapterError?: string;
+  insurerPartyResolved?: boolean;
+  checkedAt?: string;
+};
+
 export type CantonStatus = {
   enabled?: boolean;
   live?: boolean;
@@ -546,6 +559,25 @@ export type CantonStatus = {
   chainId?: number | string;
   contractAddress?: string;
   ledgerBackend?: string;
+  probe?: CantonHealthProbe;
+};
+
+export type CantonCapitalMarketCatalog = {
+  phase?: string;
+  kit?: string;
+  demoScript?: string;
+  initScript?: string;
+  templates?: Array<{ module: string; templates: string[] }>;
+  packageId?: string;
+  network?: string;
+};
+
+export type CantonReconciliationReport = {
+  summary?: Record<string, unknown>;
+  entries?: Array<Record<string, unknown>>;
+  drift?: Array<Record<string, unknown>>;
+  checkedAt?: string;
+  [key: string]: unknown;
 };
 
 export type CantonPolicyRecord = {
@@ -955,10 +987,18 @@ export const adminApi = {
 
   cantonStatus: () => request<CantonStatus>('/api/blockchain/canton/status'),
 
+  cantonHealth: () => request<CantonHealthProbe>('/api/blockchain/canton/health'),
+
   cantonPolicies: () =>
     request<{ records: CantonPolicyRecord[]; count: number; live: boolean }>(
       '/api/blockchain/canton/policies',
     ),
+
+  cantonCapitalMarket: () =>
+    request<CantonCapitalMarketCatalog>('/api/blockchain/canton/capital-market'),
+
+  cantonReconciliation: () =>
+    request<CantonReconciliationReport>('/api/blockchain/canton/reconciliation'),
 
   gculSidecarHealth: () => request<Record<string, unknown>>('/api/blockchain/gcul/health'),
 

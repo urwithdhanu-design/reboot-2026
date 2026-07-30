@@ -27,6 +27,28 @@ local-dev.cmd start
 
 - `Gcul.InsurancePolicy:InsurerMintAuthority` — insurer-controlled mint authority (insurer signs)
 - `Gcul.InsurancePolicy:InsurancePolicy` — on-ledger policy certificate
+- **Phase D capital market kit**
+  - `Gcul.Common.DvP` — `DvPProposal`, `DvPSettlement` (eligibility-gated accept)
+  - `Gcul.Common.Eligibility` — `InvestorEligibility`, `InvestorEligibilityGate`
+  - `Gcul.Common.OracleAttestation` — committee attestation with dispute window
+  - `Gcul.CapitalMarket.InsuranceLinkedNote` — ILS note with oracle trigger / finalize
+
+### Phase D demo script
+
+After `daml build` and Canton sandbox is running:
+
+```powershell
+cd canton/daml
+daml script --dar .daml/dist/gcul-policy-0.1.0.dar --script-name Gcul.CapitalMarketDemo:demo --ledger-host 127.0.0.1 --ledger-port 6865
+```
+
+Orchestrator catalog (no Canton required):
+
+```powershell
+curl http://127.0.0.1:8088/api/blockchain/canton/capital-market
+```
+
+`Gcul.Setup:initialize` seeds eligibility gate, oracle authority, and a sample ILS note on sandbox init.
 
 ## Configuration (blockchain-orchestrator)
 

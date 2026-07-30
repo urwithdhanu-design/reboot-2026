@@ -1,12 +1,45 @@
 module Gcul.Setup where
 
 import Gcul.InsurancePolicy
+import Gcul.Common.Eligibility
+import Gcul.Common.OracleAttestation
+import Gcul.CapitalMarket.InsuranceLinkedNote
 import Daml.Script
 
 initialize : Script ()
 initialize = script do
   insurer <- allocatePartyWithHint "GCUL_Insurer" (PartyIdHint "GCUL_Insurer")
   _customer <- allocatePartyWithHint "GCUL_Customer" (PartyIdHint "GCUL_Customer")
+  investor <- allocatePartyWithHint "GCUL_Investor" (PartyIdHint "GCUL_Investor")
+  oracle <- allocatePartyWithHint "GCUL_Oracle" (PartyIdHint "GCUL_Oracle")
+
   _ <- submit insurer do
     createCmd InsurerMintAuthority with insurer = insurer
+
+  gateCid <- submit insurer do
+    createCmd InvestorEligibilityGate with issuer = insurer
+
+  _ <- submit insurer do
+    exerciseCmd gateCid GrantInvestorEligibility with
+      investor = investor
+      investorId = "INV-SEED-001"
+
+  _ <- submit oracle do
+    createCmd OracleCommitteeAuthority with committee = oracle
+
+  _ <- submit insurer do
+    createCmd InsuranceLinkedNote with
+      issuer = insurer
+      investor = investor
+      noteId = "ILN-SEED-HOME-CAT"
+      portfolioId = "HOME-CAT-PORT-001"
+      securityId = "HOME-CAT-NOTE-001"
+      notionalGbp = 100000000.0
+      triggerThresholdPct = 5.0
+      triggered = False
+      impairedPct = 0.0
+      triggerEvidenceHash = None
+      triggeredAt = None
+      disputeEndsAt = None
+
   return ()

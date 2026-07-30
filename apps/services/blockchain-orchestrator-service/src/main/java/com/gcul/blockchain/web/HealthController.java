@@ -7,6 +7,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.gcul.blockchain.canton.CantonHealthProbe;
 import com.gcul.blockchain.config.LedgerProperties;
 import com.gcul.blockchain.ledger.PolicyNftMintService;
 import com.gcul.blockchain.service.BlockchainOrchestratorService;
@@ -23,6 +24,7 @@ public class HealthController {
 	private final BlockchainOrchestratorService orchestrator;
 	private final PolicyNftMintService policyNftMintService;
 	private final LedgerProperties ledgerProperties;
+	private final CantonHealthProbe cantonHealthProbe;
 
 	@Value("${gcul.services.target:local}")
 	private String servicesTarget;
@@ -30,10 +32,12 @@ public class HealthController {
 	public HealthController(
 			BlockchainOrchestratorService orchestrator,
 			PolicyNftMintService policyNftMintService,
-			LedgerProperties ledgerProperties) {
+			LedgerProperties ledgerProperties,
+			CantonHealthProbe cantonHealthProbe) {
 		this.orchestrator = orchestrator;
 		this.policyNftMintService = policyNftMintService;
 		this.ledgerProperties = ledgerProperties;
+		this.cantonHealthProbe = cantonHealthProbe;
 	}
 
 	@GetMapping("/health")
@@ -48,6 +52,8 @@ public class HealthController {
 		body.put("ledger_backend", ledgerProperties.getBackend());
 		body.put("primary_ledger", ledgerProperties.resolvedPrimary());
 		body.put("secondary_ledgers", ledgerProperties.secondaryLedgers());
+		body.put("canton_strict", ledgerProperties.isStrict());
+		body.put("canton_probe", cantonHealthProbe.probe());
 		body.put("ledger", policyNftMintService.status());
 		return body;
 	}

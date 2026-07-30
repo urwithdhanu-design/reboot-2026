@@ -1,6 +1,7 @@
 package com.gcul.blockchain.ledger;
 
 import java.time.Instant;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -10,6 +11,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 import org.springframework.web.server.ResponseStatusException;
 
+import com.gcul.blockchain.canton.IdempotentCommandStore;
 import com.gcul.blockchain.ledger.PolicyMintValidator.MintContext;
 import com.gcul.blockchain.model.PolicyLedgerAttestation;
 import com.gcul.blockchain.model.PolicyNftRecord;
@@ -23,23 +25,23 @@ public class PolicyNftMintService {
 	private final PolicyLedgerAttestationRepository attestationRepository;
 	private final PolicyMintValidator validator;
 	private final LedgerAdapterRegistry ledgerRegistry;
+	private final IdempotentCommandStore idempotentCommandStore;
 
 	public PolicyNftMintService(
 			PolicyNftRecordRepository repository,
 			PolicyLedgerAttestationRepository attestationRepository,
 			PolicyMintValidator validator,
-			LedgerAdapterRegistry ledgerRegistry) {
+			LedgerAdapterRegistry ledgerRegistry,
+			IdempotentCommandStore idempotentCommandStore) {
 		this.repository = repository;
 		this.attestationRepository = attestationRepository;
 		this.validator = validator;
 		this.ledgerRegistry = ledgerRegistry;
+		this.idempotentCommandStore = idempotentCommandStore;
 	}
 
 	public Map<String, Object> status() {
-		LedgerAdapter activeAdapter = ledgerRegistry.resolveMintAdapter();
-		Map<String, Object> status = new java.util.LinkedHashMap<>(activeAdapter.status());
-		status.put("primaryLedger", ledgerRegistry.primaryLedgerId());
-		status.put("activeLedger", activeAdapter.ledgerId());
+		Map<String, Object> status = new LinkedHashMap<>(ledgerRegistry.mintAdapterStatus());
 		status.put("adapters", ledgerRegistry.allStatus().get("adapters"));
 		return status;
 	}
@@ -47,6 +49,11 @@ public class PolicyNftMintService {
 	@Transactional
 	public PolicyNftMintResult mintPolicyNft(MintRequest request) {
 		String policyId = requireText(request.policyId(), "policyId");
+		Optional<PolicyNftMintResult> existing = findExistingMint(policyId);
+		if (existing.isPresent()) {
+			return existing.get();
+		}
+
 		String policyReferenceHash = requireText(request.policyReferenceHash(), "policyReferenceHash");
 		String walletAddress = WalletAddressValidator.normalize(request.walletAddress());
 		String metadataUri = requireText(
@@ -77,9 +84,36 @@ public class PolicyNftMintService {
 				request.policyEligible(),
 				request.metadata()));
 
+		idempotentCommandStore.recordMint(policyId, result);
 		saveAttestation(result, adapter.ledgerId(), policyNumber, customerId);
 		saveLegacyRecord(result, policyNumber, customerId);
 		return result;
+	}
+
+	private Optional<PolicyNftMintResult> findExistingMint(String policyId) {
+		Optional<PolicyNftMintResult> fromRecord = repository.findByPolicyId(policyId).map(this::toMintResult);
+		if (fromRecord.isPresent()) {
+			return fromRecord;
+		}
+		return idempotentCommandStore.findCompletedMint(policyId);
+	}
+
+	private PolicyNftMintResult toMintResult(PolicyNftRecord record) {
+		return new PolicyNftMintResult(
+				record.getPolicyId(),
+				record.getPolicyReferenceHash(),
+				record.getTokenId(),
+				record.getTransactionHash(),
+				record.getWalletAddress(),
+				record.getContractAddress(),
+				record.getChainId(),
+				record.getBlockNumber(),
+				record.getNetwork(),
+				record.getTokenUri(),
+				record.getMintMode(),
+				record.getMintStatus(),
+				record.getMintMode(),
+				"");
 	}
 
 	public List<PolicyNftRecord> recentMints() {
