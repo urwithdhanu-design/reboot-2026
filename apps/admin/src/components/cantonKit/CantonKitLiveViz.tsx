@@ -3,6 +3,8 @@ import {
   CANTON_SIMULATION_STEPS,
   CAPITAL_MARKET_UPGRADE_STEPS,
   CURRENT_IMPLEMENTATION_PHASES,
+  PLATFORM_CANTON_FLOW_STEPS,
+  PLATFORM_FLOW_LEGEND,
 } from '../../data/cantonKitLive';
 import { DvpAnimation, OracleFlowViz } from '../capitalMarket/CantonBlueprintViz';
 
@@ -14,6 +16,57 @@ function useCyclingIndex(length: number, intervalMs: number) {
     return () => clearInterval(t);
   }, [length, intervalMs]);
   return index;
+}
+
+export function PlatformCantonFlowViz() {
+  const active = useCyclingIndex(PLATFORM_CANTON_FLOW_STEPS.length, 2800);
+  const step = PLATFORM_CANTON_FLOW_STEPS[active] ?? PLATFORM_CANTON_FLOW_STEPS[0];
+
+  return (
+    <div className="kit-live-platform">
+      <div className="kit-live-platform-legend">
+        {PLATFORM_FLOW_LEGEND.map((item) => (
+          <span key={item.ledger} className="kit-live-legend-chip" style={{ '--legend-color': item.color } as CSSProperties}>
+            {item.label}
+          </span>
+        ))}
+      </div>
+
+      <div className="kit-live-platform-rail" aria-label="Platform Canton flow">
+        {PLATFORM_CANTON_FLOW_STEPS.map((s, i) => (
+          <div key={s.id} className="kit-live-platform-step-wrap">
+            <div
+              className={`kit-live-platform-node kit-live-platform-node--${s.ledger}${i === active ? ' kit-live-platform-node--active' : ''}${i < active ? ' kit-live-platform-node--done' : ''}`}
+            >
+              <span className="kit-live-platform-node-title">{s.title}</span>
+              <span className="kit-live-platform-node-service">{s.service}</span>
+              {s.port ? <span className="kit-live-platform-node-port">:{s.port}</span> : null}
+            </div>
+            {i < PLATFORM_CANTON_FLOW_STEPS.length - 1 ? (
+              <div className={`kit-live-platform-line${i < active ? ' kit-live-platform-line--flow' : ''}`} />
+            ) : null}
+          </div>
+        ))}
+      </div>
+
+      <div className="kit-live-step-detail mt-4">
+        <div className="flex flex-wrap items-center gap-2 mb-1">
+          <p className="font-semibold text-lbg-black">{step.title}</p>
+          <span className={`kit-live-ledger-badge kit-live-ledger-badge--${step.ledger}`}>
+            {step.ledger === 'canton' ? 'On Canton' : step.ledger === 'hybrid' ? 'Hybrid' : 'Core DB'}
+          </span>
+        </div>
+        <p className="text-sm text-lbg-gray-600">{step.detail}</p>
+      </div>
+
+      <div className="kit-live-platform-summary mt-4">
+        <p className="text-xs text-lbg-gray-500">
+          <strong className="text-lbg-gray-700">Hybrid pattern:</strong> legal and operational truth in policy/claims/wallet DBs;
+          Canton holds policy certificate, verify attestation, and optional ClaimSettlement — not claim narratives or medical PII.
+        </p>
+      </div>
+    </div>
+  );
 }
 
 export function CantonSimulationViz() {
@@ -144,7 +197,7 @@ export function CapitalMarketUpgradeViz() {
 
       <div className="kit-live-template-tree mt-4">
         <div className="kit-live-tree-branch">
-          <span className="kit-live-tree-root">Gcul.Common</span>
+          <span className="kit-live-tree-root">Common (Daml)</span>
           <span>DvP · Eligibility · OracleAttestation</span>
         </div>
         <div className="kit-live-tree-forks">

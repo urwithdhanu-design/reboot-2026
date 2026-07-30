@@ -165,7 +165,7 @@ function ArchitectureTab() {
               <tr>
                 <th>Interface</th>
                 <th>Banking (LBG)</th>
-                <th>Insurance (GCUL)</th>
+                <th>Insurance (platform)</th>
               </tr>
             </thead>
             <tbody>
@@ -480,7 +480,7 @@ export function CantonKitBlueprintPage() {
       <PageHeader
         icon={Boxes}
         title="Canton kit blueprint"
-        subtitle="Reusable gcul-canton-kit — honest hybrid ledger, shared Daml patterns, phased implementation backlog"
+        subtitle="Reusable Canton coordination kit — honest hybrid ledger, shared Daml patterns, phased implementation backlog"
         metrics={[
           { label: 'Deliverables', value: String(KIT_DELIVERABLES.length) },
           { label: 'Not started', value: String(notStarted) },

@@ -16,12 +16,17 @@ import {
   CantonSimulationViz,
   CapitalMarketUpgradeViz,
   CurrentImplementationViz,
+  PlatformCantonFlowViz,
 } from '../components/cantonKit/CantonKitLiveViz';
+import { PlatformStackSimulator } from '../components/cantonKit/PlatformStackSimulator';
 import {
   CANTON_LIVE_TABS,
+  CANTON_SIMULATION_SUB_TABS,
   isCantonLiveTabId,
+  isCantonSimulationSubTabId,
   KIT_START_HERE,
   type CantonLiveTabId,
+  type CantonSimulationSubTabId,
 } from '../data/cantonKitLive';
 
 const TAB_ICONS: Record<CantonLiveTabId, LucideIcon> = {
@@ -31,55 +36,118 @@ const TAB_ICONS: Record<CantonLiveTabId, LucideIcon> = {
 };
 
 function SimulationTab() {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const subParam = searchParams.get('sub');
+  const subTab: CantonSimulationSubTabId = isCantonSimulationSubTabId(subParam) ? subParam : 'ledger';
+
+  const setSubTab = (id: CantonSimulationSubTabId) => {
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      next.set('view', 'simulation');
+      next.set('sub', id);
+      return next;
+    });
+  };
+
   return (
-    <Card className="p-6 blueprint-card">
-      <p className="text-sm text-lbg-gray-600 mb-4">
-        Canton is a <strong>privacy-aware distributed ledger</strong> for Daml smart contracts. GCUL uses the local
-        sandbox JSON API — parties submit commands, the ledger validates Daml rules, and only authorised parties see
-        contract data.
-      </p>
-      <CantonSimulationViz />
+    <Card className="blueprint-card" padding={false}>
+      <div className="p-6">
+        <div className="flex gap-1 mb-4 p-1 bg-lbg-gray-50 rounded-lg border border-lbg-gray-100 overflow-x-auto">
+          {CANTON_SIMULATION_SUB_TABS.map(({ id, label }) => (
+            <button
+              key={id}
+              type="button"
+              onClick={() => setSubTab(id)}
+              className={`px-3 py-1.5 rounded-md text-xs sm:text-sm font-medium whitespace-nowrap transition-colors ${
+                subTab === id ? 'bg-white text-lbg-green shadow-sm border border-lbg-gray-100' : 'text-lbg-gray-600 hover:text-lbg-black'
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+
+        {subTab === 'ledger' ? (
+          <>
+            <p className="text-sm text-lbg-gray-600 mb-4">
+              Canton is a <strong>privacy-aware distributed ledger</strong> for Daml smart contracts. This platform uses the
+              local sandbox JSON API — parties submit commands, the ledger validates Daml rules, and only authorised parties
+              see contract data.
+            </p>
+            <CantonSimulationViz />
+          </>
+        ) : (
+          <>
+            <p className="text-sm text-lbg-gray-600 mb-4">
+              How <strong>policy mint, wallet link, claim verify, and settlement</strong> flow through our services — and
+              which steps create or read <strong>Canton contracts</strong> versus core database only.
+            </p>
+            <PlatformStackSimulator />
+            <PlatformCantonFlowViz />
+          </>
+        )}
+      </div>
     </Card>
   );
 }
 
 function ImplementationTab() {
   return (
-    <Card className="p-6 blueprint-card">
-      <p className="text-sm text-lbg-gray-600 mb-4">
-        Phases <strong>A–D</strong> shipped in <code className="text-xs">blockchain-orchestrator-service</code> and{' '}
-        <code className="text-xs">canton/daml</code>. The orchestrator coordinates mint/verify with honest{' '}
-        <code className="text-xs">ledger_mode</code> — simulated fallback only when strict mode is off and Canton is down.
-      </p>
-      <CurrentImplementationViz />
+    <Card className="blueprint-card" padding={false}>
+      <div className="p-6">
+        <p className="text-sm text-lbg-gray-600 mb-4">
+          Phases <strong>A–D</strong> shipped in <code className="text-xs">blockchain-orchestrator-service</code> and{' '}
+          <code className="text-xs">canton/daml</code>. The orchestrator coordinates mint/verify with honest{' '}
+          <code className="text-xs">ledger_mode</code> — simulated fallback only when strict mode is off and Canton is down.
+        </p>
+        <CurrentImplementationViz />
+      </div>
     </Card>
   );
 }
 
 function CapitalMarketTab() {
   return (
-    <Card className="p-6 blueprint-card">
-      <p className="text-sm text-lbg-gray-600 mb-4">
-        Phase <strong>D</strong> extends the kit with shared capital-market templates — same DvP and eligibility patterns
-        LBG would use for deposits ↔ gilts, applied here to insurance-linked notes and oracle triggers.
-      </p>
-      <CapitalMarketUpgradeViz />
+    <Card className="blueprint-card" padding={false}>
+      <div className="p-6">
+        <p className="text-sm text-lbg-gray-600 mb-4">
+          Phase <strong>D</strong> extends the kit with shared capital-market templates — same DvP and eligibility patterns
+          LBG would use for deposits ↔ gilts, applied here to insurance-linked notes and oracle triggers.
+        </p>
+        <CapitalMarketUpgradeViz />
+      </div>
     </Card>
   );
 }
 
-const TAB_CONTENT: Record<CantonLiveTabId, () => ReactElement> = {
-  simulation: SimulationTab,
-  implementation: ImplementationTab,
-  'capital-market': CapitalMarketTab,
-};
+function renderLiveTab(view: CantonLiveTabId): ReactElement {
+  switch (view) {
+    case 'simulation':
+      return <SimulationTab />;
+    case 'implementation':
+      return <ImplementationTab />;
+    case 'capital-market':
+      return <CapitalMarketTab />;
+    default:
+      return <SimulationTab />;
+  }
+}
 
 export function CantonKitLivePage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const viewParam = searchParams.get('view');
   const activeView: CantonLiveTabId = isCantonLiveTabId(viewParam) ? viewParam : 'simulation';
-  const selectView = (id: CantonLiveTabId) => setSearchParams({ view: id });
-  const Content = TAB_CONTENT[activeView];
+
+  const selectView = (id: CantonLiveTabId) => {
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      next.set('view', id);
+      if (id === 'simulation' && !next.get('sub')) {
+        next.set('sub', 'ledger');
+      }
+      return next;
+    });
+  };
 
   return (
     <AdminLayout>
@@ -124,20 +192,24 @@ export function CantonKitLivePage() {
         })}
       </div>
 
-      <Content />
+      {renderLiveTab(activeView)}
 
       <div className="mt-6 space-y-4">
         <CantonKitTestRunner />
-        <Card className="p-5">
+        <Card padding={false} className="p-5">
           <h3 className="font-bold text-lbg-black mb-2 flex items-center gap-2">
             <FileCode2 className="w-4 h-4 text-lbg-green" aria-hidden />
             Daml demo script
           </h3>
           <pre className="text-xs bg-lbg-gray-50 rounded-lg p-3 overflow-x-auto text-lbg-gray-700">
             cd canton/daml{'\n'}
-            daml script --dar .daml/dist/gcul-policy-0.1.0.dar --script-name Gcul.CapitalMarketDemo:demo{'\n'}
+            daml build{'\n'}
+            daml script --dar .daml/dist/*.dar --script-name CapitalMarketDemo:demo{'\n'}
             {'  '}--ledger-host 127.0.0.1 --ledger-port 6865
           </pre>
+          <p className="text-xs text-lbg-gray-500 mt-2">
+            Script module name matches the Daml package in <code className="text-xs">canton/daml</code> (see daml.yaml).
+          </p>
         </Card>
       </div>
     </AdminLayout>
