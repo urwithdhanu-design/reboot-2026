@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useEffect, useMemo, useState, useRef } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
 import { api, type WalletTransaction } from "../api";
 import {
   AssistantBar,
@@ -21,6 +21,9 @@ import {
   needsKycAttention,
 } from "../kycStatus";
 import { useSession } from "../session";
+import { getSimAction } from "../simulation/simQuery";
+import { highlightSelector, highlightElement } from "../simulation/highlight";
+import { sleep } from "../claimsDemoFill";
 
 const RECHARGE_PRESETS = [25, 50, 100, 250];
 const DEMO_BANK_ACCOUNTS = ["Lloyds Bank", "Barclays", "HSBC"] as const;
@@ -126,6 +129,9 @@ export function WalletPage() {
   const [transactions, setTransactions] = useState<WalletTransaction[]>([]);
   const [linkAddress, setLinkAddress] = useState("");
   const [devApproveUrl, setDevApproveUrl] = useState<string | null>(null);
+  const simWalletSetupRan = useRef(false);
+  const simWalletHighlightRan = useRef(false);
+  const location = useLocation();
 
   const kycStatus = user?.kyc_status;
   const kycVerified = isKycVerified(kycStatus);
@@ -292,6 +298,44 @@ export function WalletPage() {
     void rechargeWallet(amount);
   }
 
+  useEffect(() => {
+    if (!token || simWalletHighlightRan.current) return;
+    const sim = getSimAction(location.search);
+    if (sim !== "highlight-wallet-claim") return;
+    simWalletHighlightRan.current = true;
+    void sleep(800).then(() => {
+      highlightSelector('[data-sim-target="wallet-balance"]');
+      const claimTx = document.querySelector('[data-sim-tx-type="claim_payout"], [data-sim-tx-type="claim"]');
+      highlightElement(claimTx);
+    });
+  }, [token, location.search]);
+
+  useEffect(() => {
+    if (!token || simWalletSetupRan.current) return;
+    const sim = getSimAction(location.search);
+    if (sim !== "wallet-setup") return;
+    simWalletSetupRan.current = true;
+
+    void (async () => {
+      try {
+        if (!walletConnected) {
+          highlightSelector('[data-sim-target="create-wallet"]');
+          await createWallet();
+          await sleep(800);
+        }
+        setView("recharge");
+        setRechargeAmount("100");
+        await sleep(400);
+        highlightSelector('[data-sim-target="recharge-submit"]');
+        await rechargeWallet(100);
+        await sleep(600);
+        navigate("/marketplace?sim=browse-health", { replace: true });
+      } catch {
+        // manual fallback
+      }
+    })();
+  }, [token, location.search, walletConnected, navigate]);
+
   const headerMetrics = walletConnected
     ? [
         {
@@ -371,6 +415,7 @@ export function WalletPage() {
             className="customer-wallet-3d"
             type="button"
             onClick={createWallet}
+            data-sim-target="create-wallet"
             disabled={loading}
           >
             <div style={{ width: "100%" }}>
@@ -484,7 +529,7 @@ export function WalletPage() {
             <div className="wallet-dashboard">
               <div className="wallet-balance-card wallet-balance-card--hero">
                 <span className="muted">Available balance</span>
-                <strong>{formatGbp(balance)}</strong>
+                <strong data-sim-target="wallet-balance">{formatGbp(balance)}</strong>
                 <span className="muted">{currency} · Demo account</span>
               </div>
 
@@ -538,7 +583,7 @@ export function WalletPage() {
                 <CustomerPanel title="Recent activity" description="Latest wallet transactions">
                   <ul className="wallet-tx-list">
                     {transactions.slice(0, 5).map((tx) => (
-                      <li key={tx.id}>
+                      <li key={tx.id} data-sim-tx-type={tx.type}>
                         <div>
                           <strong>{formatTxType(tx.type)}</strong>
                           <span className="muted">
@@ -574,7 +619,7 @@ export function WalletPage() {
             >
               <div className="wallet-balance-card compact">
                 <span className="muted">Current balance</span>
-                <strong>{formatGbp(balance)}</strong>
+                <strong data-sim-target="wallet-balance">{formatGbp(balance)}</strong>
               </div>
 
               <p className="options-label">Quick amounts</p>
@@ -621,6 +666,7 @@ export function WalletPage() {
 
               <button
                 className="btn-primary wallet-recharge-submit"
+                data-sim-target="recharge-submit"
                 type="button"
                 disabled={rechargeLoading}
                 onClick={submitRecharge}
@@ -637,7 +683,7 @@ export function WalletPage() {
                   <p className="options-label wallet-activity-heading">Recent activity</p>
                   <ul className="wallet-tx-list">
                     {transactions.map((tx) => (
-                      <li key={tx.id}>
+                      <li key={tx.id} data-sim-tx-type={tx.type}>
                         <div>
                           <strong>{formatTxType(tx.type)}</strong>
                           <span className="muted">

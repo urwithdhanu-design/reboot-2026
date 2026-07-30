@@ -14,6 +14,8 @@ import {
   type KycStatus,
 } from "../kycStatus";
 import { useSession } from "../session";
+import { getSimAction } from "../simulation/simQuery";
+import { sleep } from "../claimsDemoFill";
 
 const STEPS = ["Identity", "Verify", "Liveness", "Complete"] as const;
 type StepLabel = (typeof STEPS)[number];
@@ -139,6 +141,7 @@ export function KycPage() {
   const [consentLoading, setConsentLoading] = useState(false);
   const [consentError, setConsentError] = useState<string | null>(null);
   const docInputRef = useRef<HTMLInputElement>(null);
+  const simKycRan = useRef(false);
   const kycStatus = user?.kyc_status ?? "not_started";
   const stepStates = useKycStepStates(kycStatus, uploaded, selfie);
   const docLabel = DOC_LABELS[documentType] ?? "Document";
@@ -265,13 +268,51 @@ export function KycPage() {
         updateUser({ ...user, kyc_status: res.status });
       }
       setConsentOpen(false);
-      navigate("/wallet", { replace: true });
+      navigate("/wallet?sim=wallet-setup", { replace: true });
     } catch (err) {
       setConsentError(err instanceof Error ? err.message : "Could not save consent");
     } finally {
       setConsentLoading(false);
     }
   }
+
+  useEffect(() => {
+    if (!token || simKycRan.current) return;
+    const sim = getSimAction(location.search);
+    if (sim !== "kyc-complete") return;
+    simKycRan.current = true;
+
+    void (async () => {
+      try {
+        const result = await runKycDemoFill(token);
+        setUploaded(result.uploaded);
+        setSelfie(result.selfie);
+        await sleep(500);
+        const res = await api.submitKyc(token, {
+          document_type: documentType,
+          document_uploaded: true,
+          selfie_captured: true,
+        });
+        if (user) {
+          updateUser({ ...user, kyc_status: res.status });
+        }
+        let nextStatus = res.status;
+        if (nextStatus === "pending_consent" || res.requires_consent) {
+          setConsentOpen(true);
+          await sleep(600);
+          const consent = await api.acceptKycConsent(token);
+          nextStatus = consent.status;
+          if (user) {
+            updateUser({ ...user, kyc_status: nextStatus });
+          }
+          setConsentOpen(false);
+        }
+        navigate("/wallet?sim=wallet-setup", { replace: true });
+      } catch {
+        // manual fallback
+      }
+    })();
+  }, [token, location.search, documentType, navigate, updateUser, user]);
 
   if (refreshing) {
     return (

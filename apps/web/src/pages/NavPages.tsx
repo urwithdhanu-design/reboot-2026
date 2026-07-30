@@ -26,6 +26,9 @@ import { PayQuoteButton } from "../components/PayQuoteButton";
 import { isCancelledPolicy, isRenewablePolicy } from "../customerPolicies";
 import { needsKycAttention } from "../kycStatus";
 import { useSession } from "../session";
+import { getSimAction } from "../simulation/simQuery";
+import { highlightSelector } from "../simulation/highlight";
+import { createDemoJpegFile } from "../demoImage";
 
 const PRIMARY_ACTIONS: { id: string; label: string; to?: string }[] = [
   { id: "compare", label: "Compare policies & quotes", to: "/compare" },
@@ -123,7 +126,7 @@ function PolicyCard({ policy }: { policy: CustomerPolicyRecord }) {
     || Boolean(policy.wallet_address);
 
   return (
-    <article className={`policy-card policy-card--${tone}`}>
+    <article className={`policy-card policy-card--${tone}`} data-sim-cover-active={tone === "active" ? "true" : undefined}>
       <div className="policy-card-head">
         <div className="policy-card-title-block">
           <div className="policy-card-eyebrow">
@@ -237,6 +240,8 @@ export function PoliciesPage() {
   const [selectedQuoteId, setSelectedQuoteId] = useState<string | null>(null);
   const [cancelWizardOpen, setCancelWizardOpen] = useState(false);
   const [renewWizardOpen, setRenewWizardOpen] = useState(false);
+  const simPayRan = useRef(false);
+  const simCoverRan = useRef(false);
 
   const displayQuotes = useMemo(() => {
     const issued = new Set(issuedQuoteIds);
@@ -259,6 +264,25 @@ export function PoliciesPage() {
     () => displayQuotes.find((q) => q.quote_id === selectedQuoteId) ?? displayQuotes[0] ?? null,
     [displayQuotes, selectedQuoteId],
   );
+
+  useEffect(() => {
+    if (simPayRan.current) return;
+    if (getSimAction(location.search) !== "pay-quote") return;
+    if (!selectedQuote || !token) return;
+    simPayRan.current = true;
+    highlightSelector('[data-sim-target="pay-quote-btn"]');
+    void sleep(900).then(() => {
+      const btn = document.querySelector('[data-sim-target="pay-quote-btn"]') as HTMLButtonElement | null;
+      btn?.click();
+    });
+  }, [location.search, selectedQuote, token]);
+
+  useEffect(() => {
+    if (simCoverRan.current) return;
+    if (getSimAction(location.search) !== "highlight-cover-active") return;
+    simCoverRan.current = true;
+    void sleep(600).then(() => highlightSelector('[data-sim-cover-active="true"]'));
+  }, [location.search]);
 
   useEffect(() => {
     if (!token) {
@@ -864,6 +888,8 @@ function ClaimQueryReplyPanel({
 
 export function ClaimsPage() {
   const { user, token } = useSession();
+  const location = useLocation();
+  const simClaimRan = useRef(false);
   const [tab, setTab] = useState<"new" | "track" | "settlement">("new");
   const [claims, setClaims] = useState<
     Awaited<ReturnType<typeof api.listClaims>>["claims"]
@@ -992,6 +1018,29 @@ export function ClaimsPage() {
   useEffect(() => {
     void loadClaims();
   }, []);
+
+  useEffect(() => {
+    if (!token || simClaimRan.current) return;
+    if (getSimAction(location.search) !== "claim-submit") return;
+    if (!user || policies.length === 0) return;
+    simClaimRan.current = true;
+    setTab("new");
+
+    void (async () => {
+      const policy = policies.find((p) => p.paid) ?? policies[0];
+      if (!policy) return;
+      applyPolicy(policy);
+      await sleep(400);
+      await runDemoFill();
+      await sleep(400);
+      const file = await createDemoJpegFile("claim-evidence.jpg");
+      setAttachments([file]);
+      await sleep(400);
+      highlightSelector('[data-sim-target="start-claim-btn"]');
+      await sleep(600);
+      await startClaim();
+    })();
+  }, [location.search, token, user, policies.length]);
 
   useEffect(() => {
     if (tab !== "track") return;
@@ -1296,6 +1345,7 @@ export function ClaimsPage() {
             type="button"
             style={{ marginTop: 12 }}
             disabled={submitting || demoFilling}
+            data-sim-target="start-claim-btn"
             onClick={() => void startClaim()}
           >
             {submitting ? "Submitting…" : "Start a claim"}

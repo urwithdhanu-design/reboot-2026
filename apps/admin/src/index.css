@@ -2817,3 +2817,20 @@ body {
   color: var(--color-lbg-green-dark);
   margin-bottom: 0.5rem;
 }
+
+.sim-highlight {
+  outline: 3px solid var(--color-lbg-green);
+  outline-offset: 3px;
+  box-shadow: 0 0 0 6px rgba(0, 106, 77, 0.22);
+  animation: sim-highlight-pulse 1.1s ease-in-out infinite;
+}
+
+@keyframes sim-highlight-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 4px rgba(0, 106, 77, 0.18);
+  }
+  50% {
+    box-shadow: 0 0 0 10px rgba(0, 106, 77, 0.32);
+  }
+}

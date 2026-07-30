@@ -1,10 +1,13 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState, useRef } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { RefreshCw, Users } from 'lucide-react';
 import { AdminLayout } from '../components/layout/AdminLayout';
 import { PageHeader, FilterTabs, ContentPanel, AlertBanner, Badge, Button, SearchInput, PaginatedTable } from '../components/ui';
 import { enrichPoliciesWithPayments, policyCountByEmail, type AdminCustomer } from '../api';
 import { formatCacheAge } from '../firestore/adminCache';
 import { cachedAdminApi, filterCustomers } from '../firestore/cachedAdminApi';
+import { getSimAction, getSimParam } from '../simulation/simQuery';
+import { highlightElement } from '../simulation/highlight';
 
 const statusBadge: Record<string, 'success' | 'warning' | 'error' | 'neutral'> = {
   active: 'success',
@@ -42,6 +45,8 @@ function formatDate(iso?: string) {
 }
 
 export function CustomersPage() {
+  const [searchParams] = useSearchParams();
+  const simHighlightRan = useRef(false);
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState<'all' | 'verified' | 'in_progress'>('all');
   const [customers, setCustomers] = useState<AdminCustomer[]>([]);
@@ -91,6 +96,20 @@ export function CustomersPage() {
       })),
     [rows, policies],
   );
+
+  useEffect(() => {
+    if (simHighlightRan.current || loading) return;
+    if (getSimAction(searchParams.toString()) !== 'highlight-customer') return;
+    const email = getSimParam(searchParams.toString(), 'simEmail');
+    if (!email) return;
+    simHighlightRan.current = true;
+    setSearch(email);
+    const timer = window.setTimeout(() => {
+      const el = document.querySelector(`[data-sim-customer-email="${email.toLowerCase()}"]`);
+      highlightElement(el ?? document.querySelector('table'));
+    }, 800);
+    return () => window.clearTimeout(timer);
+  }, [loading, searchParams]);
 
   const cacheLabel = fromCache ? formatCacheAge(cachedAt) : null;
 
@@ -160,7 +179,7 @@ export function CustomersPage() {
               const acct = c.account_status ?? 'registered';
               const kyc = c.kyc_status ?? 'not_started';
               return (
-                <tr key={c.id} className="hover:bg-lbg-gray-50">
+                <tr key={c.id} className="hover:bg-lbg-gray-50" data-sim-customer-email={c.email.toLowerCase()}>
                   <td className="py-3 px-4">
                     <p className="font-semibold">{c.full_name}</p>
                     <p className="text-xs text-lbg-gray-400 font-mono">{c.id}</p>

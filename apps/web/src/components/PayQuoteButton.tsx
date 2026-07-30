@@ -93,6 +93,7 @@ export function PayQuoteButton({ quote }: { quote: QuoteEstimate }) {
         className="btn-primary"
         disabled={loading}
         onClick={() => void payWithWallet()}
+        data-sim-target="pay-quote-btn"
       >
         {loading
           ? "Processing wallet payment…"

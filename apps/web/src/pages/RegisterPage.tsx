@@ -1,5 +1,5 @@
-import { useState, type FormEvent, type MouseEvent } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useState, type FormEvent, type MouseEvent, useEffect, useRef } from "react";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { api } from "../api";
 import {
   AssistantBar,
@@ -10,6 +10,8 @@ import {
 import { RegistrationTermsModal } from "../components/RegistrationTermsModal";
 import { IconLock, IconMail, IconPhone, IconUser } from "../icons";
 import type { RegistrationTermsSectionId } from "../registrationTerms";
+import { buildRegisterDemoFields } from "../registerDemoFill";
+import { getSimAction, getSimParam, stripSimParams } from "../simulation/simQuery";
 import { useSession } from "../session";
 
 export function RegisterPage() {
@@ -26,6 +28,39 @@ export function RegisterPage() {
   const [termsModalFocus, setTermsModalFocus] = useState<RegistrationTermsSectionId | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [demoFilling, setDemoFilling] = useState(false);
+  const simRan = useRef(false);
+  const [searchParams] = useSearchParams();
+
+  function applyDemoFields(emailOverride?: string) {
+    const demo = buildRegisterDemoFields(emailOverride ?? getSimParam(searchParams.toString(), 'simEmail') ?? undefined);
+    setFullName(demo.fullName);
+    setEmail(demo.email);
+    setMobile(demo.mobile);
+    setPassword(demo.password);
+    setConfirmPassword(demo.confirmPassword);
+    setTerms(demo.terms);
+  }
+
+  async function runDemoFill() {
+    if (demoFilling || loading) return;
+    setDemoFilling(true);
+    setError(null);
+    applyDemoFields();
+    setDemoFilling(false);
+  }
+
+  useEffect(() => {
+    if (simRan.current) return;
+    const sim = getSimAction(searchParams.toString());
+    if (sim !== 'register-demo') return;
+    simRan.current = true;
+    applyDemoFields(getSimParam(searchParams.toString(), 'simEmail') ?? undefined);
+    const form = document.querySelector('form.stack') as HTMLFormElement | null;
+    window.setTimeout(() => {
+      form?.requestSubmit();
+    }, 1200);
+  }, [searchParams]);
 
   function openTermsModal(section: RegistrationTermsSectionId, event: MouseEvent) {
     event.preventDefault();
@@ -61,7 +96,8 @@ export function RegisterPage() {
         password,
       });
       setSession(res.access_token, res.user);
-      navigate("/", {
+      navigate(stripSimParams("/", searchParams.toString()), {
+        replace: true,
         state: {
           registrationNote: res.emailed
             ? `Welcome email sent to ${email}. Check your inbox (and spam folder).`
@@ -88,7 +124,17 @@ export function RegisterPage() {
         }
         assistant={<AssistantBar screen="register" />}
       >
-        <form className="stack" onSubmit={onSubmit}>
+        <div className="flex justify-end mb-2">
+          <button
+            type="button"
+            className="demo-fill-btn"
+            disabled={demoFilling || loading}
+            onClick={() => void runDemoFill()}
+          >
+            {demoFilling ? "Filling…" : "Demo fill"}
+          </button>
+        </div>
+        <form className="stack" onSubmit={onSubmit} data-sim-target="register-form">
           <div className="field">
             <label htmlFor="fullName">Full name</label>
             <div className="input-shell">

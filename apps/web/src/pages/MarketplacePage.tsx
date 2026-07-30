@@ -1,9 +1,12 @@
-import { useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useEffect, useMemo, useState, useRef } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
 import { api, type Product } from "../api";
 import { loadMarketplaceFromFirestore } from "../firestore/catalogCache";
 import { AssistantBar, CustomerAppShell, CustomerPageHeader, CustomerPanel, HeaderIconHome } from "../components";
 import { IconSearch, productIcon } from "../icons";
+import { getSimAction } from "../simulation/simQuery";
+import { highlightElement } from "../simulation/highlight";
+import { sleep } from "../claimsDemoFill";
 
 const DEFAULT_CATEGORIES = [
   "All",
@@ -30,6 +33,8 @@ export function MarketplacePage() {
   const [query, setQuery] = useState("");
   const [products, setProducts] = useState<Product[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const simBrowseRan = useRef(false);
+  const location = useLocation();
 
   useEffect(() => {
     let alive = true;
@@ -80,6 +85,21 @@ export function MarketplacePage() {
   );
 
   const openQuote = (productId: string) => navigate(`/quote/${productId}`);
+
+  useEffect(() => {
+    if (simBrowseRan.current) return;
+    const sim = getSimAction(location.search);
+    if (sim !== "browse-health") return;
+    simBrowseRan.current = true;
+    setCategory("Health");
+    void sleep(1200).then(() => {
+      const card = document.querySelector('[data-sim-product="critical-illness"]');
+      highlightElement(card);
+      void sleep(1000).then(() => {
+        navigate("/quote/critical-illness?sim=health-demo-pay", { replace: true });
+      });
+    });
+  }, [location.search, navigate]);
 
   return (
     <CustomerAppShell active="home">
@@ -147,7 +167,7 @@ export function MarketplacePage() {
           const bullets = product.bullets ?? [];
           const cta = product.cta_label || product.title;
           return (
-            <article className="promo-card" key={product.id}>
+            <article className="promo-card" key={product.id} data-sim-product={product.id}>
               <div className="promo-icon" aria-hidden>
                 {productIcon(product.icon)}
               </div>

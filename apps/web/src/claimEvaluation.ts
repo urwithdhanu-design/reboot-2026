@@ -1,4 +1,4 @@
-import type { InsuranceClaim } from "../api";
+import type { InsuranceClaim } from "./api";
 
 export type ClaimEvaluationStep = {
   id: string;
@@ -24,7 +24,7 @@ export function parseClaimSubmitError(err: unknown): ClaimSubmitError {
 
 export function failedEvaluationStep(claim: InsuranceClaim): ClaimEvaluationStep | undefined {
   const steps = claim.evaluation_steps ?? [];
-  return steps.find((s) => s.status === "failed");
+  return steps.find((s: ClaimEvaluationStep) => s.status === "failed");
 }
 
 export function evaluationProgress(steps: ClaimEvaluationStep[]): {

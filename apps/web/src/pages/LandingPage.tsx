@@ -1,4 +1,4 @@
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api } from "../api";
 import { CustomerAppShell } from "../components";
@@ -8,6 +8,8 @@ import { IconChevron, productIcon } from "../icons";
 import { useQuoteNavigation } from "../hooks/useQuoteNavigation";
 import { needsKycAttention } from "../kycStatus";
 import { useSession } from "../session";
+import { getSimAction } from "../simulation/simQuery";
+import { highlightSelector } from "../simulation/highlight";
 
 const WHY_US = [
   {
@@ -26,6 +28,7 @@ const WHY_US = [
 
 export function LandingPage() {
   const goQuote = useQuoteNavigation();
+  const navigate = useNavigate();
   const { token, user, updateUser } = useSession();
   const location = useLocation();
   const registrationNote = (location.state as { registrationNote?: string } | null)?.registrationNote;
@@ -41,6 +44,14 @@ export function LandingPage() {
       .then((res) => updateUser(res))
       .catch(() => undefined);
   }, [token, updateUser]);
+
+  useEffect(() => {
+    const sim = getSimAction(location.search);
+    if (sim !== "go-kyc" || !loggedIn) return;
+    highlightSelector('[data-sim-target="start-kyc"]');
+    const t = window.setTimeout(() => navigate("/kyc?sim=kyc-complete"), 1800);
+    return () => window.clearTimeout(t);
+  }, [location.search, loggedIn, navigate]);
 
   if (loggedIn) {
     return (

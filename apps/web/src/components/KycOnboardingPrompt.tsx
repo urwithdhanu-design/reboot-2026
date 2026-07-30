@@ -80,7 +80,7 @@ export function KycOnboardingPrompt({
             </ol>
           ) : null}
           <div className="kyc-onboarding-actions">
-            <Link to={ctaTo} className="kyc-onboarding-cta">
+            <Link to={ctaTo} className="kyc-onboarding-cta" data-sim-target="start-kyc">
               {copy.cta}
             </Link>
             {status === "in_progress" ? (

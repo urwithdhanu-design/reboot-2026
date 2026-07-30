@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState, type Dispatch, type FormEvent, type SetStateAction } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { useEffect, useMemo, useState, useRef, type Dispatch, type FormEvent, type SetStateAction } from "react";
+import { Link, useNavigate, useParams, useLocation } from "react-router-dom";
 import {
   api,
   type Product,
@@ -21,6 +21,7 @@ import {
 import { AssistantBar, CustomerAppShell, StepHeader } from "../components";
 import { productIcon } from "../icons";
 import { useSession } from "../session";
+import { getSimAction } from "../simulation/simQuery";
 import { HOME_DEMO_ADDRESS, HomeQuoteWizard } from "./HomeQuoteWizard";
 import { TravelQuoteWizard } from "./TravelQuoteWizard";
 import { MotorQuoteWizard } from "./MotorQuoteWizard";
@@ -41,6 +42,8 @@ export function QuoteBuilderPage() {
   const [postcodeThanks, setPostcodeThanks] = useState(false);
   const [demoFilling, setDemoFilling] = useState(false);
   const [demoFlash, setDemoFlash] = useState(false);
+  const simQuoteRan = useRef(false);
+  const location = useLocation();
 
   useEffect(() => {
     let alive = true;
@@ -176,7 +179,10 @@ export function QuoteBuilderPage() {
       saveQuoteToCompare(estimated);
       setQuote(estimated);
       if (redirectToPolicies) {
-        navigate("/policies", { state: { quote: estimated, demoSubmitted: true } });
+        const paySim = getSimAction(location.search) === "health-demo-pay";
+        navigate(paySim ? "/policies?sim=pay-quote" : "/policies", {
+          state: { quote: estimated, demoSubmitted: true },
+        });
         return estimated;
       }
       setShowQuote(true);
@@ -212,6 +218,14 @@ export function QuoteBuilderPage() {
       setDemoFlash(false);
     }
   }
+
+  useEffect(() => {
+    if (simQuoteRan.current || loading || !product) return;
+    if (product.id !== "critical-illness") return;
+    if (getSimAction(location.search) !== "health-demo-pay") return;
+    simQuoteRan.current = true;
+    void runHealthDemoFill();
+  }, [loading, product, location.search]);
 
   async function runHomeDemoFill() {
     if (!user || !product || demoFilling || submitting) return;

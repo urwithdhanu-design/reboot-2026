@@ -76,14 +76,21 @@ function SimulationTab() {
             </p>
             <CantonSimulationViz />
           </>
-        ) : (
+        ) : subTab === 'platform-flow' ? (
           <>
             <p className="text-sm text-lbg-gray-600 mb-4">
               How <strong>policy mint, wallet link, claim verify, and settlement</strong> flow through our services — and
               which steps create or read <strong>Canton contracts</strong> versus core database only.
             </p>
-            <PlatformStackSimulator />
             <PlatformCantonFlowViz />
+          </>
+        ) : (
+          <>
+            <p className="text-sm text-lbg-gray-600 mb-4">
+            One-click <strong>end-to-end onboarding demo</strong> — register, KYC, wallet, critical illness
+            purchase, admin mint, claim, and payout. Opens customer and admin tabs once and reuses them.
+            </p>
+            <PlatformStackSimulator />
           </>
         )}
       </div>

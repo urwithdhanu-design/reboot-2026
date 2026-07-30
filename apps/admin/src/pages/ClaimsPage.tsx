@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState, useRef } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { ClipboardList, Eye, RefreshCw, Satellite } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { AdminLayout } from '../components/layout/AdminLayout';
@@ -13,6 +14,8 @@ import {
   PaginatedTable,
 } from '../components/ui';
 import { adminApi, type AdminClaimRow, type ParametricRuleRow, type ParametricTriggerRow } from '../api';
+import { getSimAction, getSimParam } from '../simulation/simQuery';
+import { highlightElement, smoothScrollPage } from '../simulation/highlight';
 
 const REFRESH_MS = 15_000;
 
@@ -85,6 +88,8 @@ function resolveParametricEventType(
 }
 
 export function ClaimsPage() {
+  const [searchParams] = useSearchParams();
+  const simApproveRan = useRef(false);
   const [claims, setClaims] = useState<AdminClaimRow[]>([]);
   const [triggers, setTriggers] = useState<ParametricTriggerRow[]>([]);
   const [rules, setRules] = useState<ParametricRuleRow[]>([]);
@@ -186,6 +191,27 @@ export function ClaimsPage() {
     }
   }
 
+  useEffect(() => {
+    if (simApproveRan.current || loading) return;
+    if (getSimAction(searchParams.toString()) !== 'approve-claim') return;
+    const claimId = getSimParam(searchParams.toString(), 'simClaimId');
+    if (!claimId) return;
+    const claim = claims.find((c) => c.id === claimId);
+    if (!claim) return;
+    simApproveRan.current = true;
+    setReviewClaim(claim);
+    highlightElement(document.querySelector(`[data-sim-claim-id="${claimId}"]`));
+    void (async () => {
+      await smoothScrollPage(3, 500);
+      await runAction(
+        claim.id,
+        () => adminApi.approveClaim(claim.id, Number(claim.amount_claimed)),
+        'Claim {id} approved — wallet credited and settlement recorded',
+      );
+      setReviewClaim(null);
+    })();
+  }, [loading, searchParams, claims]);
+
   return (
     <AdminLayout>
       <PageHeader
@@ -272,7 +298,7 @@ export function ClaimsPage() {
               const isCancellation = eventType === 'trip_cancellation';
               const categoryLabel = resolveClaimCategoryLabel(c, eventType);
               return (
-              <tr key={c.id} className="hover:bg-lbg-green-light/30 transition-colors">
+              <tr key={c.id} className="hover:bg-lbg-green-light/30 transition-colors" data-sim-claim-id={c.id}>
                 <td className="py-3.5 px-4 font-mono text-sm font-semibold text-lbg-green-dark">{c.id}</td>
                 <td className="py-3.5 px-4 font-semibold text-lbg-black">{c.customer_name}</td>
                 <td className="py-3.5 px-4 font-mono text-xs text-lbg-gray-500">{c.policy_ref}</td>

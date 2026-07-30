@@ -1,10 +1,13 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState, useRef } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Coins, Plus, Flame, Snowflake, Check, X, ExternalLink, RefreshCw, Eye, AlertTriangle } from 'lucide-react';
 import { AdminLayout } from '../components/layout/AdminLayout';
 import { PreMintChecksModal, type PreMintCheck } from '../components/PreMintChecksModal';
 import { Card, PageHeader, Badge, Button, PaginatedTable, StatCard, TablePagination, usePaginatedList, AlertBanner } from '../components/ui';
 import { adminApi, type TokenizationView } from '../api';
 import { formatNumber } from '../data/adminMockData';
+import { getSimAction, getSimParam } from '../simulation/simQuery';
+import { highlightElement } from '../simulation/highlight';
 
 const REFRESH_MS = 15_000;
 
@@ -41,6 +44,8 @@ type PreMintChecksTarget = {
 };
 
 export function TokenizationPage() {
+  const [searchParams] = useSearchParams();
+  const simMintRan = useRef(false);
   const [tab, setTab] = useState<'registry' | 'mint-queue' | 'failed-mints' | 'standards'>('registry');
   const [data, setData] = useState<TokenizationView | null>(null);
   const [loading, setLoading] = useState(true);
@@ -83,6 +88,34 @@ export function TokenizationPage() {
     defaultSortDir: 'desc',
     pageSize: 5,
   });
+
+  useEffect(() => {
+    if (simMintRan.current || loading) return;
+    if (getSimAction(searchParams.toString()) !== 'approve-mint') return;
+    const policyId = getSimParam(searchParams.toString(), 'simPolicyId');
+    if (!policyId) return;
+    if (getSimParam(searchParams.toString(), 'simTab') === 'mint-queue') {
+      setTab('mint-queue');
+    }
+    simMintRan.current = true;
+    const timer = window.setTimeout(() => {
+      const row = mintQueueItems.find((m) => m.id === policyId);
+      if (!row) return;
+      highlightElement(document.querySelector(`[data-sim-mint-row="${policyId}"]`));
+      setSelectedChecks({
+        title: row.product_title,
+        subtitle: `${row.policy_number} · ${row.customer_name}`,
+        checks: row.pre_mint_checks ?? [],
+        policyId: row.id,
+        canApproveMint: true,
+      });
+      window.setTimeout(() => {
+        void handleApproveMint(row.id).then(() => setSelectedChecks(null));
+      }, 2200);
+    }, 1000);
+    return () => window.clearTimeout(timer);
+  }, [loading, searchParams, mintQueueItems]);
+
   const failedMintList = usePaginatedList(failedMints, {
     defaultSortKey: 'failed_at',
     defaultSortDir: 'desc',
@@ -305,7 +338,7 @@ export function TokenizationPage() {
             <Card><p className="p-6 text-sm text-lbg-gray-500">No policies waiting to mint.</p></Card>
           ) : null}
           {mintQueue.pageItems.map((m) => (
-            <Card key={m.id} className="flex flex-col sm:flex-row sm:items-center gap-4">
+            <Card key={m.id} className="flex flex-col sm:flex-row sm:items-center gap-4" data-sim-mint-row={m.id}>
               <div className="flex-1">
                 <div className="flex items-center gap-2 flex-wrap">
                   <p className="font-bold">{m.policy_number}</p>

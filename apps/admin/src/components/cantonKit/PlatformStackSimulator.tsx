@@ -62,7 +62,6 @@ export function PlatformStackSimulator() {
       const result = await runPlatformStackSimulation({
         customerEmail: email.trim() || undefined,
         customerPassword: password,
-        registerNew: !email.trim(),
         openTabs,
         onStep,
         onLog: appendLog,
@@ -72,7 +71,7 @@ export function PlatformStackSimulator() {
           ? `Customer credentials: ${result.email} / ${result.password}`
           : `Customer: ${result.email}`;
       setSummary(
-        `${creds}. Policy ${result.policyId ?? '—'}, claim ${result.claimId ?? '—'}, wallet £${result.balanceAfterClaim?.toFixed(2) ?? '—'}.`,
+        `${creds}. Policy ${result.policyId ?? '—'}, claim ${result.claimId ?? '—'}.`,
       );
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
@@ -91,8 +90,8 @@ export function PlatformStackSimulator() {
         <div>
           <h3 className="text-sm font-bold text-lbg-black">Live stack simulation</h3>
           <p className="text-xs text-lbg-gray-500 mt-0.5">
-            Runs premium purchase, admin mint, claim, and payout via APIs — opens customer ({CUSTOMER_APP_ORIGIN}) and
-            admin tabs at each stage.
+            Full onboarding demo — register, KYC, wallet, critical illness policy, mint, claim, and payout.
+            Reuses one customer tab and one admin tab (no tab spam).
           </p>
         </div>
         <div className="flex flex-wrap gap-2">

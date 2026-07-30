@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState, useRef } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import {
   Activity,
   ArrowDownLeft,
@@ -21,6 +22,8 @@ import {
 } from '../components/ui';
 import { adminApi, type WalletOpsView } from '../api';
 import { formatGBP } from '../data/adminMockData';
+import { getSimAction, getSimParam } from '../simulation/simQuery';
+import { highlightElement } from '../simulation/highlight';
 
 const REFRESH_MS = 15_000;
 
@@ -62,6 +65,8 @@ function shortId(value?: string | null, len = 10) {
 }
 
 export function WalletOpsPage() {
+  const [searchParams] = useSearchParams();
+  const simHighlightRan = useRef(false);
   const [tab, setTab] = useState<Tab>('transactions');
   const [data, setData] = useState<WalletOpsView | null>(null);
   const [loading, setLoading] = useState(true);
@@ -91,6 +96,33 @@ export function WalletOpsPage() {
   useEffect(() => {
     load(false);
   }, [load]);
+
+  useEffect(() => {
+    if (simHighlightRan.current || loading) return;
+    const sim = getSimAction(searchParams.toString());
+    if (sim !== 'highlight-premium' && sim !== 'highlight-debit') return;
+    simHighlightRan.current = true;
+    setTab('transactions');
+    const email = getSimParam(searchParams.toString(), 'simEmail')?.toLowerCase();
+    const quoteId = getSimParam(searchParams.toString(), 'simQuoteId');
+    const timer = window.setTimeout(() => {
+      const rows = document.querySelectorAll('[data-sim-wallet-tx]');
+      let target: Element | null = null;
+      rows.forEach((row) => {
+        const type = row.getAttribute('data-sim-tx-type');
+        const rowEmail = row.getAttribute('data-sim-tx-email');
+        const ref = row.getAttribute('data-sim-tx-ref') ?? '';
+        if (sim === 'highlight-premium' && type === 'premium') {
+          if (!email || rowEmail === email || ref.includes(quoteId ?? '')) target = row;
+        }
+        if (sim === 'highlight-debit' && (type === 'claim_payout' || type === 'claim' || type === 'premium')) {
+          if (!email || rowEmail === email) target = row;
+        }
+      });
+      highlightElement(target ?? rows[0] ?? document.querySelector('table'));
+    }, 900);
+    return () => window.clearTimeout(timer);
+  }, [loading, searchParams]);
 
   useEffect(() => {
     if (!live) return;
@@ -285,7 +317,14 @@ export function WalletOpsPage() {
             }}
             emptyMessage="No wallet transactions yet. Customer recharges, premium payments, and claim payouts appear here."
             renderRow={(tx) => (
-              <tr key={tx.id} className="hover:bg-lbg-gray-50">
+              <tr
+                key={tx.id}
+                className="hover:bg-lbg-gray-50"
+                data-sim-wallet-tx="true"
+                data-sim-tx-type={tx.type}
+                data-sim-tx-email={(tx.customer_email ?? '').toLowerCase()}
+                data-sim-tx-ref={tx.reference ?? ''}
+              >
                 <td className="py-3 px-4 font-mono text-sm">{tx.id}</td>
                 <td className="py-3 px-4">
                   <p className="font-semibold">{tx.customer_name ?? tx.customer_email ?? tx.user_id}</p>
