@@ -1,9 +1,9 @@
 import { useState } from 'react';
-import { CheckCircle2, Circle, Loader2, Play, Radio, TestTube2, TriangleAlert } from 'lucide-react';
+import { CheckCircle2, Circle, Loader2, Play, Radio, Server, TestTube2, TriangleAlert } from 'lucide-react';
 import { Card, Badge } from '../ui';
 import { runCantonKitTests, type CantonKitTestResult } from '../../data/cantonKitUnitTests';
 
-type Filter = 'all' | 'unit' | 'live';
+type Filter = 'all' | 'unit' | 'live' | 'integration';
 
 export function CantonKitTestRunner({ compact = false }: { compact?: boolean }) {
   const [filter, setFilter] = useState<Filter>('all');
@@ -38,8 +38,11 @@ export function CantonKitTestRunner({ compact = false }: { compact?: boolean }) 
       </div>
 
       <p className="text-sm text-lbg-gray-600 mb-4">
-        Unit tests validate blueprint data and docs. Live smoke tests call the orchestrator Canton APIs
-        (requires local-dev stack on :8088).
+        <strong>Unit</strong> — blueprint data only (no services).{' '}
+        <strong>Live smoke</strong> — quick orchestrator probes from the browser.{' '}
+        <strong>Integration</strong> — orchestrator runs mint, internal HTTP mint, verify, idempotency, and{' '}
+        <code className="text-xs">CapitalMarketDemo</code> Daml script via Docker. Prep stack:{' '}
+        <code className="text-xs">local-dev.cmd kit-demo</code>
       </p>
 
       <div className="flex flex-wrap gap-2 mb-4">
@@ -69,13 +72,22 @@ export function CantonKitTestRunner({ compact = false }: { compact?: boolean }) 
           <Radio className="w-3.5 h-3.5" />
           Live smoke
         </button>
+        <button
+          type="button"
+          disabled={running}
+          onClick={() => run('integration')}
+          className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium border border-lbg-gray-200 hover:bg-lbg-gray-50 disabled:opacity-60"
+        >
+          <Server className="w-3.5 h-3.5" />
+          Integration
+        </button>
       </div>
 
       {results ? (
         <ul className="space-y-2">
           {results.map((r) => (
             <li
-              key={r.id}
+              key={`${r.id}-${r.category}`}
               className={`flex gap-3 text-sm rounded-lg border p-3 ${r.pass ? 'border-lbg-green/30 bg-lbg-green-light/20' : 'border-amber-200 bg-amber-50/50'}`}
             >
               {r.pass ? (

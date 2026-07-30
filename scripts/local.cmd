@@ -36,6 +36,7 @@ if /i "%CMD%"=="clean" goto clean
 if /i "%CMD%"=="refresh-messaging" goto refresh_messaging
 if /i "%CMD%"=="target" goto target
 if /i "%CMD%"=="canton" goto canton
+if /i "%CMD%"=="kit-demo" goto kit_demo
 echo Unknown command: %CMD%
 goto help
 
@@ -102,4 +103,8 @@ if /i "%~1"=="status" (
   exit /b %ERRORLEVEL%
 )
 powershell -NoProfile -ExecutionPolicy Bypass -File "%SCRIPT_DIR%local\start-canton.ps1"
+exit /b %ERRORLEVEL%
+
+:kit_demo
+powershell -NoProfile -ExecutionPolicy Bypass -File "%SCRIPT_DIR%local\prepare-kit-demo.ps1"
 exit /b %ERRORLEVEL%

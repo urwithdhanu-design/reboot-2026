@@ -67,6 +67,7 @@ function Show-Help {
   Write-Host "  local-dev.cmd canton             Start Canton local sandbox (Docker)"
   Write-Host "  local-dev.cmd canton status      Canton sandbox health"
   Write-Host "  local-dev.cmd canton stop        Stop Canton sandbox"
+  Write-Host "  local-dev.cmd kit-demo           Canton + APIs for kit live/integration tests"
   Write-Host "  local-dev.cmd target local|cloud Switch where the UI sends /api/*"
   Write-Host ""
   Write-Host "URLs (when running):"

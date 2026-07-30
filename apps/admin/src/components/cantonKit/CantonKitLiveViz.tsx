@@ -2,7 +2,7 @@ import { useEffect, useState, type CSSProperties } from 'react';
 import {
   CANTON_SIMULATION_STEPS,
   CAPITAL_MARKET_UPGRADE_STEPS,
-  GCUL_IMPLEMENTATION_PHASES,
+  CURRENT_IMPLEMENTATION_PHASES,
 } from '../../data/cantonKitLive';
 import { DvpAnimation, OracleFlowViz } from '../capitalMarket/CantonBlueprintViz';
 
@@ -24,7 +24,7 @@ export function CantonSimulationViz() {
     <div className="kit-live-sim">
       <div className="kit-live-sim-grid" aria-label="Canton ledger simulation">
         <div className={`kit-live-node${active >= 1 ? ' kit-live-node--on' : ''}`}>
-          <span className="kit-live-node-label">GCUL services</span>
+          <span className="kit-live-node-label">Platform services</span>
           <small>policy · claims · orchestrator</small>
         </div>
         <div className={`kit-live-arrow${active >= 1 ? ' kit-live-arrow--flow' : ''}`} aria-hidden>→</div>
@@ -62,22 +62,22 @@ export function CantonSimulationViz() {
 
       <p className="text-xs text-lbg-gray-400 mt-3">
         Canton is a privacy-aware ledger: contracts are visible only to parties on the signatory and observer lists.
-        GCUL never puts claim PII on-ledger — portfolio IDs, hashes, and settlement state only.
+        This stack never puts claim PII on-ledger — portfolio IDs, hashes, and settlement state only.
       </p>
     </div>
   );
 }
 
-export function GculImplementationViz() {
+export function CurrentImplementationViz() {
   const [phaseIndex, setPhaseIndex] = useState(0);
   useEffect(() => {
-    const t = setInterval(() => setPhaseIndex((i) => (i + 1) % GCUL_IMPLEMENTATION_PHASES.length), 3200);
+    const t = setInterval(() => setPhaseIndex((i) => (i + 1) % CURRENT_IMPLEMENTATION_PHASES.length), 3200);
     return () => clearInterval(t);
   }, []);
 
   return (
     <div className="kit-live-phases">
-      {GCUL_IMPLEMENTATION_PHASES.map((phase, i) => (
+      {CURRENT_IMPLEMENTATION_PHASES.map((phase, i) => (
         <div
           key={phase.phase}
           className={`kit-live-phase-card${i === phaseIndex ? ' kit-live-phase-card--active' : ''}${i < phaseIndex ? ' kit-live-phase-card--done' : ''}`}

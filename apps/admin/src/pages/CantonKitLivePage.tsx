@@ -15,7 +15,7 @@ import { CantonKitTestRunner } from '../components/cantonKit/CantonKitTestRunner
 import {
   CantonSimulationViz,
   CapitalMarketUpgradeViz,
-  GculImplementationViz,
+  CurrentImplementationViz,
 } from '../components/cantonKit/CantonKitLiveViz';
 import {
   CANTON_LIVE_TABS,
@@ -51,7 +51,7 @@ function ImplementationTab() {
         <code className="text-xs">canton/daml</code>. The orchestrator coordinates mint/verify with honest{' '}
         <code className="text-xs">ledger_mode</code> — simulated fallback only when strict mode is off and Canton is down.
       </p>
-      <GculImplementationViz />
+      <CurrentImplementationViz />
     </Card>
   );
 }
@@ -86,7 +86,7 @@ export function CantonKitLivePage() {
       <PageHeader
         icon={Sparkles}
         title="Canton live guide"
-        subtitle="Animated simulation, GCUL implementation walkthrough, and capital market upgrade"
+        subtitle="Animated simulation, current implementation walkthrough, and capital market upgrade"
         metrics={[
           { label: 'Phases shipped', value: String(KIT_START_HERE.completed.phases) },
           { label: 'Deliverables', value: String(KIT_START_HERE.completed.deliverables) },

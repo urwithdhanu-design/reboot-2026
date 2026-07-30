@@ -544,7 +544,24 @@ export type CantonHealthProbe = {
   mintAdapter?: string;
   mintAdapterError?: string;
   insurerPartyResolved?: boolean;
+  orchestratorUp?: boolean;
   checkedAt?: string;
+};
+
+export type CantonKitTestRunResponse = {
+  tests?: Array<{
+    id: string;
+    name: string;
+    category: string;
+    pass: boolean;
+    message: string;
+    durationMs: number;
+  }>;
+  passed?: number;
+  failed?: number;
+  total?: number;
+  cantonLive?: boolean;
+  durationMs?: number;
 };
 
 export type CantonStatus = {
@@ -999,6 +1016,9 @@ export const adminApi = {
 
   cantonReconciliation: () =>
     request<CantonReconciliationReport>('/api/blockchain/canton/reconciliation'),
+
+  cantonKitTestsRun: () =>
+    request<CantonKitTestRunResponse>('/api/blockchain/canton/kit-tests/run', { method: 'POST' }),
 
   gculSidecarHealth: () => request<Record<string, unknown>>('/api/blockchain/gcul/health'),
 
