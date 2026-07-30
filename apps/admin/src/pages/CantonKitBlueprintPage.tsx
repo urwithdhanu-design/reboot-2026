@@ -10,6 +10,7 @@ import {
   Hammer,
   Layers,
   Map,
+  Network,
   Package,
   Sparkles,
   TriangleAlert,
@@ -19,6 +20,7 @@ import { Card, Badge, PageHeader, AlertBanner } from '../components/ui';
 import { PhaseTestModal } from '../components/PhaseTestModal';
 import { KIT_START_HERE } from '../data/cantonKitLive';
 import { CantonKitTestRunner } from '../components/cantonKit/CantonKitTestRunner';
+import { CantonNetworkReferenceGallery } from '../components/cantonKit/CantonNetworkReferenceGallery';
 import {
   CHALLENGE_FIT,
   FIRST_UTILITY_RECOMMENDATION,
@@ -120,7 +122,7 @@ function OverviewTab() {
         </Card>
       </div>
 
-      <Card className="p-5">
+      <Card className="p-5 mb-4">
         <h3 className="font-bold text-lbg-black mb-3">Hybrid ledger flow (target)</h3>
         <div className="enterprise-flow-pipeline">
           {HYBRID_FLOW_STEPS.map((step, i) => (
@@ -136,13 +138,31 @@ function OverviewTab() {
           Orchestrator becomes thin; policy, claims, and KYC keep business rules. Canton kit owns ledger truthfulness.
         </p>
       </Card>
+
+      <Card className="p-5 mb-4">
+        <CantonNetworkReferenceGallery />
+      </Card>
     </>
+  );
+}
+
+function NetworkTab() {
+  return (
+    <Card className="p-5">
+      <CantonNetworkReferenceGallery showIndex />
+    </Card>
   );
 }
 
 function ArchitectureTab() {
   return (
     <div className="space-y-4">
+      <AlertBanner variant="info">
+        This tab describes the <strong>three GCUL kit layers</strong> (Daml contracts, Java SDK, orchestration). For the
+        five Canton Network reference architecture diagrams, open the{' '}
+        <Link to="/capital-market/kit?view=network" className="underline font-semibold">Canton network</Link> tab.
+      </AlertBanner>
+
       {KIT_LAYERS.map((layer, index) => (
         <Card key={layer.id} className="p-5">
           <div className="flex flex-wrap items-center gap-2 mb-2">
@@ -448,6 +468,7 @@ function LimitsTab() {
 
 const TAB_CONTENT: Record<KitBlueprintTabId, () => ReactElement> = {
   overview: OverviewTab,
+  network: NetworkTab,
   architecture: ArchitectureTab,
   mapping: MappingTab,
   modules: ModulesTab,
@@ -458,6 +479,7 @@ const TAB_CONTENT: Record<KitBlueprintTabId, () => ReactElement> = {
 
 const TAB_ICONS: Record<KitBlueprintTabId, typeof Boxes> = {
   overview: Boxes,
+  network: Network,
   architecture: Layers,
   mapping: Map,
   modules: Package,

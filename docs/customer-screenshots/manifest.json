@@ -1,0 +1,202 @@
+[
+  {
+    "file": "00-landing.png",
+    "description": "Landing / home",
+    "url": "http://localhost:5174/"
+  },
+  {
+    "file": "00-register.png",
+    "description": "Register",
+    "url": "http://localhost:5174/register"
+  },
+  {
+    "file": "00-login.png",
+    "description": "Login",
+    "url": "http://localhost:5174/login"
+  },
+  {
+    "file": "00-forgot-password.png",
+    "description": "Forgot password",
+    "url": "http://localhost:5174/forgot-password"
+  },
+  {
+    "file": "00-reset-password.png",
+    "description": "Reset password",
+    "url": "http://localhost:5174/reset-password"
+  },
+  {
+    "file": "00-wallet-approve.png",
+    "description": "Wallet approval (public)",
+    "url": "http://localhost:5174/wallet/approve"
+  },
+  {
+    "file": "01-product__home-insurance.png",
+    "description": "Product marketing — home-insurance",
+    "url": "http://localhost:5174/products/home-insurance"
+  },
+  {
+    "file": "01-product__life-insurance.png",
+    "description": "Product marketing — life-insurance",
+    "url": "http://localhost:5174/products/life-insurance"
+  },
+  {
+    "file": "01-product__critical-illness.png",
+    "description": "Product marketing — critical-illness",
+    "url": "http://localhost:5174/products/critical-illness"
+  },
+  {
+    "file": "01-product__car-insurance.png",
+    "description": "Product marketing — car-insurance",
+    "url": "http://localhost:5174/products/car-insurance"
+  },
+  {
+    "file": "01-product__van-insurance.png",
+    "description": "Product marketing — van-insurance",
+    "url": "http://localhost:5174/products/van-insurance"
+  },
+  {
+    "file": "01-product__pet-insurance.png",
+    "description": "Product marketing — pet-insurance",
+    "url": "http://localhost:5174/products/pet-insurance"
+  },
+  {
+    "file": "01-product__health-plan.png",
+    "description": "Product marketing — health-plan",
+    "url": "http://localhost:5174/products/health-plan"
+  },
+  {
+    "file": "01-product__income-protection.png",
+    "description": "Product marketing — income-protection",
+    "url": "http://localhost:5174/products/income-protection"
+  },
+  {
+    "file": "02-kyc.png",
+    "description": "KYC onboarding",
+    "url": "http://localhost:5174/kyc"
+  },
+  {
+    "file": "03-wallet__overview.png",
+    "description": "Wallet — overview",
+    "url": "http://localhost:5174/wallet"
+  },
+  {
+    "file": "03-wallet__top-up-activity.png",
+    "description": "Wallet — top up & activity",
+    "url": "http://localhost:5174/wallet"
+  },
+  {
+    "file": "04-marketplace__all.png",
+    "description": "Marketplace — All",
+    "url": "http://localhost:5174/marketplace"
+  },
+  {
+    "file": "04-marketplace__health.png",
+    "description": "Marketplace — Health",
+    "url": "http://localhost:5174/marketplace"
+  },
+  {
+    "file": "04-marketplace__vehicle.png",
+    "description": "Marketplace — Vehicle",
+    "url": "http://localhost:5174/marketplace"
+  },
+  {
+    "file": "04-marketplace__pet.png",
+    "description": "Marketplace — Pet",
+    "url": "http://localhost:5174/marketplace"
+  },
+  {
+    "file": "04-marketplace__property.png",
+    "description": "Marketplace — Property",
+    "url": "http://localhost:5174/marketplace"
+  },
+  {
+    "file": "04-marketplace__life.png",
+    "description": "Marketplace — Life",
+    "url": "http://localhost:5174/marketplace"
+  },
+  {
+    "file": "04-marketplace__travel.png",
+    "description": "Marketplace — Travel",
+    "url": "http://localhost:5174/marketplace"
+  },
+  {
+    "file": "05-quote__critical-illness.png",
+    "description": "Quote builder — critical-illness",
+    "url": "http://localhost:5174/quote/critical-illness"
+  },
+  {
+    "file": "05-quote__health-plan.png",
+    "description": "Quote builder — health-plan",
+    "url": "http://localhost:5174/quote/health-plan"
+  },
+  {
+    "file": "05-quote__income-protection.png",
+    "description": "Quote builder — income-protection",
+    "url": "http://localhost:5174/quote/income-protection"
+  },
+  {
+    "file": "05-quote__life-insurance.png",
+    "description": "Quote builder — life-insurance",
+    "url": "http://localhost:5174/quote/life-insurance"
+  },
+  {
+    "file": "05-quote__pet-insurance.png",
+    "description": "Quote builder — pet-insurance",
+    "url": "http://localhost:5174/quote/pet-insurance"
+  },
+  {
+    "file": "05-quote__home-insurance.png",
+    "description": "Quote builder — home-insurance",
+    "url": "http://localhost:5174/quote/home-insurance"
+  },
+  {
+    "file": "06-compare__policies.png",
+    "description": "Compare — policies",
+    "url": "http://localhost:5174/compare"
+  },
+  {
+    "file": "06-compare__quotes.png",
+    "description": "Compare — quotes",
+    "url": "http://localhost:5174/compare"
+  },
+  {
+    "file": "07-policies.png",
+    "description": "Policies & quotes",
+    "url": "http://localhost:5174/policies"
+  },
+  {
+    "file": "08-claims__start.png",
+    "description": "Claims — start claim",
+    "url": "http://localhost:5174/claims"
+  },
+  {
+    "file": "08-claims__track.png",
+    "description": "Claims — track",
+    "url": "http://localhost:5174/claims"
+  },
+  {
+    "file": "08-claims__settlement.png",
+    "description": "Claims — settlement trail",
+    "url": "http://localhost:5174/claims"
+  },
+  {
+    "file": "09-profile__account.png",
+    "description": "Profile — account",
+    "url": "http://localhost:5174/profile"
+  },
+  {
+    "file": "09-profile__wallet.png",
+    "description": "Profile — wallet",
+    "url": "http://localhost:5174/profile"
+  },
+  {
+    "file": "10-payment-success.png",
+    "description": "Payment success",
+    "url": "http://localhost:5174/payment/success"
+  },
+  {
+    "file": "10-payment-cancel.png",
+    "description": "Payment cancel",
+    "url": "http://localhost:5174/payment/cancel"
+  }
+]

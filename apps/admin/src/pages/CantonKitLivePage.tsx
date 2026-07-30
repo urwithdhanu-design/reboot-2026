@@ -19,6 +19,7 @@ import {
   PlatformCantonFlowViz,
 } from '../components/cantonKit/CantonKitLiveViz';
 import { PlatformStackSimulator } from '../components/cantonKit/PlatformStackSimulator';
+import { CantonLayeredAuditTrail } from '../components/cantonKit/CantonLayeredAuditTrail';
 import {
   CANTON_LIVE_TABS,
   CANTON_SIMULATION_SUB_TABS,
@@ -84,14 +85,16 @@ function SimulationTab() {
             </p>
             <PlatformCantonFlowViz />
           </>
-        ) : (
+        ) : subTab === 'stack-simulation' ? (
           <>
             <p className="text-sm text-lbg-gray-600 mb-4">
-            One-click <strong>end-to-end onboarding demo</strong> — register, KYC, wallet, critical illness
-            purchase, admin mint, claim, and payout. Opens customer and admin tabs once and reuses them.
+              One-click <strong>end-to-end onboarding demo</strong> — register, KYC, wallet, critical illness
+              purchase, admin mint, claim, and payout. Opens customer and admin tabs once and reuses them.
             </p>
             <PlatformStackSimulator />
           </>
+        ) : (
+          <CantonLayeredAuditTrail />
         )}
       </div>
     </Card>
