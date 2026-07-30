@@ -238,6 +238,31 @@ export function QuoteBuilderPage() {
     }
   }
 
+  function runTravelDemoFill() {
+    const today = new Date();
+    const localToday = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(
+      today.getDate(),
+    ).padStart(2, "0")}`;
+
+    setAnswers((prev) => {
+      const next: Record<string, string> = {
+        ...prev,
+        destination: "Spain",
+        trip_type: "Single trip",
+        departure_date: localToday,
+        travellers: "1",
+        flight_number: "BA117",
+        coverage_flight_delay: "Yes",
+        coverage_cancellation: "Yes",
+      };
+      delete next.return_date;
+      return next;
+    });
+    setWizardStep(1);
+    setShowQuote(false);
+    setError(null);
+  }
+
   function nextHomeStep(from: number): number {
     let next = from + 1;
     if (next === 10 && (answers.claims_count ?? "").startsWith("0")) {
@@ -421,6 +446,7 @@ export function QuoteBuilderPage() {
         quote={quote}
         submitting={submitting}
         error={error}
+        onDemoFill={product.id === "travel-protect-plus" ? runTravelDemoFill : undefined}
         onBack={onBack}
         onNext={onNextStep}
         onContinueToPolicies={() => navigate("/policies", { state: { quote } })}

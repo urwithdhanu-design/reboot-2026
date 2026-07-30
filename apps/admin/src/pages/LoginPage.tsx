@@ -71,7 +71,7 @@ export function LoginPage() {
               <ShieldCheck className="w-7 h-7" strokeWidth={1.75} />
             </div>
             <div>
-              <p className="text-xl font-bold tracking-tight">Reboot 2026 Insurance</p>
+              <p className="text-xl font-bold tracking-tight">Insure360</p>
               <p className="text-sm text-white/75">Platform operations</p>
             </div>
           </div>
@@ -93,7 +93,7 @@ export function LoginPage() {
               <ShieldCheck className="w-5 h-5" />
             </div>
             <div>
-              <p className="font-bold text-lbg-black">Reboot 2026 Admin</p>
+              <p className="font-bold text-lbg-black">Insure360</p>
               <p className="text-xs text-lbg-gray-400">Platform console</p>
             </div>
           </div>

@@ -34,6 +34,23 @@ export function RegisterPage() {
     setTermsModalOpen(true);
   }
 
+  function fillDemoRegistration() {
+    // Combining the current timestamp with a random suffix keeps repeat demo
+    // registrations distinct, including when the link is clicked repeatedly.
+    const uniqueId = `${Date.now()}${Math.floor(Math.random() * 1_000_000)
+      .toString()
+      .padStart(6, "0")}`;
+    const mobileDigits = uniqueId.slice(-10);
+
+    setFullName(`Demo Customer ${uniqueId.slice(-6)}`);
+    setEmail(`demo.customer.${uniqueId}@example.com`);
+    setMobile(`+44 ${mobileDigits}`);
+    setPassword("DemoAccount123!");
+    setConfirmPassword("DemoAccount123!");
+    setTerms(true);
+    setError(null);
+  }
+
   const canSubmit =
     terms &&
     fullName.trim().length > 1 &&
@@ -89,6 +106,16 @@ export function RegisterPage() {
         assistant={<AssistantBar screen="register" />}
       >
         <form className="stack" onSubmit={onSubmit}>
+          <p style={{ margin: 0 }}>
+            <button
+              type="button"
+              className="link-quiet"
+              onClick={fillDemoRegistration}
+            >
+              Demo Fill
+            </button>
+          </p>
+
           <div className="field">
             <label htmlFor="fullName">Full name</label>
             <div className="input-shell">

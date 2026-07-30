@@ -11,6 +11,7 @@ type Props = {
   quote: QuoteEstimate | null;
   submitting: boolean;
   error: string | null;
+  onDemoFill?: () => void;
   onBack: () => void;
   onNext: (e: FormEvent) => void;
   onContinueToPolicies: () => void;
@@ -90,6 +91,7 @@ export function TravelQuoteWizard({
   quote,
   submitting,
   error,
+  onDemoFill,
   onBack,
   onNext,
   onContinueToPolicies,
@@ -111,6 +113,11 @@ export function TravelQuoteWizard({
         <button type="button" className="link-quiet" onClick={onBack}>
           ← Back
         </button>
+        {onDemoFill ? (
+          <button type="button" className="link-quiet" onClick={onDemoFill}>
+            Demo fill
+          </button>
+        ) : null}
         <span>Travel Protect Plus</span>
       </header>
 

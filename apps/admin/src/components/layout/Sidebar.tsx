@@ -16,7 +16,7 @@ export function Sidebar({ collapsed }: SidebarProps) {
         </div>
         {!collapsed && (
           <div>
-            <p className="font-bold text-sm leading-tight">Reboot 2026</p>
+            <p className="font-bold text-sm leading-tight">Insure360</p>
             <p className="text-[10px] text-white/60 tracking-widest uppercase">Insurance Admin</p>
           </div>
         )}
