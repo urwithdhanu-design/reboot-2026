@@ -520,3 +520,1159 @@ body {
 :focus:not(:focus-visible) {
   outline: none;
 }
+
+/* ── /blockchain-benefits — motion on existing layout ── */
+@keyframes bb-fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes bb-hero-shimmer {
+  0%,
+  100% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+}
+
+@keyframes bb-badge-pop {
+  0% {
+    opacity: 0;
+    transform: scale(0.92);
+  }
+  70% {
+    transform: scale(1.03);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes bb-icon-pulse {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.08);
+  }
+}
+
+@keyframes bb-canton-glow {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.12);
+  }
+  50% {
+    box-shadow: 0 0 14px 2px rgba(255, 255, 255, 0.18);
+  }
+}
+
+@keyframes bb-summary-glow {
+  0%,
+  100% {
+    border-color: rgba(0, 134, 79, 0.25);
+  }
+  50% {
+    border-color: rgba(0, 134, 79, 0.45);
+  }
+}
+
+.blockchain-benefits-page .bb-reveal {
+  animation: bb-fade-up 0.55s ease-out both;
+}
+
+.blockchain-benefits-page .bb-reveal--delay-2 {
+  animation-delay: 0.12s;
+}
+
+.blockchain-benefits-page .bb-reveal--delay-3 {
+  animation-delay: 0.2s;
+}
+
+.blockchain-benefits-page .bb-reveal--delay-4 {
+  animation-delay: 0.28s;
+}
+
+.blockchain-benefits-page .bb-reveal--delay-5 {
+  animation-delay: 0.36s;
+}
+
+.blockchain-benefits-page .bb-hero {
+  background-size: 200% 200%;
+  animation: bb-hero-shimmer 10s ease infinite, bb-fade-up 0.55s ease-out both;
+}
+
+.blockchain-benefits-page .bb-badge-pop {
+  animation: bb-badge-pop 0.5s ease-out both;
+}
+
+.blockchain-benefits-page .bb-outcome-pill {
+  animation: bb-fade-up 0.5s ease-out both;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.blockchain-benefits-page .bb-outcome-pill:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 20px rgba(0, 104, 70, 0.1);
+}
+
+.blockchain-benefits-page .bb-outcome-pill:hover svg {
+  animation: bb-icon-pulse 0.6s ease;
+}
+
+.blockchain-benefits-page .bb-stat-grid > * {
+  animation: bb-fade-up 0.5s ease-out both;
+}
+
+.blockchain-benefits-page .bb-stat-grid > *:nth-child(1) {
+  animation-delay: 0.15s;
+}
+
+.blockchain-benefits-page .bb-stat-grid > *:nth-child(2) {
+  animation-delay: 0.22s;
+}
+
+.blockchain-benefits-page .bb-stat-grid > *:nth-child(3) {
+  animation-delay: 0.29s;
+}
+
+.blockchain-benefits-page .bb-demo-card-wrap {
+  animation: bb-fade-up 0.5s ease-out both;
+}
+
+.blockchain-benefits-page .bb-demo-card {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.blockchain-benefits-page .bb-demo-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 10px 24px rgba(0, 104, 70, 0.08);
+}
+
+.blockchain-benefits-page .bb-summary-pulse {
+  animation: bb-summary-glow 3s ease-in-out infinite;
+}
+
+.blockchain-benefits-page .bb-table-row {
+  animation: bb-fade-up 0.45s ease-out both;
+  transition: background-color 0.15s ease;
+}
+
+.blockchain-benefits-page .bb-table-row:hover {
+  background-color: rgba(248, 250, 252, 0.9);
+}
+
+.blockchain-benefits-page .bb-canton-icon {
+  animation: bb-canton-glow 2.8s ease-in-out infinite;
+}
+
+.blockchain-benefits-page .bb-canton-item {
+  animation: bb-fade-up 0.45s ease-out both;
+}
+
+.blockchain-benefits-page .bb-cap-card-wrap {
+  animation: bb-fade-up 0.5s ease-out both;
+}
+
+.blockchain-benefits-page .bb-cap-card {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.blockchain-benefits-page .bb-cap-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 28px rgba(0, 104, 70, 0.1);
+}
+
+.blockchain-benefits-page .bb-cap-card:hover .rounded-xl {
+  animation: bb-icon-pulse 0.55s ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .blockchain-benefits-page .bb-reveal,
+  .blockchain-benefits-page .bb-hero,
+  .blockchain-benefits-page .bb-badge-pop,
+  .blockchain-benefits-page .bb-outcome-pill,
+  .blockchain-benefits-page .bb-stat-grid > *,
+  .blockchain-benefits-page .bb-demo-card-wrap,
+  .blockchain-benefits-page .bb-table-row,
+  .blockchain-benefits-page .bb-canton-item,
+  .blockchain-benefits-page .bb-cap-card-wrap {
+    animation: none;
+  }
+
+  .blockchain-benefits-page .bb-canton-icon,
+  .blockchain-benefits-page .bb-summary-pulse {
+    animation: none;
+  }
+
+  .blockchain-benefits-page .bb-demo-card:hover,
+  .blockchain-benefits-page .bb-cap-card:hover,
+  .blockchain-benefits-page .bb-outcome-pill:hover {
+    transform: none;
+  }
+}
+
+/* ── Canton PCS / DvP concept flows ── */
+@keyframes bb-flow-node-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(0, 134, 79, 0.25);
+  }
+  50% {
+    box-shadow: 0 0 0 6px rgba(0, 134, 79, 0);
+  }
+}
+
+@keyframes bb-atomic-ring {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 0.6;
+  }
+  50% {
+    transform: scale(1.04);
+    opacity: 1;
+  }
+}
+
+@keyframes bb-swap-spin {
+  0%,
+  100% {
+    transform: rotate(0deg);
+  }
+  50% {
+    transform: rotate(180deg);
+  }
+}
+
+.blockchain-benefits-page .bb-concepts {
+  margin-top: 0.5rem;
+}
+
+.blockchain-benefits-page .bb-concept-card {
+  transition: box-shadow 0.2s ease;
+}
+
+.blockchain-benefits-page .bb-concept-card:hover {
+  box-shadow: 0 8px 28px rgba(0, 104, 70, 0.06);
+}
+
+.blockchain-benefits-page .bb-concept-icon-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: 10px;
+  background: var(--color-lbg-green-light);
+  color: var(--color-lbg-green);
+}
+
+.blockchain-benefits-page .bb-tree-card {
+  border-radius: 12px;
+  border: 1px solid rgba(0, 134, 79, 0.15);
+  background: linear-gradient(145deg, #f8fafc, #fff);
+  padding: 1rem;
+}
+
+.blockchain-benefits-page .bb-participant-grid {
+  display: grid;
+  gap: 0.75rem;
+}
+
+@media (min-width: 640px) {
+  .blockchain-benefits-page .bb-participant-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+.blockchain-benefits-page .bb-participant-col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.blockchain-benefits-page .bb-pcs-box {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  font-size: 0.7rem;
+  line-height: 1.35;
+  color: var(--color-lbg-gray-600);
+  text-align: center;
+  padding: 0.5rem;
+  border-radius: 8px;
+  background: rgba(0, 134, 79, 0.06);
+  border: 1px dashed rgba(0, 134, 79, 0.2);
+}
+
+.blockchain-benefits-page .bb-callout {
+  animation: bb-fade-up 0.5s ease-out both;
+}
+
+.blockchain-benefits-page .bb-flow-node {
+  border-radius: 10px;
+  padding: 0.5rem 0.75rem;
+  text-align: center;
+  border: 1px solid #e2e8f0;
+  background: #fff;
+  min-width: 7rem;
+}
+
+.blockchain-benefits-page .bb-flow-node--party {
+  border-color: rgba(0, 134, 79, 0.25);
+  background: #f0fdf4;
+}
+
+.blockchain-benefits-page .bb-flow-node--asset {
+  border-color: rgba(37, 99, 235, 0.25);
+  background: #eff6ff;
+}
+
+.blockchain-benefits-page .bb-flow-node--cash {
+  border-color: rgba(180, 83, 9, 0.25);
+  background: #fffbeb;
+}
+
+.blockchain-benefits-page .bb-flow-node--atomic {
+  border-color: var(--color-lbg-green);
+  background: linear-gradient(135deg, #ecfdf5, #d1fae5);
+  font-weight: 700;
+  animation: bb-atomic-ring 2.5s ease-in-out infinite;
+}
+
+.blockchain-benefits-page .bb-flow-node--risk {
+  border-color: rgba(220, 38, 38, 0.3);
+  background: #fef2f2;
+}
+
+.blockchain-benefits-page .bb-flow-node--pulse {
+  animation: bb-flow-node-pulse 2.4s ease-in-out infinite;
+}
+
+.blockchain-benefits-page .bb-flow-node-label {
+  display: block;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--color-lbg-black);
+}
+
+.blockchain-benefits-page .bb-flow-node small {
+  display: block;
+  margin-top: 0.15rem;
+  font-size: 0.65rem;
+  color: var(--color-lbg-gray-500);
+  line-height: 1.3;
+}
+
+.blockchain-benefits-page .bb-flow-arrow {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.15rem;
+  padding: 0.15rem 0;
+}
+
+.blockchain-benefits-page .bb-flow-arrow-line {
+  width: 2px;
+  height: 1.25rem;
+  background: #cbd5e1;
+  border-radius: 1px;
+}
+
+.blockchain-benefits-page .bb-flow-arrow--risk .bb-flow-arrow-line {
+  background: #f87171;
+}
+
+.blockchain-benefits-page .bb-flow-arrow--atomic .bb-flow-arrow-line {
+  background: var(--color-lbg-green);
+}
+
+.blockchain-benefits-page .bb-flow-arrow-label {
+  font-size: 0.65rem;
+  font-weight: 600;
+  color: var(--color-lbg-gray-500);
+}
+
+.blockchain-benefits-page .bb-dvp-panel {
+  border-radius: 12px;
+  padding: 1rem;
+  border: 1px solid #e2e8f0;
+}
+
+.blockchain-benefits-page .bb-dvp-panel--risk {
+  border-color: #fecaca;
+  background-color: rgba(254, 242, 242, 0.5);
+}
+
+.blockchain-benefits-page .bb-dvp-panel--atomic {
+  border-color: rgba(0, 134, 79, 0.25);
+  background: rgba(236, 253, 245, 0.5);
+}
+
+.blockchain-benefits-page .bb-atomic-hub {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.blockchain-benefits-page .bb-atomic-forks {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+  width: 100%;
+}
+
+.blockchain-benefits-page .bb-atomic-branch {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.blockchain-benefits-page .bb-atomic-footer {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--color-lbg-green-dark);
+  text-align: center;
+}
+
+.blockchain-benefits-page .bb-canton-dvp-flow {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.blockchain-benefits-page .bb-canton-dvp-split {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+  width: 100%;
+}
+
+.blockchain-benefits-page .bb-state-card {
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+  padding: 1rem;
+  background: #f8fafc;
+}
+
+.blockchain-benefits-page .bb-state-card--hub {
+  background: linear-gradient(180deg, #ecfdf5, #fff);
+  border-color: rgba(0, 134, 79, 0.2);
+}
+
+.blockchain-benefits-page .bb-dvp-swap-icon {
+  animation: bb-swap-spin 4s ease-in-out infinite;
+}
+
+/* Vehicle insurance DvP — moving settlement animation */
+@keyframes bb-dvp-march-right {
+  from {
+    background-position: 0 0;
+  }
+  to {
+    background-position: 12px 0;
+  }
+}
+
+@keyframes bb-dvp-march-left {
+  from {
+    background-position: 0 0;
+  }
+  to {
+    background-position: -12px 0;
+  }
+}
+
+@keyframes bb-dvp-security-move {
+  0%,
+  6% {
+    left: 8%;
+    opacity: 1;
+  }
+  44%,
+  56% {
+    left: 50%;
+    opacity: 1;
+  }
+  94%,
+  100% {
+    left: 92%;
+    opacity: 1;
+  }
+}
+
+@keyframes bb-dvp-cash-move {
+  0%,
+  6% {
+    left: 92%;
+    opacity: 1;
+  }
+  44%,
+  56% {
+    left: 50%;
+    opacity: 1;
+  }
+  94%,
+  100% {
+    left: 8%;
+    opacity: 1;
+  }
+}
+
+@keyframes bb-dvp-slot-out {
+  0%,
+  38% {
+    opacity: 1;
+    transform: scale(1);
+    filter: none;
+  }
+  48%,
+  100% {
+    opacity: 0.2;
+    transform: scale(0.94);
+    filter: grayscale(0.6);
+  }
+}
+
+@keyframes bb-dvp-slot-in {
+  0%,
+  48% {
+    opacity: 0.2;
+    transform: scale(0.94);
+    filter: grayscale(0.6);
+  }
+  58%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+    filter: none;
+  }
+}
+
+@keyframes bb-dvp-hub-flash {
+  0%,
+  40%,
+  60%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(0, 134, 79, 0.35);
+    transform: scale(1);
+  }
+  50% {
+    box-shadow: 0 0 0 10px rgba(0, 134, 79, 0);
+    transform: scale(1.06);
+  }
+}
+
+@keyframes bb-dvp-phase-before {
+  0%,
+  28% {
+    opacity: 1;
+    color: var(--color-lbg-green-dark);
+    background: rgba(0, 134, 79, 0.12);
+  }
+  32%,
+  100% {
+    opacity: 0.55;
+    color: var(--color-lbg-gray-500);
+    background: transparent;
+  }
+}
+
+@keyframes bb-dvp-phase-during {
+  0%,
+  28% {
+    opacity: 0.55;
+    color: var(--color-lbg-gray-500);
+    background: transparent;
+  }
+  32%,
+  68% {
+    opacity: 1;
+    color: var(--color-lbg-green-dark);
+    background: rgba(0, 134, 79, 0.12);
+  }
+  72%,
+  100% {
+    opacity: 0.55;
+    color: var(--color-lbg-gray-500);
+    background: transparent;
+  }
+}
+
+@keyframes bb-dvp-phase-after {
+  0%,
+  68% {
+    opacity: 0.55;
+    color: var(--color-lbg-gray-500);
+    background: transparent;
+  }
+  72%,
+  100% {
+    opacity: 1;
+    color: var(--color-lbg-green-dark);
+    background: rgba(0, 134, 79, 0.12);
+  }
+}
+
+@keyframes bb-dvp-hub-ring-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.blockchain-benefits-page .bb-vehicle-dvp {
+  margin-top: 1rem;
+  padding: 1rem;
+  border-radius: 14px;
+  border: 1px solid rgba(0, 134, 79, 0.15);
+  background: linear-gradient(165deg, #f8fafc 0%, #ecfdf5 45%, #fff 100%);
+}
+
+.blockchain-benefits-page .bb-vehicle-dvp-header {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.35rem;
+  margin-bottom: 0.75rem;
+}
+
+.blockchain-benefits-page .bb-vehicle-dvp-phase {
+  text-align: center;
+  font-size: 0.65rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 0.35rem 0.5rem;
+  border-radius: 8px;
+  transition: color 0.2s ease;
+}
+
+.blockchain-benefits-page .bb-vehicle-dvp-phase--before {
+  animation: bb-dvp-phase-before 5s ease-in-out infinite;
+}
+
+.blockchain-benefits-page .bb-vehicle-dvp-phase--during {
+  animation: bb-dvp-phase-during 5s ease-in-out infinite;
+}
+
+.blockchain-benefits-page .bb-vehicle-dvp-phase--after {
+  animation: bb-dvp-phase-after 5s ease-in-out infinite;
+}
+
+.blockchain-benefits-page .bb-vehicle-dvp-stage {
+  position: relative;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  min-height: 11rem;
+  padding: 0.25rem 0;
+}
+
+.blockchain-benefits-page .bb-vehicle-dvp-party {
+  z-index: 2;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+  background: #fff;
+  padding: 0.75rem;
+  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.04);
+}
+
+.blockchain-benefits-page .bb-vehicle-dvp-party--a {
+  justify-self: start;
+  max-width: 11rem;
+}
+
+.blockchain-benefits-page .bb-vehicle-dvp-party--b {
+  justify-self: end;
+  max-width: 11rem;
+}
+
+.blockchain-benefits-page .bb-vehicle-dvp-name {
+  font-size: 0.8rem;
+  font-weight: 800;
+  color: var(--color-lbg-black);
+}
+
+.blockchain-benefits-page .bb-vehicle-dvp-wallet {
+  margin-top: 0.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.blockchain-benefits-page .bb-vehicle-dvp-slot {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 0.4rem 0.5rem;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+  background: #f8fafc;
+}
+
+.blockchain-benefits-page .bb-vehicle-dvp-slot--security-a,
+.blockchain-benefits-page .bb-vehicle-dvp-slot--security-b {
+  border-color: rgba(37, 99, 235, 0.25);
+  background: #eff6ff;
+  color: #1d4ed8;
+}
+
+.blockchain-benefits-page .bb-vehicle-dvp-slot--cash-a,
+.blockchain-benefits-page .bb-vehicle-dvp-slot--cash-b {
+  border-color: rgba(180, 83, 9, 0.25);
+  background: #fffbeb;
+  color: #b45309;
+}
+
+.blockchain-benefits-page .bb-vehicle-dvp-slot--security-a,
+.blockchain-benefits-page .bb-vehicle-dvp-slot--cash-b {
+  animation: bb-dvp-slot-out 5s ease-in-out infinite;
+}
+
+.blockchain-benefits-page .bb-vehicle-dvp-slot--cash-a,
+.blockchain-benefits-page .bb-vehicle-dvp-slot--security-b {
+  animation: bb-dvp-slot-in 5s ease-in-out infinite;
+}
+
+.blockchain-benefits-page .bb-vehicle-dvp-lanes {
+  position: absolute;
+  inset: 18% 6% 18% 6%;
+  z-index: 3;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  pointer-events: none;
+}
+
+.blockchain-benefits-page .bb-vehicle-dvp-lane {
+  position: relative;
+  height: 2.75rem;
+}
+
+.blockchain-benefits-page .bb-vehicle-dvp-lane-line {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  height: 3px;
+  transform: translateY(-50%);
+  border-radius: 2px;
+  background: repeating-linear-gradient(
+    90deg,
+    rgba(0, 134, 79, 0.45) 0,
+    rgba(0, 134, 79, 0.45) 8px,
+    transparent 8px,
+    transparent 16px
+  );
+}
+
+.blockchain-benefits-page .bb-vehicle-dvp-lane-line--right {
+  animation: bb-dvp-march-right 0.55s linear infinite;
+}
+
+.blockchain-benefits-page .bb-vehicle-dvp-lane-line--left {
+  animation: bb-dvp-march-left 0.55s linear infinite;
+}
+
+.blockchain-benefits-page .bb-vehicle-dvp-shuttle {
+  position: absolute;
+  top: 50%;
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.35rem 0.6rem;
+  border-radius: 999px;
+  font-size: 0.65rem;
+  font-weight: 800;
+  white-space: nowrap;
+  transform: translate(-50%, -50%);
+  z-index: 4;
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.12);
+}
+
+.blockchain-benefits-page .bb-vehicle-dvp-shuttle--security {
+  animation: bb-dvp-security-move 5s ease-in-out infinite;
+  background: #eff6ff;
+  border: 2px solid rgba(37, 99, 235, 0.45);
+  color: #1d4ed8;
+}
+
+.blockchain-benefits-page .bb-vehicle-dvp-shuttle--cash {
+  animation: bb-dvp-cash-move 5s ease-in-out infinite;
+  background: #fffbeb;
+  border: 2px solid rgba(180, 83, 9, 0.45);
+  color: #b45309;
+}
+
+.blockchain-benefits-page .bb-vehicle-dvp-hub {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  z-index: 5;
+}
+
+.blockchain-benefits-page .bb-vehicle-dvp-hub-ring {
+  position: absolute;
+  width: 4.5rem;
+  height: 4.5rem;
+  border: 2px dashed rgba(0, 134, 79, 0.35);
+  border-radius: 999px;
+  animation: bb-dvp-hub-ring-spin 8s linear infinite;
+}
+
+.blockchain-benefits-page .bb-vehicle-dvp-hub-core {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.15rem;
+  width: 3.5rem;
+  height: 3.5rem;
+  border-radius: 999px;
+  background: linear-gradient(145deg, #ecfdf5, #d1fae5);
+  border: 2px solid var(--color-lbg-green);
+  color: var(--color-lbg-green-dark);
+  font-size: 0.55rem;
+  font-weight: 800;
+  text-align: center;
+  line-height: 1.1;
+  animation: bb-dvp-hub-flash 5s ease-in-out infinite;
+}
+
+.blockchain-benefits-page .bb-vehicle-dvp-hub-note {
+  margin-top: 0.35rem;
+  font-size: 0.6rem;
+  font-weight: 700;
+  color: var(--color-lbg-green-dark);
+  text-align: center;
+}
+
+.blockchain-benefits-page .bb-vehicle-dvp-caption {
+  margin-top: 0.75rem;
+  font-size: 0.75rem;
+  line-height: 1.45;
+  color: var(--color-lbg-gray-600);
+  text-align: center;
+}
+
+@media (max-width: 520px) {
+  .blockchain-benefits-page .bb-vehicle-dvp-stage {
+    min-height: 13rem;
+  }
+
+  .blockchain-benefits-page .bb-vehicle-dvp-party {
+    max-width: 9rem;
+    padding: 0.5rem;
+  }
+
+  .blockchain-benefits-page .bb-vehicle-dvp-slot {
+    font-size: 0.62rem;
+  }
+
+  .blockchain-benefits-page .bb-vehicle-dvp-shuttle span {
+    max-width: 4.5rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .blockchain-benefits-page .bb-vehicle-dvp-hub-core {
+    width: 3rem;
+    height: 3rem;
+    font-size: 0.5rem;
+  }
+
+  .blockchain-benefits-page .bb-vehicle-dvp-hub-ring {
+    width: 3.75rem;
+    height: 3.75rem;
+  }
+}
+
+.blockchain-benefits-page .bb-compare-row {
+  transition: transform 0.15s ease, border-color 0.15s ease;
+}
+
+.blockchain-benefits-page .bb-compare-row:hover {
+  transform: translateX(4px);
+  border-color: rgba(0, 134, 79, 0.25);
+}
+
+.blockchain-benefits-page .bb-market-pipeline {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem 0.15rem;
+}
+
+.blockchain-benefits-page .bb-market-step-wrap {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.blockchain-benefits-page .bb-market-step {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.35rem 0.5rem;
+  border-radius: 8px;
+  border: 1px solid rgba(0, 134, 79, 0.2);
+  background: #fff;
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--color-lbg-black);
+  animation: bb-flow-node-pulse 2.8s ease-in-out infinite;
+}
+
+.blockchain-benefits-page .bb-market-step-num {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.25rem;
+  height: 1.25rem;
+  border-radius: 999px;
+  background: var(--color-lbg-green);
+  color: #fff;
+  font-size: 0.6rem;
+  font-weight: 800;
+}
+
+.blockchain-benefits-page .bb-market-step-label {
+  line-height: 1.2;
+}
+
+.blockchain-benefits-page .bb-market-connector {
+  color: var(--color-lbg-green);
+  font-weight: 700;
+  font-size: 0.85rem;
+  padding: 0 0.1rem;
+}
+
+/* Business benefit map table */
+.blockchain-benefits-page .bb-benefit-map {
+  border: 1px solid rgba(0, 134, 79, 0.12);
+  background: linear-gradient(180deg, #fff 0%, #f8fafc 100%);
+  overflow: hidden;
+}
+
+.blockchain-benefits-page .bb-benefit-map-header {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-bottom: 1.25rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+@media (min-width: 768px) {
+  .blockchain-benefits-page .bb-benefit-map-header {
+    flex-direction: row;
+    align-items: flex-end;
+    justify-content: space-between;
+  }
+}
+
+.blockchain-benefits-page .bb-benefit-map-title-wrap {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.65rem;
+}
+
+.blockchain-benefits-page .bb-benefit-map-flow-hint {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-lbg-gray-500);
+  padding: 0.4rem 0.65rem;
+  border-radius: 999px;
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
+}
+
+.blockchain-benefits-page .bb-benefit-map-scroll {
+  display: block;
+}
+
+.blockchain-benefits-page .bb-benefit-map-mobile {
+  display: none;
+}
+
+@media (max-width: 767px) {
+  .blockchain-benefits-page .bb-benefit-map-scroll {
+    display: none;
+  }
+
+  .blockchain-benefits-page .bb-benefit-map-mobile {
+    display: flex;
+    flex-direction: column;
+    gap: 0.65rem;
+  }
+
+  .blockchain-benefits-page .bb-benefit-map-flow-hint {
+    display: none;
+  }
+}
+
+.blockchain-benefits-page .bb-benefit-map-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+.blockchain-benefits-page .bb-benefit-map-th {
+  padding: 0.65rem 1rem;
+  font-size: 0.65rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--color-lbg-gray-500);
+  text-align: left;
+  background: #f8fafc;
+  border-bottom: 2px solid #e2e8f0;
+}
+
+.blockchain-benefits-page .bb-benefit-map-th--solution {
+  color: #475569;
+}
+
+.blockchain-benefits-page .bb-benefit-map-th--value {
+  color: var(--color-lbg-green-dark);
+}
+
+.blockchain-benefits-page .bb-benefit-map-row {
+  transition: background-color 0.2s ease, transform 0.2s ease;
+}
+
+.blockchain-benefits-page .bb-benefit-map-row:hover {
+  background: rgba(0, 134, 79, 0.04);
+}
+
+.blockchain-benefits-page .bb-benefit-map-row:hover .bb-benefit-map-value-pill {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 134, 79, 0.2);
+}
+
+.blockchain-benefits-page .bb-benefit-map-cell {
+  padding: 0.85rem 1rem;
+  vertical-align: middle;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.blockchain-benefits-page .bb-benefit-map-cell--challenge {
+  width: 28%;
+  min-width: 9rem;
+}
+
+.blockchain-benefits-page .bb-benefit-map-cell--solution {
+  width: 38%;
+}
+
+.blockchain-benefits-page .bb-benefit-map-challenge {
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: var(--color-lbg-black);
+  line-height: 1.35;
+}
+
+.blockchain-benefits-page .bb-benefit-map-solution {
+  display: inline-block;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: #334155;
+  line-height: 1.4;
+  padding: 0.35rem 0.6rem;
+  border-radius: 8px;
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
+}
+
+.blockchain-benefits-page .bb-benefit-map-row:hover .bb-benefit-map-solution {
+  background: #e2e8f0;
+  border-color: #cbd5e1;
+}
+
+.blockchain-benefits-page .bb-benefit-map-value-pill {
+  display: inline-block;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  color: var(--color-lbg-green-dark);
+  line-height: 1.3;
+  padding: 0.4rem 0.75rem;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #ecfdf5, #d1fae5);
+  border: 1px solid rgba(0, 134, 79, 0.25);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.blockchain-benefits-page .bb-benefit-map-card {
+  padding: 0.85rem 1rem;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+  background: #fff;
+}
+
+.blockchain-benefits-page .bb-benefit-map-card-label {
+  font-size: 0.62rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-lbg-gray-500);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .blockchain-benefits-page .bb-flow-node--atomic,
+  .blockchain-benefits-page .bb-flow-node--pulse,
+  .blockchain-benefits-page .bb-market-step,
+  .blockchain-benefits-page .bb-dvp-swap-icon,
+  .blockchain-benefits-page .bb-vehicle-dvp-shuttle--security,
+  .blockchain-benefits-page .bb-vehicle-dvp-shuttle--cash,
+  .blockchain-benefits-page .bb-vehicle-dvp-slot--security-a,
+  .blockchain-benefits-page .bb-vehicle-dvp-slot--cash-b,
+  .blockchain-benefits-page .bb-vehicle-dvp-slot--cash-a,
+  .blockchain-benefits-page .bb-vehicle-dvp-slot--security-b,
+  .blockchain-benefits-page .bb-vehicle-dvp-hub-core,
+  .blockchain-benefits-page .bb-vehicle-dvp-hub-ring,
+  .blockchain-benefits-page .bb-vehicle-dvp-lane-line--right,
+  .blockchain-benefits-page .bb-vehicle-dvp-lane-line--left,
+  .blockchain-benefits-page .bb-vehicle-dvp-phase--before,
+  .blockchain-benefits-page .bb-vehicle-dvp-phase--during,
+  .blockchain-benefits-page .bb-vehicle-dvp-phase--after {
+    animation: none;
+  }
+
+  .blockchain-benefits-page .bb-compare-row:hover {
+    transform: none;
+  }
+
+  .blockchain-benefits-page .bb-benefit-map-row:hover .bb-benefit-map-value-pill {
+    transform: none;
+    box-shadow: none;
+  }
+}
